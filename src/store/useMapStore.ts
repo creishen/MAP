@@ -188,22 +188,45 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     }));
   },
   updateRequirementStatus: (setId, reqId, status, notes) => {
-    set((state) => ({
-      assuranceSets: state.assuranceSets.map((s) => {
+    set((state) => {
+      let linkedDocId: string | undefined = undefined;
+
+      const updatedSets = state.assuranceSets.map((s) => {
         if (s.id !== setId) return s;
         const updatedReqs = s.requirements.map((r) =>
           r.id === reqId ? { ...r, verifierStatus: status, notes, isFulfilled: status === 'Verified' } : r
         );
         const verifiedCount = updatedReqs.filter((r) => r.verifierStatus === 'Verified').length;
         const newScore = Math.round((verifiedCount / updatedReqs.length) * 100);
+        const allVerified = updatedReqs.length > 0 && updatedReqs.every((r) => r.verifierStatus === 'Verified');
+
+        let nextStage = s.stage;
+        if (allVerified) {
+          nextStage = 'Approval';
+        } else if (status === 'Correction Requested' || status === 'Rejected') {
+          nextStage = 'Verification';
+        }
 
         return {
           ...s,
           requirements: updatedReqs,
           readinessScore: newScore,
+          stage: nextStage,
+          approverDecision: allVerified ? 'Pending' : (status === 'Verified' ? s.approverDecision : undefined),
         };
-      }),
-    }));
+      });
+
+      const updatedDocs = linkedDocId
+        ? state.documents.map((d) =>
+          d.id === linkedDocId ? { ...d, verificationStatus: status, verificationNotes: notes } : d
+        )
+        : state.documents;
+
+      return {
+        assuranceSets: updatedSets,
+        documents: updatedDocs,
+      };
+    });
 
     get().logAuditEvent({
       userId: 'USR-VERIFY-01',
@@ -252,8 +275,8 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     });
   },
   addDocumentVersion: (docId, newVersionLabel, fileName, fileSizeBytes, changeSummary) => {
-    set((state) => ({
-      documents: state.documents.map((d) => {
+    set((state) => {
+      const updatedDocs = state.documents.map((d) => {
         if (d.id !== docId) return d;
         const newVersionObj = {
           versionLabel: newVersionLabel,
@@ -267,11 +290,47 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           ...d,
           currentVersion: newVersionLabel,
           ocrConfidence: 98,
-          verificationStatus: 'Pending',
+          verificationStatus: 'Pending' as const,
           versions: [newVersionObj, ...d.versions],
         };
-      }),
-    }));
+      });
+      const targetDoc = updatedDocs.find((d) => d.id === docId);
+
+      const updatedSets = state.assuranceSets.map((s) => {
+        let hasMatchedReq = false;
+        const updatedReqs = s.requirements.map((r) => {
+          if (r.documentId === docId || (targetDoc && r.title.toLowerCase() === targetDoc.title.toLowerCase())) {
+            hasMatchedReq = true;
+            return {
+              ...r,
+              documentId: docId,
+              verifierStatus: 'Pending' as const,
+              isFulfilled: false,
+              ocrConfidence: 98,
+              notes: changeSummary || 'Replacement revision uploaded by submitter.',
+            };
+          }
+          return r;
+        });
+
+        if (!hasMatchedReq) return s;
+
+        const verifiedCount = updatedReqs.filter((r) => r.verifierStatus === 'Verified').length;
+        const newScore = Math.round((verifiedCount / updatedReqs.length) * 100);
+
+        return {
+          ...s,
+          requirements: updatedReqs,
+          readinessScore: newScore,
+          stage: 'Verification' as const,
+        };
+      });
+
+      return {
+        documents: updatedDocs,
+        assuranceSets: updatedSets,
+      };
+    });
 
     get().logAuditEvent({
       userId: 'USR-SUBMIT-01',
@@ -283,11 +342,64 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     });
   },
   verifyDocument: (docId, status, notes) => {
-    set((state) => ({
-      documents: state.documents.map((d) =>
+    set((state) => {
+      const updatedDocs = state.documents.map((d) =>
         d.id === docId ? { ...d, verificationStatus: status, verificationNotes: notes } : d
-      ),
-    }));
+      );
+      const targetDoc = updatedDocs.find((d) => d.id === docId);
+
+      const updatedSets = state.assuranceSets.map((s) => {
+        let hasMatchedReq = false;
+
+        const updatedReqs = s.requirements.map((r) => {
+          const isDocIdMatch = r.documentId === docId;
+          const isTitleMatch = targetDoc && r.title.toLowerCase() === targetDoc.title.toLowerCase();
+          const isSubTitleMatch = targetDoc && (
+            r.title.toLowerCase().includes(targetDoc.title.toLowerCase()) ||
+            targetDoc.title.toLowerCase().includes(r.title.toLowerCase())
+          );
+
+          if (isDocIdMatch || isTitleMatch || (s.vesselId === targetDoc?.vesselId && isSubTitleMatch)) {
+            hasMatchedReq = true;
+            return {
+              ...r,
+              documentId: docId,
+              verifierStatus: status,
+              isFulfilled: status === 'Verified',
+              ocrConfidence: targetDoc?.ocrConfidence || 98,
+              notes: notes || r.notes,
+            };
+          }
+          return r;
+        });
+
+        if (!hasMatchedReq) return s;
+
+        const verifiedCount = updatedReqs.filter((r) => r.verifierStatus === 'Verified').length;
+        const newScore = Math.round((verifiedCount / updatedReqs.length) * 100);
+        const allVerified = updatedReqs.length > 0 && updatedReqs.every((r) => r.verifierStatus === 'Verified');
+
+        let nextStage = s.stage;
+        if (allVerified) {
+          nextStage = 'Approval';
+        } else if (status === 'Correction Requested' || status === 'Rejected') {
+          nextStage = 'Verification';
+        }
+
+        return {
+          ...s,
+          requirements: updatedReqs,
+          readinessScore: newScore,
+          stage: nextStage,
+          approverDecision: allVerified ? 'Pending' : (status === 'Verified' ? s.approverDecision : undefined),
+        };
+      });
+
+      return {
+        documents: updatedDocs,
+        assuranceSets: updatedSets,
+      };
+    });
 
     get().logAuditEvent({
       userId: 'USR-VERIFY-01',

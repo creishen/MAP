@@ -53,15 +53,15 @@ export const ReadinessGauge: React.FC<ReadinessGaugeProps> = ({ score, size = 'm
   }
 
   return (
-    <div className="d-flex align-items-center gap-2" style={{ minWidth: '120px' }}>
-      <div className="progress flex-grow-1" style={{ height: '6px', backgroundColor: '#e2e8f0' }}>
+    <div className="d-flex align-items-center gap-3 w-100">
+      <div className="progress flex-grow-1" style={{ height: '8px', backgroundColor: '#e2e8f0' }}>
         <div
           className={`progress-bar ${getScoreColorClass(score)}`}
           role="progressbar"
           style={{ width: `${score}%` }}
         />
       </div>
-      <span className={`fw-semibold font-mono-code small ${getTextColorClass(score)}`}>
+      <span className={`fw-bold font-mono-code small ${getTextColorClass(score)}`}>
         {score}%
       </span>
     </div>

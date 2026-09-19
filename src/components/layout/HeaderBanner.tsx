@@ -19,6 +19,7 @@ export const HeaderBanner: React.FC = () => {
     setActivePersona,
     currentHashView,
     currentEntityId,
+    setCurrentHashView,
     vessels,
     assuranceSets,
     documents,
@@ -86,14 +87,26 @@ export const HeaderBanner: React.FC = () => {
       className="map-top-banner d-flex align-items-center justify-content-between px-4 py-3 bg-white border-bottom"
       style={{ minHeight: '64px', borderColor: '#e2e8f0' }}
     >
-      {/* left side: breadcrumb & page title */}
+      {/* left side: breadcrumb & page title or back button */}
       <div>
-        <div className="text-uppercase fw-medium font-mono-code mb-1" style={{ fontSize: '0.675rem', color: '#94a3b8', letterSpacing: '0.06em' }}>
-          {breadcrumb}
-        </div>
-        <h1 className="h4 mb-0 fw-bold text-dark" style={{ fontSize: '1.25rem', color: '#0f172a', letterSpacing: '-0.01em' }}>
-          {title}
-        </h1>
+        {currentHashView === 'assurance-sets' && currentEntityId ? (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold"
+            onClick={() => setCurrentHashView('assurance-sets')}
+          >
+            ← Back to Assurance Sets
+          </button>
+        ) : (
+          <>
+            <div className="text-uppercase fw-medium font-mono-code mb-1" style={{ fontSize: '0.675rem', color: '#94a3b8', letterSpacing: '0.06em' }}>
+              {breadcrumb}
+            </div>
+            <h1 className="h4 mb-0 fw-bold text-dark" style={{ fontSize: '1.25rem', color: '#0f172a', letterSpacing: '-0.01em' }}>
+              {title}
+            </h1>
+          </>
+        )}
       </div>
 
       {/* right side: scenario selector & viewing as persona pills */}
@@ -111,8 +124,8 @@ export const HeaderBanner: React.FC = () => {
                   key={r.role}
                   type="button"
                   className={`btn btn-sm rounded-pill px-3 py-1 ${isActive
-                      ? 'bg-dark text-white fw-bold shadow-sm'
-                      : 'text-secondary bg-transparent border-0 hover-bg-light'
+                    ? 'bg-dark text-white fw-bold shadow-sm'
+                    : 'text-secondary bg-transparent border-0 hover-bg-light'
                     }`}
                   style={{ fontSize: '0.75rem', transition: 'all 0.15s ease-in-out' }}
                   onClick={() => setActivePersona(r.role)}
