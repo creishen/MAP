@@ -1,0 +1,131 @@
+/* 
+  file summary: global design tokens, typography, responsive breakpoints, and css rules for the marine assurance platform (map).
+  responsibilities: defines minimalist light maritime theme variables, typography font families, responsive layout bounds, and global utility styles.
+  role in system: central stylesheet imported by main application entry point.
+*/
+
+:root {
+  --map-bg-main: #f8fafc;
+  --map-bg-card: #ffffff;
+  --map-border-color: #e2e8f0;
+  --map-text-primary: #0f172a;
+  --map-text-secondary: #475569;
+  --map-text-muted: #64748b;
+  
+  --map-primary-blue: rgb(11, 27, 43);
+  --map-primary-hover: rgb(22, 45, 69);
+  --map-primary-light: rgba(11, 27, 43, 0.08);
+  
+  --map-success-bg: #dcfce7;
+  --map-success-text: #15803d;
+  --map-warning-bg: #fef3c7;
+  --map-warning-text: #b45309;
+  --map-danger-bg: #fee2e2;
+  --map-danger-text: #b91c1c;
+
+  --map-sidebar-bg: rgb(11, 27, 43);
+  --map-sidebar-text: #e2e8f0;
+  --map-sidebar-muted: #94a3b8;
+  --map-sidebar-active-text: #ffffff;
+  --map-sidebar-active-bg: #162e4a;
+  --map-sidebar-border: #1e3a5f;
+
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-doc: 'Arial', sans-serif;
+
+  --cui-primary: rgb(11, 27, 43);
+  --bs-primary: rgb(11, 27, 43);
+  --bs-primary-rgb: 11, 27, 43;
+}
+
+/* system-wide primary utility overrides using rgb(11, 27, 43) */
+.btn-primary {
+  background-color: rgb(11, 27, 43) !important;
+  border-color: rgb(11, 27, 43) !important;
+  color: #ffffff !important;
+}
+
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active {
+  background-color: rgb(22, 45, 69) !important;
+  border-color: rgb(22, 45, 69) !important;
+  color: #ffffff !important;
+}
+
+.btn-outline-primary {
+  color: rgb(11, 27, 43) !important;
+  border-color: rgb(11, 27, 43) !important;
+}
+
+.btn-outline-primary:hover, .btn-outline-primary:focus, .btn-outline-primary:active {
+  background-color: rgb(11, 27, 43) !important;
+  border-color: rgb(11, 27, 43) !important;
+  color: #ffffff !important;
+}
+
+.bg-primary {
+  background-color: rgb(11, 27, 43) !important;
+  color: #ffffff !important;
+}
+
+.text-primary {
+  color: rgb(11, 27, 43) !important;
+}
+
+.border-primary {
+  border-color: rgb(11, 27, 43) !important;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-sans);
+  background-color: var(--map-bg-main);
+  color: var(--map-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* monospace utility for maritime identifiers like imo and mmsi */
+.font-mono-code {
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--map-bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Responsive layout adjustments */
+@media (max-width: 1024px) {
+  .map-sidebar-open {
+    position: absolute;
+    z-index: 1040;
+  }
+}
+
+@media (max-width: 768px) {
+  .map-mobile-stack {
+    flex-direction: column !important;
+  }
+  .map-responsive-hide {
+    display: none !important;
+  }
+}

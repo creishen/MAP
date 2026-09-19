@@ -1,0 +1,43 @@
+# dependencies
+node_modules/
+node_modules
+.pnpm-store
+
+# production build outputs
+dist/
+dist
+dist-ssr/
+dist-ssr
+build/
+build
+*.js.map
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# environment variables and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# editor and system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvsload
+*.njsproj
+*.sln
+*.sw?
+
+# testing and coverage
+coverage/
+.cache

@@ -1,0 +1,35 @@
+/* 
+  file summary: fleet registry master page rendering the list of vessels and registration action trigger.
+  responsibilities: presents VesselTable component and handles trigger to open VesselModal for registering new vessels.
+  role in system: primary view for Fleet Master navigation (/vessels).
+*/
+
+import React, { useState } from 'react';
+import { useMapStore } from '../store/useMapStore';
+import { VesselTable } from '../components/tables/VesselTable';
+import { VesselModal } from '../components/drawers/VesselModal';
+
+/**
+  what: renders the fleet master registry page.
+  how: displays VesselTable and opens VesselModal when administrator clicks register vessel button in table header.
+  with what file: src/views/FleetRegistryView.tsx loaded by App.tsx.
+*/
+export const FleetRegistryView: React.FC = () => {
+  const { setCurrentHashView } = useMapStore();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <div className="d-flex flex-column gap-3">
+      {/* Vessels Table with inline Search, Export (CSV/PDF), and Register buttons */}
+      <VesselTable
+        onSelectVessel={(vessel) => {
+          setCurrentHashView('vessels', vessel.id);
+        }}
+        onRegisterVessel={() => setIsModalOpen(true)}
+      />
+
+      {/* Vessel Registration Modal */}
+      <VesselModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </div>
+  );
+};
