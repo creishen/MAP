@@ -8,22 +8,26 @@ import React, { useState } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
 
+import { isAssuranceSetAssignedToPersona } from '../utils/rbacHelpers';
+
 /**
   what: renders marine assurance manager approver dashboard.
-  how: checks mandatory statutory certificate validation state to enable/block final approval sign-off.
+  how: lists assigned vetting campaigns and checks mandatory statutory certificate validation state to enable/block final approval sign-off.
   with what file: src/views/ApproverDashboardView.tsx loaded by App.tsx.
 */
 export const ApproverDashboardView: React.FC = () => {
   const { assuranceSets, setApproverDecision, activePersona } = useMapStore();
-  const [selectedSetId, setSelectedSetId] = useState<string>(assuranceSets[0]?.id || '');
+
+  const assignedSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, activePersona));
+  const [selectedSetId, setSelectedSetId] = useState<string>(assignedSets[0]?.id || assuranceSets[0]?.id || '');
   const [approverNotes, setApproverNotes] = useState('');
   const [feedbackMessage, setFeedbackMessage] = useState('');
 
   const isCAdmin = activePersona === 'C Admin';
 
-  const selectedSet = assuranceSets.find((s) => s.id === selectedSetId) || assuranceSets[0];
+  const selectedSet = assignedSets.find((s) => s.id === selectedSetId) || assignedSets[0] || assuranceSets[0];
 
-  if (!selectedSet) return <div>No Assurance Sets available for approval.</div>;
+  if (!selectedSet) return <div>No Assurance Sets assigned for approval.</div>;
 
   /* check approval blocking logic: any unverified or missing mandatory requirement blocks approval */
   const unfulfilledMandatory = selectedSet.requirements.filter((r) => r.isMandatory && !r.isFulfilled);
@@ -64,12 +68,55 @@ export const ApproverDashboardView: React.FC = () => {
                 setFeedbackMessage('');
               }}
             >
-              {assuranceSets.map((s) => (
+              {assignedSets.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.id} — {s.title} ({s.vesselName})
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Stakeholder Role Assignments Card */}
+      <div className="card map-card-custom p-4">
+        <div className="text-uppercase font-mono-code fw-bold text-secondary mb-3 small" style={{ letterSpacing: '0.05em' }}>
+          Campaign Stakeholder Role Assignments — {selectedSet.id} ({selectedSet.vesselName})
+        </div>
+        <div className="row g-3">
+          <div className="col-md-3 col-6">
+            <div className="p-3 rounded-3 bg-light border">
+              <div className="small text-secondary fw-semibold mb-1" style={{ fontSize: '0.725rem' }}>Submitter</div>
+              <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>
+                {selectedSet.assignedSubmitter || 'Unassigned'}
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3 col-6">
+            <div className="p-3 rounded-3 bg-light border">
+              <div className="small text-secondary fw-semibold mb-1" style={{ fontSize: '0.725rem' }}>Verifier</div>
+              <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>
+                {selectedSet.assignedVerifier || 'Unassigned'}
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3 col-6">
+            <div className="p-3 rounded-3 bg-light border">
+              <div className="small text-secondary fw-semibold mb-1" style={{ fontSize: '0.725rem' }}>Inspector</div>
+              <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>
+                {selectedSet.mandatoryInspectionRequired
+                  ? (selectedSet.assignedInspector || 'Unassigned')
+                  : 'N/A (Not Required)'}
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3 col-6">
+            <div className="p-3 rounded-3 bg-light border">
+              <div className="small text-secondary fw-semibold mb-1" style={{ fontSize: '0.725rem' }}>Approver</div>
+              <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>
+                {selectedSet.assignedApprover || 'Unassigned'}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -114,14 +161,14 @@ export const ApproverDashboardView: React.FC = () => {
                 id="approver-notes"
                 className="form-control form-control-sm bg-white text-dark border-secondary"
                 rows={3}
-                placeholder="Enter justification notes or return feedback..."
+                placeholder={activePersona === 'Approver' || activePersona === 'Administrator' ? "Enter justification notes or return feedback..." : "Read-only mode for non-approver personas..."}
                 value={approverNotes}
                 onChange={(e) => setApproverNotes(e.target.value)}
-                disabled={isCAdmin}
+                disabled={!(activePersona === 'Approver' || activePersona === 'Administrator')}
               />
             </div>
 
-            {!isCAdmin && (
+            {(activePersona === 'Approver' || activePersona === 'Administrator') && (
               <div className="d-flex flex-column gap-2">
                 <button
                   type="button"

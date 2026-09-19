@@ -10,6 +10,8 @@ import { VesselParticulars } from '../../types/vessel';
 import { ReadinessGauge } from '../common/ReadinessGauge';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 
+import { filterVesselsForPersona } from '../../utils/rbacHelpers';
+
 interface VesselTableProps {
   onSelectVessel: (vessel: VesselParticulars) => void;
   onRegisterVessel?: () => void;
@@ -17,11 +19,11 @@ interface VesselTableProps {
 
 /**
   what: renders master fleet registry data table with search filters and export/creation actions.
-  how: filters vessels state and triggers csv/pdf exports or opens registration modal on action button clicks.
+  how: filters vessels state based on active persona stakeholder assignments and search criteria.
   with what file: src/components/tables/VesselTable.tsx loaded by FleetRegistryView.tsx.
 */
 export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegisterVessel }) => {
-  const { vessels, setActiveVesselId, activePersona } = useMapStore();
+  const { vessels, assuranceSets, setActiveVesselId, activePersona } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [flagFilter, setFlagFilter] = useState('ALL');
   const [classFilter, setClassFilter] = useState('ALL');
@@ -29,7 +31,9 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
 
   const canRegister = activePersona === 'Administrator';
 
-  const filteredVessels = vessels.filter((v) => {
+  const assignedVessels = filterVesselsForPersona(vessels, assuranceSets, activePersona);
+
+  const filteredVessels = assignedVessels.filter((v) => {
     const matchesSearch =
       v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.imoNumber.includes(searchTerm) ||

@@ -11,6 +11,8 @@ import { ReadinessGauge } from '../common/ReadinessGauge';
 import { formatMaritimeDate } from '../../utils/formatters';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 
+import { isAssuranceSetAssignedToPersona } from '../../utils/rbacHelpers';
+
 interface AssuranceTableProps {
   onSelectSet: (set: AssuranceSet) => void;
   onInitiateSet?: () => void;
@@ -18,22 +20,25 @@ interface AssuranceTableProps {
 
 /**
   what: renders assurance projects data table with search filters and export/initiate actions.
-  how: filters assuranceSets array and triggers csv/pdf exports or opens initiation modal on button clicks.
+  how: filters assuranceSets array by active persona role assignment and search parameters.
   with what file: src/components/tables/AssuranceTable.tsx loaded by AssuranceSetsView.tsx.
 */
 export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onInitiateSet }) => {
-  const { assuranceSets } = useMapStore();
+  const { assuranceSets, activePersona } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('ALL');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
+  const canInitiate = activePersona === 'Administrator' || activePersona === 'C Admin' || activePersona === 'Submitter';
+
   const filteredSets = assuranceSets.filter((s) => {
+    const isAssigned = isAssuranceSetAssignedToPersona(s, activePersona);
     const matchesSearch =
       s.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.vesselName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStage = stageFilter === 'ALL' || s.stage === stageFilter;
-    return matchesSearch && matchesStage;
+    return isAssigned && matchesSearch && matchesStage;
   });
 
   const getStageBadgeClass = (stage: AssuranceStage) => {
@@ -135,7 +140,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
           </div>
 
           {/* Initiate Action Button */}
-          {onInitiateSet && (
+          {canInitiate && onInitiateSet && (
             <button
               type="button"
               className="btn btn-sm btn-primary"
@@ -155,7 +160,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
               <th>Campaign / Set Title</th>
               <th>Vessel Name</th>
               <th>Initiating Organization</th>
-              <th>Charter Window</th>
+              <th>Assigned Stakeholders</th>
               <th>Stage</th>
               <th>Readiness Score</th>
               <th className="text-end">Actions</th>
@@ -176,8 +181,13 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
                     {s.initiatorOrg}
                   </span>
                 </td>
-                <td className="small font-mono-code">
-                  {formatMaritimeDate(s.charterWindowStart)} - {formatMaritimeDate(s.charterWindowEnd)}
+                <td>
+                  <div className="d-flex flex-column gap-0.5 text-slate-700" style={{ fontSize: '0.75rem' }}>
+                    {s.assignedSubmitter && <div><strong className="text-dark">S:</strong> {s.assignedSubmitter}</div>}
+                    {s.assignedVerifier && <div><strong className="text-dark">V:</strong> {s.assignedVerifier}</div>}
+                    {s.assignedInspector && <div><strong className="text-dark">I:</strong> {s.assignedInspector}</div>}
+                    {s.assignedApprover && <div><strong className="text-dark">A:</strong> {s.assignedApprover}</div>}
+                  </div>
                 </td>
                 <td>
                   <span className={`badge ${getStageBadgeClass(s.stage)}`}>{s.stage}</span>

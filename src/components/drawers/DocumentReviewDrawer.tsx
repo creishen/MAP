@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { MasterDocument } from '../../types/document';
+import { DocumentUploadModal } from './DocumentUploadModal';
 
 interface DocumentReviewDrawerProps {
   document: MasterDocument | null;
@@ -30,34 +31,39 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
   const { verifyDocument, activePersona } = useMapStore();
   const [comment, setComment] = useState('');
   const [showManualEdit, setShowManualEdit] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   if (!document) return null;
 
-  const isCAdmin = activePersona === 'C Admin';
+  const isVerified = document.verificationStatus === 'Verified';
+  const canSubmit = activePersona === 'Submitter' || activePersona === 'Administrator';
+  const canVerify = activePersona === 'Verifier' || activePersona === 'Administrator';
+
+  const isReuploaded = document.versions.length > 1 || document.currentVersion !== 'v1.0' || (document.ocrConfidence && document.ocrConfidence >= 90);
 
   /* mock extracted attributes matching design screenshot */
   const extractedAttributes: ExtractedAttribute[] = document.crewAttributes
     ? [
-      { id: '1', label: 'CREW MEMBER NAME', value: document.crewAttributes.crewName || 'A. Mendoza', confidence: 91 },
-      { id: '2', label: 'CREW ID / PASSPORT NUMBER', value: `${document.crewAttributes.passportId || 'P9912447'} (partially legible)`, confidence: 61 },
-      { id: '3', label: 'RANK / ROLE', value: document.crewAttributes.rank || 'Able Seafarer', confidence: 88 },
-      { id: '4', label: 'CERTIFICATE TYPE', value: document.title || 'Medical Fitness Certificate', confidence: 94 },
-      { id: '5', label: 'ISSUING AUTHORITY', value: `${document.issuingAuthority || 'illegible stamp'}`, confidence: 44 },
-      { id: '6', label: 'ISSUE DATE', value: '2024-11-02', confidence: 79 },
-      { id: '7', label: 'EXPIRY DATE', value: '2026-10-29', confidence: 86 },
-      { id: '8', label: 'VESSEL ASSIGNMENT', value: 'MV Torrens Supporter', confidence: 72 },
-      { id: '9', label: 'NATIONALITY', value: 'Philippines', confidence: 90 },
-      { id: '10', label: 'TRAINING COMPLETION DATE', value: 'not present', confidence: 0, isMandatoryMissing: true },
+      { id: '1', label: 'CREW MEMBER NAME', value: document.crewAttributes.crewName || 'A. Mendoza', confidence: isReuploaded ? 98 : 91 },
+      { id: '2', label: 'CREW ID / PASSPORT NUMBER', value: isReuploaded ? (document.crewAttributes.passportId || 'P9912447') : `${document.crewAttributes.passportId || 'P9912447'} (partially legible)`, confidence: isReuploaded ? 98 : 61 },
+      { id: '3', label: 'RANK / ROLE', value: document.crewAttributes.rank || 'Able Seafarer', confidence: isReuploaded ? 97 : 88 },
+      { id: '4', label: 'CERTIFICATE TYPE', value: document.title || 'Medical Fitness Certificate', confidence: isReuploaded ? 99 : 94 },
+      { id: '5', label: 'ISSUING AUTHORITY', value: isReuploaded ? (document.issuingAuthority || 'AMSA (Verified Seal)') : `${document.issuingAuthority || 'illegible stamp'}`, confidence: isReuploaded ? 97 : 44 },
+      { id: '6', label: 'ISSUE DATE', value: '2024-11-02', confidence: isReuploaded ? 98 : 79 },
+      { id: '7', label: 'EXPIRY DATE', value: '2026-10-29', confidence: isReuploaded ? 99 : 86 },
+      { id: '8', label: 'VESSEL ASSIGNMENT', value: 'MV Torrens Supporter', confidence: isReuploaded ? 98 : 72 },
+      { id: '9', label: 'NATIONALITY', value: 'Philippines', confidence: isReuploaded ? 98 : 90 },
+      { id: '10', label: 'TRAINING COMPLETION DATE', value: isReuploaded ? '2024-10-15' : 'not present', confidence: isReuploaded ? 96 : 0, isMandatoryMissing: isReuploaded ? false : true },
     ]
     : [
-      { id: '1', label: 'CERTIFICATE NUMBER', value: document.certificateNo || 'CERT-99412', confidence: 94 },
-      { id: '2', label: 'VESSEL NAME', value: document.vesselAttributes?.vesselName || 'MV Torrens Supporter', confidence: 91 },
-      { id: '3', label: 'IMO NUMBER', value: document.vesselAttributes?.imoNumber || 'IMO 9840123', confidence: 88 },
-      { id: '4', label: 'ISSUING AUTHORITY', value: document.issuingAuthority || 'DNV GL (partially legible)', confidence: 65 },
-      { id: '5', label: 'EXPIRY DATE', value: document.expiryDate || '2026-10-29', confidence: 79 },
+      { id: '1', label: 'CERTIFICATE NUMBER', value: document.certificateNo || 'CERT-99412', confidence: isReuploaded ? 99 : 94 },
+      { id: '2', label: 'VESSEL NAME', value: document.vesselAttributes?.vesselName || 'MV Torrens Supporter', confidence: isReuploaded ? 98 : 91 },
+      { id: '3', label: 'IMO NUMBER', value: document.vesselAttributes?.imoNumber || 'IMO 9840123', confidence: isReuploaded ? 99 : 88 },
+      { id: '4', label: 'ISSUING AUTHORITY', value: isReuploaded ? (document.issuingAuthority || 'DNV GL (Verified)') : (document.issuingAuthority || 'DNV GL (partially legible)'), confidence: isReuploaded ? 97 : 65 },
+      { id: '5', label: 'EXPIRY DATE', value: document.expiryDate || '2026-10-29', confidence: isReuploaded ? 98 : 79 },
     ];
 
-  const overallConfidence = document.ocrConfidence || 74;
+  const overallConfidence = isReuploaded ? 98 : (document.ocrConfidence || 74);
 
   const handleVerify = () => {
     verifyDocument(document.id, 'Verified', comment || 'Verified extracted document attributes.');
@@ -84,7 +90,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
               {document.title}
             </h4>
             <div className="font-mono-code small" style={{ fontSize: '0.775rem', color: '#94a3b8' }}>
-              {document.title.toLowerCase().replace(/\s+/g, '-')}-scan.jpg · 640 KB · 1 page
+              {document.title.toLowerCase().replace(/\s+/g, '-')}-scan.jpg · 640 KB · {document.currentVersion}
             </div>
           </div>
 
@@ -136,18 +142,28 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                 <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
                   <span
                     className="d-flex align-items-center justify-content-center rounded text-white fw-bold"
-                    style={{ width: '18px', height: '18px', backgroundColor: '#c2410c', fontSize: '0.65rem' }}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      backgroundColor: isReuploaded ? '#059669' : '#c2410c',
+                      fontSize: '0.65rem',
+                    }}
                   >
-                    !
+                    {isReuploaded ? '✓' : '!'}
                   </span>
                   <span>Full page captured</span>
                 </div>
                 <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
                   <span
                     className="d-flex align-items-center justify-content-center rounded text-white fw-bold"
-                    style={{ width: '18px', height: '18px', backgroundColor: '#c2410c', fontSize: '0.65rem' }}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      backgroundColor: isReuploaded ? '#059669' : '#c2410c',
+                      fontSize: '0.65rem',
+                    }}
                   >
-                    !
+                    {isReuploaded ? '✓' : '!'}
                   </span>
                   <span>Signature / stamp present</span>
                 </div>
@@ -162,7 +178,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                 const barColor = isMissing ? '#e2e8f0' : attr.confidence >= 90 ? '#059669' : '#c2410c';
 
                 return (
-                  <div key={attr.id} className="py-2.5 border-bottom d-flex align-items-center justify-content-between gap-3">
+                  <div key={attr.id} className="py-2.5 border-bottom d-flex align-items-center justify-between gap-3">
                     <div className="d-flex flex-column">
                       <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.65rem', color: '#64748b', letterSpacing: '0.06em' }}>
                         {attr.label}
@@ -206,56 +222,89 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
             </div>
           </div>
 
-          {/* bottom sticky exception action banner */}
-          <div
-            className="p-3.5 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3 border shadow-sm"
-            style={{
-              backgroundColor: '#fffbeb',
-              borderColor: '#fde68a',
-            }}
-          >
-            <div>
-              <div className="fw-bold mb-0.5" style={{ fontSize: '0.875rem', color: '#92400e' }}>
-                Exception identified — Submitter action required
+          {/* Locked Notice if Verified */}
+          {isVerified ? (
+            <div
+              className="p-3.5 rounded-3 d-flex align-items-center justify-content-between border shadow-2xs"
+              style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}
+            >
+              <div>
+                <div className="fw-bold text-success-emphasis mb-0.5" style={{ fontSize: '0.875rem' }}>
+                  Document Verified & Locked
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#166534', lineHeight: '1.4' }}>
+                  This statutory document has been verified. Verified data cannot be altered or re-uploaded.
+                </div>
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#78350f', lineHeight: '1.4' }}>
-                Issuing authority illegible, crew ID partially legible, training completion date absent. Replace with a clearer scan or provide a renewed certificate.
-              </div>
+              <span className="badge bg-success text-white font-mono-code px-3 py-2" style={{ fontSize: '0.775rem' }}>
+                Verified
+              </span>
             </div>
+          ) : (
+            /* Bottom sticky exception action banner for unverified documents */
+            <div
+              className="p-3.5 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3 border shadow-sm"
+              style={{
+                backgroundColor: '#fffbeb',
+                borderColor: '#fde68a',
+              }}
+            >
+              <div>
+                <div className="fw-bold mb-0.5" style={{ fontSize: '0.875rem', color: '#92400e' }}>
+                  Verification Pending / Exception Review
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#78350f', lineHeight: '1.4' }}>
+                  Review extracted attributes. Verifiers may request correction or verify; Submitters can submit replacement revisions.
+                </div>
+              </div>
 
-            <div className="d-flex align-items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                className="btn btn-sm btn-white border px-3 py-2 fw-semibold text-dark shadow-2xs"
-                style={{ fontSize: '0.775rem', backgroundColor: '#ffffff', borderColor: '#cbd5e1' }}
-                onClick={() => setShowManualEdit(!showManualEdit)}
-              >
-                Correct field manually
-              </button>
-              {!isCAdmin && (
-                <>
+              <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                {canSubmit && (
                   <button
                     type="button"
-                    className="btn btn-sm text-white px-3 py-2 fw-bold shadow-sm"
-                    style={{ fontSize: '0.775rem', backgroundColor: '#c2410c', borderColor: '#c2410c' }}
-                    onClick={handleCorrection}
+                    className="btn btn-sm btn-primary text-white px-3 py-2 fw-bold shadow-sm"
+                    style={{ fontSize: '0.775rem' }}
+                    onClick={() => setIsUploadModalOpen(true)}
                   >
-                    Upload replacement version
+                    Upload Replacement Revision
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-success text-white px-3 py-2 fw-bold shadow-sm"
-                    style={{ fontSize: '0.775rem', backgroundColor: '#059669', borderColor: '#059669' }}
-                    onClick={handleVerify}
-                  >
-                    Verify Document
-                  </button>
-                </>
-              )}
+                )}
+                {canVerify && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-sm text-white px-3 py-2 fw-bold shadow-sm"
+                      style={{ fontSize: '0.775rem', backgroundColor: '#c2410c', borderColor: '#c2410c' }}
+                      onClick={handleCorrection}
+                    >
+                      Request Correction
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-success text-white px-3 py-2 fw-bold shadow-sm"
+                      style={{ fontSize: '0.775rem', backgroundColor: '#059669', borderColor: '#059669' }}
+                      onClick={handleVerify}
+                    >
+                      Verify Document
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
+
+      {/* Master Document Upload & Replacement Modal */}
+      <DocumentUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        existingDocument={document}
+        onUploadComplete={() => {
+          setIsUploadModalOpen(false);
+          onClose();
+        }}
+      />
     </>
   );
 };

@@ -63,15 +63,8 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({ docu
         </div>
 
         <div className="offcanvas-body p-3">
-          {/* Prominent C Admin Read-Only Banner */}
-          {isCAdmin && (
-            <div className="map-cadmin-readonly-banner">
-              <span>Read-Only Mode (C Admin Persona): Revision uploads disabled for Client Admin.</span>
-            </div>
-          )}
-
           {/* Upload New Revision Form (For Submitter / Admin) */}
-          {!isCAdmin && (
+          {(activePersona === 'Administrator' || activePersona === 'Submitter') && (
             <form onSubmit={handleUploadRevision} className="p-3 bg-light border border-secondary rounded mb-4 shadow-sm">
               <h6 className="text-uppercase text-primary small fw-bold mb-3" style={{ letterSpacing: '0.05em' }}>
                 Upload New Revision / Corrected File

@@ -327,8 +327,8 @@ export const CreateAssuranceSetView: React.FC = () => {
               </div>
             </div>
 
-            {/* 5 · stakeholder role assignments (only shown to Administrator / Provider Admin, hidden for Client) */}
-            {activePersona !== 'C Admin' && (
+            {/* 5 · stakeholder role assignments (only shown to Administrator, hidden for Client / non-admin personas) */}
+            {activePersona === 'Administrator' && (
               <div className="card border shadow-sm rounded-3 bg-white">
                 <div className="card-header bg-light border-bottom px-4 py-3 d-flex align-items-center justify-content-between">
                   <div>

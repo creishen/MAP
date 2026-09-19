@@ -64,7 +64,7 @@ export interface MapStoreState {
   ) => void;
   verifyDocument: (
     docId: string,
-    status: 'Verified' | 'Correction Requested' | 'Rejected',
+    status: 'Pending' | 'Verified' | 'Correction Requested' | 'Rejected',
     notes?: string
   ) => void;
 
@@ -261,6 +261,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
         return {
           ...d,
           currentVersion: newVersionLabel,
+          ocrConfidence: 98,
           verificationStatus: 'Pending',
           versions: [newVersionObj, ...d.versions],
         };

@@ -697,19 +697,21 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                 </div>
 
                 {/* submit outcome button */}
-                <button
-                  type="button"
-                  className="btn btn-success w-100 py-2.5 fw-bold shadow-sm mb-3"
-                  style={{
-                    backgroundColor: '#059669',
-                    borderColor: '#059669',
-                    fontSize: '0.9rem',
-                    borderRadius: '8px',
-                  }}
-                  onClick={handleSubmitOutcome}
-                >
-                  Submit inspection outcome
-                </button>
+                {(activePersona === 'Inspector' || activePersona === 'Administrator') && (
+                  <button
+                    type="button"
+                    className="btn btn-success w-100 py-2.5 fw-bold shadow-sm mb-3"
+                    style={{
+                      backgroundColor: '#059669',
+                      borderColor: '#059669',
+                      fontSize: '0.9rem',
+                      borderRadius: '8px',
+                    }}
+                    onClick={handleSubmitOutcome}
+                  >
+                    Submit inspection outcome
+                  </button>
+                )}
 
                 <div className="small lh-sm" style={{ fontSize: '0.725rem', color: '#64748b' }}>
                   The Inspector role covers visual and vessel inspection only — it does not replace the Verifier for routine document verification.
@@ -722,14 +724,16 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                   <h6 className="fw-bold text-dark m-0" style={{ fontSize: '1rem' }}>
                     Corrective actions ({capaActions.length})
                   </h6>
-                  <button
-                    type="button"
-                    className="btn btn-outline-primary btn-sm px-2.5 py-1 fw-semibold"
-                    style={{ fontSize: '0.75rem', borderRadius: '6px', borderColor: '#0284c7', color: '#0284c7' }}
-                    onClick={() => setShowAddCapa(!showAddCapa)}
-                  >
-                    {showAddCapa ? 'Cancel' : '+ Add CAPA Item'}
-                  </button>
+                  {(activePersona === 'Inspector' || activePersona === 'Administrator') && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm px-2.5 py-1 fw-semibold"
+                      style={{ fontSize: '0.75rem', borderRadius: '6px', borderColor: '#0284c7', color: '#0284c7' }}
+                      onClick={() => setShowAddCapa(!showAddCapa)}
+                    >
+                      {showAddCapa ? 'Cancel' : '+ Add CAPA Item'}
+                    </button>
+                  )}
                 </div>
 
                 {/* general new CAPA creation form */}

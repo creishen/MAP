@@ -57,13 +57,14 @@
   background-color: #f8fafc;
 }
 
-/* Minimalist Card Styling */
+/* Minimalist Card & Container Padding Styling */
 .map-card-custom {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 10px;
   color: #0f172a;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  overflow: hidden;
 }
 
 .map-card-custom .card-header {
@@ -72,6 +73,48 @@
   color: #0f172a;
   font-weight: 600;
   font-size: 0.9rem;
+  padding: 1rem 1.5rem !important;
+}
+
+.map-card-custom .card-body {
+  padding: 1.5rem !important;
+}
+
+/* Generous Button Internal Padding Rules */
+.btn {
+  padding: 0.55rem 1rem !important;
+  border-radius: 6px !important;
+  font-weight: 500;
+}
+
+.btn-sm {
+  padding: 0.45rem 0.5rem !important;
+  font-size: 0.8125rem !important;
+  border-radius: 6px !important;
+}
+
+.btn-lg {
+  padding: 0.75rem 1rem !important;
+}
+
+/* Form Input & Select Padding Rules */
+.form-control,
+.form-select {
+  padding: 0.5rem 0.85rem !important;
+  border-radius: 6px !important;
+}
+
+.form-control-sm,
+.form-select-sm {
+  padding: 0.4rem 0.75rem !important;
+  border-radius: 6px !important;
+  font-size: 0.8125rem !important;
+}
+
+/* Badge Internal Padding Rules */
+.badge {
+  padding: 0.4em 0.75em !important;
+  border-radius: 5px;
 }
 
 /* Minimalist Light Table Styling */
@@ -90,13 +133,13 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid #e2e8f0 !important;
-  padding: 0.75rem 1rem !important;
+  padding: 0.85rem 1.25rem !important;
 }
 
 .map-table-custom td {
   border-bottom: 1px solid #f1f5f9 !important;
   vertical-align: middle;
-  padding: 0.85rem 1rem !important;
+  padding: 0.95rem 1.25rem !important;
   font-size: 0.875rem;
 }
 

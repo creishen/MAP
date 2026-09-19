@@ -13,24 +13,31 @@ import { DocumentReviewDrawer } from '../components/drawers/DocumentReviewDrawer
 import { formatMaritimeDate } from '../utils/formatters';
 import { MasterDocument } from '../types/document';
 
+import { VersionHistoryDrawer } from '../components/drawers/VersionHistoryDrawer';
+import { DocumentUploadModal } from '../components/drawers/DocumentUploadModal';
+
 interface AssuranceDetailViewProps {
   setId: string;
 }
 
 /**
   what: renders assurance set command center deep-dive view in light theme.
-  how: displays pipeline stepper header, requirement register table, and opens DocumentReviewDrawer for verifiers.
+  how: displays pipeline stepper header, requirement register table, and opens DocumentReviewDrawer, VersionHistoryDrawer, or DocumentUploadModal based on persona RBAC.
   with what file: src/views/AssuranceDetailView.tsx loaded by App.tsx.
 */
 export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId }) => {
-  const { assuranceSets, updateAssuranceStage, updateRequirementStatus, documents, activePersona, setCurrentHashView } = useMapStore();
+  const { assuranceSets, updateRequirementStatus, documents, activePersona, setCurrentHashView } = useMapStore();
   const [selectedDocForReview, setSelectedDocForReview] = useState<MasterDocument | null>(null);
+  const [selectedDocForVersionHistory, setSelectedDocForVersionHistory] = useState<MasterDocument | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const assuranceSet = assuranceSets.find((s) => s.id === setId) || assuranceSets[0];
 
   if (!assuranceSet) return <div>Assurance Set not found.</div>;
 
   const isCAdmin = activePersona === 'C Admin';
+  const canUpload = activePersona === 'Submitter' || activePersona === 'Administrator';
+  const canVerify = activePersona === 'Verifier' || activePersona === 'Administrator';
 
   /* requirement is fulfilled ONLY if verifier status is 'Verified' */
   const verifiedCount = assuranceSet.requirements.filter((r) => r.verifierStatus === 'Verified').length;
@@ -67,32 +74,59 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
             <span className="badge bg-primary mb-2">{assuranceSet.initiatorRole}</span>
             <h3 className="fw-bold mb-1 text-primary">{assuranceSet.title}</h3>
             <div className="text-secondary small font-mono-code mb-2">
-              Set ID: AS-2026-001 | Initiator: Chevron Australia Pty Ltd
+              Set ID: {assuranceSet.id} | Initiator: {assuranceSet.initiatorOrg}
             </div>
-            <div className="text-secondary small font-mono-code">
+            <div className="text-secondary small font-mono-code mb-3">
               Vessel: <strong className="text-dark">{assuranceSet.vesselName}</strong> (IMO {assuranceSet.imoNumber}) | Charter Window: {formatMaritimeDate(assuranceSet.charterWindowStart)} - {formatMaritimeDate(assuranceSet.charterWindowEnd)}
             </div>
-            {(assuranceSet.assignedSubmitter || assuranceSet.assignedVerifier || assuranceSet.assignedInspector || assuranceSet.assignedApprover) && (
-              <div className="d-flex flex-wrap align-items-center gap-3 mt-2 pt-2 border-top small text-slate-700">
-                {assuranceSet.assignedSubmitter && (
-                  <span><strong className="text-dark">Submitter:</strong> {assuranceSet.assignedSubmitter}</span>
-                )}
-                {assuranceSet.assignedVerifier && (
-                  <span><strong className="text-dark">Verifier:</strong> {assuranceSet.assignedVerifier}</span>
-                )}
-                {assuranceSet.assignedInspector && (
-                  <span><strong className="text-dark">Inspector:</strong> {assuranceSet.assignedInspector}</span>
-                )}
-                {assuranceSet.assignedApprover && (
-                  <span><strong className="text-dark">Approver:</strong> {assuranceSet.assignedApprover}</span>
-                )}
-              </div>
-            )}
           </div>
           <div className="d-flex align-items-center gap-4">
             <div>
               <div className="text-secondary small text-uppercase font-weight-bold mb-1">Assurance Readiness Index</div>
               <ReadinessGauge score={assuranceSet.readinessScore} size="md" />
+            </div>
+          </div>
+        </div>
+
+        {/* Stakeholder Role Assignments Grid */}
+        <div className="mt-3 pt-3 border-top">
+          <div className="text-uppercase font-mono-code fw-bold text-secondary mb-2" style={{ fontSize: '0.725rem', letterSpacing: '0.05em' }}>
+            Stakeholder Role Assignments
+          </div>
+          <div className="row g-3">
+            <div className="col-md-3 col-6">
+              <div className="p-3 rounded-3 bg-light border">
+                <div className="small text-secondary fw-semibold mb-1" style={{ fontSize: '0.725rem' }}>Submitter</div>
+                <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>
+                  {assuranceSet.assignedSubmitter || 'Unassigned'}
+                </div>
+              </div>
+            </div>
+            <div className="col-md-3 col-6">
+              <div className="p-3 rounded-3 bg-light border">
+                <div className="small text-secondary fw-semibold mb-1" style={{ fontSize: '0.725rem' }}>Verifier</div>
+                <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>
+                  {assuranceSet.assignedVerifier || 'Unassigned'}
+                </div>
+              </div>
+            </div>
+            <div className="col-md-3 col-6">
+              <div className="p-3 rounded-3 bg-light border">
+                <div className="small text-secondary fw-semibold mb-1" style={{ fontSize: '0.725rem' }}>Inspector</div>
+                <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>
+                  {assuranceSet.mandatoryInspectionRequired
+                    ? (assuranceSet.assignedInspector || 'Unassigned')
+                    : 'N/A (Not Required)'}
+                </div>
+              </div>
+            </div>
+            <div className="col-md-3 col-6">
+              <div className="p-3 rounded-3 bg-light border">
+                <div className="small text-secondary fw-semibold mb-1" style={{ fontSize: '0.725rem' }}>Approver</div>
+                <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>
+                  {assuranceSet.assignedApprover || 'Unassigned'}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -173,23 +207,24 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                     </td>
                     <td className="small text-secondary">{req.notes || '-'}</td>
                     <td className="text-end">
-                      {linkedDoc && (
+                      {linkedDoc ? (
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline-primary me-1"
+                          className="btn btn-sm btn-outline-primary"
                           onClick={() => setSelectedDocForReview(linkedDoc)}
                         >
-                          Review Evidence
+                          Review Document
                         </button>
-                      )}
-                      {!isCAdmin && !isVerified && (
+                      ) : canUpload ? (
                         <button
                           type="button"
-                          className="btn btn-sm btn-success text-white me-1"
-                          onClick={() => updateRequirementStatus(assuranceSet.id, req.id, 'Verified')}
+                          className="btn btn-sm btn-primary text-white"
+                          onClick={() => setIsUploadModalOpen(true)}
                         >
-                          Verify & Fulfill
+                          Upload Document
                         </button>
+                      ) : (
+                        <span className="text-secondary small font-mono-code">No Document</span>
                       )}
                     </td>
                   </tr>
@@ -204,6 +239,18 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
       <DocumentReviewDrawer
         document={selectedDocForReview}
         onClose={() => setSelectedDocForReview(null)}
+      />
+
+      {/* Version History Drawer for Submitter / Admin Reupload */}
+      <VersionHistoryDrawer
+        document={selectedDocForVersionHistory}
+        onClose={() => setSelectedDocForVersionHistory(null)}
+      />
+
+      {/* Document Upload Modal */}
+      <DocumentUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
       />
     </div>
   );

@@ -11,17 +11,20 @@ import { MasterDocument } from '../types/document';
 import { ConfidenceBadge } from '../components/common/ConfidenceBadge';
 import { formatMaritimeDate } from '../utils/formatters';
 
+import { isAssuranceSetAssignedToPersona } from '../utils/rbacHelpers';
+
 /**
   what: renders verifier operational workspace view in light theme.
-  how: lists documents requiring verifier sign-off and opens DocumentReviewDrawer on row click.
+  how: lists assigned assurance sets and documents requiring verifier sign-off and opens DocumentReviewDrawer on row click.
   with what file: src/views/VerifierWorkspaceView.tsx loaded by App.tsx.
 */
 export const VerifierWorkspaceView: React.FC = () => {
-  const { documents, activePersona } = useMapStore();
+  const { documents, assuranceSets, activePersona, setCurrentHashView } = useMapStore();
   const [selectedDoc, setSelectedDoc] = useState<MasterDocument | null>(null);
 
   const isCAdmin = activePersona === 'C Admin';
 
+  const assignedSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, activePersona));
   const pendingDocs = documents.filter((d) => d.verificationStatus === 'Pending' || d.verificationStatus === 'Correction Requested');
   const verifiedDocs = documents.filter((d) => d.verificationStatus === 'Verified');
 
@@ -35,6 +38,63 @@ export const VerifierWorkspaceView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Assurance Sets Stakeholder Role Assignments Overview */}
+      <div className="card map-card-custom p-4">
+        <div className="d-flex align-items-center justify-between mb-3">
+          <div>
+            <h5 className="fw-bold m-0 text-primary">Assigned Assurance Sets & Stakeholder Teams</h5>
+            <div className="text-secondary small">Overview of assigned stakeholder roles across active campaigns</div>
+          </div>
+          <span className="badge bg-light text-dark border font-mono-code">{assignedSets.length} Campaigns Assigned</span>
+        </div>
+
+        <div className="row g-3">
+          {assignedSets.map((set) => (
+            <div key={set.id} className="col-lg-4 col-md-6">
+              <div className="p-3 border rounded bg-white shadow-2xs h-100 d-flex flex-column justify-between">
+                <div>
+                  <div className="d-flex align-items-center justify-between mb-2">
+                    <span className="font-mono-code fw-bold text-primary small">{set.id}</span>
+                    <span className="badge bg-light text-dark border" style={{ fontSize: '0.7rem' }}>{set.stage}</span>
+                  </div>
+                  <h6 className="fw-bold text-dark mb-1">{set.title}</h6>
+                  <div className="text-secondary small font-mono-code mb-3">Vessel: {set.vesselName}</div>
+
+                  <div className="d-flex flex-column gap-1.5 small border-top pt-2">
+                    <div className="d-flex justify-between">
+                      <span className="text-secondary">Submitter:</span>
+                      <span className="fw-semibold text-dark text-truncate" style={{ maxWidth: '180px' }}>{set.assignedSubmitter || 'Unassigned'}</span>
+                    </div>
+                    <div className="d-flex justify-between">
+                      <span className="text-secondary">Verifier:</span>
+                      <span className="fw-semibold text-primary text-truncate" style={{ maxWidth: '180px' }}>{set.assignedVerifier || 'Unassigned'}</span>
+                    </div>
+                    <div className="d-flex justify-between">
+                      <span className="text-secondary">Inspector:</span>
+                      <span className="fw-semibold text-dark text-truncate" style={{ maxWidth: '180px' }}>
+                        {set.mandatoryInspectionRequired ? (set.assignedInspector || 'Unassigned') : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="d-flex justify-between">
+                      <span className="text-secondary">Approver:</span>
+                      <span className="fw-semibold text-dark text-truncate" style={{ maxWidth: '180px' }}>{set.assignedApprover || 'Unassigned'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary w-100 mt-3"
+                  onClick={() => setCurrentHashView('assurance-sets', set.id)}
+                >
+                  View Command Center
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Pending Items Queue */}
       <div className="card map-card-custom">
@@ -83,7 +143,7 @@ export const VerifierWorkspaceView: React.FC = () => {
                         setSelectedDoc(doc);
                       }}
                     >
-                      Open Split-Screen Review
+                      Review Document
                     </button>
                   </td>
                 </tr>
