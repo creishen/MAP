@@ -30,13 +30,6 @@ export const AuditTrailView: React.FC = () => {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Audit stats indicator */}
-      <div className="d-flex align-items-center justify-content-end">
-        <span className="badge bg-secondary font-mono-code p-2 fs-6">
-          {auditEvents.length} Total Audit Events
-        </span>
-      </div>
-
       {/* Main Audit Card */}
       <div className="card map-card-custom">
         {/* Controls Row */}
