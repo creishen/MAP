@@ -1,7 +1,7 @@
 /* 
   file summary: master document library page presenting statutory vessel and crew stcw certificates vault.
   responsibilities: renders DocumentTable component and handles triggers to open VersionHistoryDrawer and DocumentUploadModal.
-  role in system: primary view for Master Document Vault navigation (/documents).
+  role in system: primary view for Document Library navigation (/documents).
 */
 
 import React, { useState } from 'react';
@@ -12,7 +12,7 @@ import { DocumentUploadModal } from '../components/drawers/DocumentUploadModal';
 import { MasterDocument } from '../types/document';
 
 /**
-  what: renders master document vault page.
+  what: renders Document Library page.
   how: displays DocumentTable and controls VersionHistoryDrawer and DocumentUploadModal forms.
   with what file: src/views/DocumentLibraryView.tsx loaded by App.tsx.
 */

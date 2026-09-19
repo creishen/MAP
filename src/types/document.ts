@@ -1,5 +1,5 @@
 /* 
-  file summary: master document vault models containing 13 vessel attributes, 11 crew attributes, ocr confidence metrics, and versioning schemas.
+  file summary: Document Library models containing 13 vessel attributes, 11 crew attributes, ocr confidence metrics, and versioning schemas.
   responsibilities: defines complete types for statutory vessel certificates, crew stcw clearances, version history records, and extraction validation checks.
   role in system: used by document library, verifier split-screen drawer, deep-dive document view, and assurance set requirements.
 */

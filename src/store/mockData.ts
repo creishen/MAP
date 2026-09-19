@@ -1,5 +1,5 @@
 /* 
-  file summary: realistic maritime-accurate mock datasets for vessels, assurance sets, master document vault, and audit trail events.
+  file summary: realistic maritime-accurate mock datasets for vessels, assurance sets, Document Library, and audit trail events.
   responsibilities: populates initial state with 3 OSV vessels across all 11 particulars categories, 3 assurance sets, 8 statutory/crew documents, and immutable audit logs.
   role in system: loaded by Zustand store (useMapStore.ts) on initialization.
 */
@@ -523,7 +523,7 @@ export const MOCK_DOCUMENTS: MasterDocument[] = [
         uploadedBy: 'Provider Admin',
         fileSizeBytes: 3100000,
         fileName: 'LR_Class_Cert_Coral_Titan.pdf',
-        changeSummary: 'Master document vault upload.',
+        changeSummary: 'Document Library upload.',
       },
     ],
     vesselAttributes: {

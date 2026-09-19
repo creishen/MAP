@@ -66,7 +66,7 @@ export const HeaderBanner: React.FC = () => {
             title: d ? d.title : 'Document Detail',
           };
         }
-        return { breadcrumb: 'STATUTORY VAULT · COMPLIANCE EVIDENCE', title: 'Master document vault' };
+        return { breadcrumb: 'STATUTORY VAULT · COMPLIANCE EVIDENCE', title: 'Document Library' };
       }
       case 'verifier':
         return { breadcrumb: 'SURVEYOR WORKSPACE · COMPLIANCE REVIEW', title: 'Verification queue' };
@@ -108,9 +108,8 @@ export const HeaderBanner: React.FC = () => {
           </span>
           <button
             type="button"
-            className={`btn btn-sm rounded-pill px-3 py-1 ${
-              scenario === 'Provider-initiated' ? 'bg-dark text-white fw-semibold' : 'text-secondary bg-transparent border-0'
-            }`}
+            className={`btn btn-sm rounded-pill px-3 py-1 ${scenario === 'Provider-initiated' ? 'bg-dark text-white fw-semibold' : 'text-secondary bg-transparent border-0'
+              }`}
             style={{ fontSize: '0.75rem', transition: 'all 0.15s ease' }}
             onClick={() => setScenario('Provider-initiated')}
           >
@@ -118,9 +117,8 @@ export const HeaderBanner: React.FC = () => {
           </button>
           <button
             type="button"
-            className={`btn btn-sm rounded-pill px-3 py-1 ${
-              scenario === 'Client-initiated' ? 'bg-dark text-white fw-semibold' : 'text-secondary bg-transparent border-0'
-            }`}
+            className={`btn btn-sm rounded-pill px-3 py-1 ${scenario === 'Client-initiated' ? 'bg-dark text-white fw-semibold' : 'text-secondary bg-transparent border-0'
+              }`}
             style={{ fontSize: '0.75rem', transition: 'all 0.15s ease' }}
             onClick={() => setScenario('Client-initiated')}
           >
@@ -140,11 +138,10 @@ export const HeaderBanner: React.FC = () => {
                 <button
                   key={r.role}
                   type="button"
-                  className={`btn btn-sm rounded-pill px-3 py-1 ${
-                    isActive
+                  className={`btn btn-sm rounded-pill px-3 py-1 ${isActive
                       ? 'bg-dark text-white fw-bold shadow-sm'
                       : 'text-secondary bg-transparent border-0 hover-bg-light'
-                  }`}
+                    }`}
                   style={{ fontSize: '0.75rem', transition: 'all 0.15s ease-in-out' }}
                   onClick={() => setActivePersona(r.role)}
                 >

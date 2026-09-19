@@ -52,7 +52,7 @@ export interface MapStoreState {
     notes?: string
   ) => void;
 
-  // Master Document Vault State
+  // Document Library State
   documents: MasterDocument[];
   addDocument: (doc: MasterDocument) => void;
   addDocumentVersion: (

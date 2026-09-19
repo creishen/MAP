@@ -1,10 +1,10 @@
 /* 
-  file summary: physical vessel inspection checklist modal drawer matching exact mockup design.
-  responsibilities: presents split-screen visual survey checklist, item-level evidence management with simulated file upload, inline finding comments, direct CAPA creation per item, and dark inspection result submission.
+  file summary: streamlined physical vessel inspection checklist modal drawer with zero-friction workflow.
+  responsibilities: presents split-screen visual survey checklist, one-click file upload attachment, inline finding comments, direct CAPA creation per item, and smart inspection outcome submission.
   role in system: used by inspector workspace view.
 */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 
 interface EvidenceItem {
@@ -39,8 +39,8 @@ interface InspectionDrawerProps {
 }
 
 /**
-  what: renders visual vessel inspection split-screen modal drawer matching exact mockup layout.
-  how: manages local state for 5 inspection items with item-level evidence attachments, simulated file uploads, finding comments, direct CAPA creation per item, and dark inspection result selector.
+  what: renders visual vessel inspection split-screen modal drawer with frictionless workflow.
+  how: manages local state for 5 inspection items with one-click direct evidence uploads, automatic status-finding triggers, and smart inspection outcome recommendations.
   with what file: src/components/drawers/InspectionDrawer.tsx loaded by InspectorWorkspaceView.tsx.
 */
 export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, onClose }) => {
@@ -117,89 +117,85 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
     },
   ]);
 
-  /* state for general new capa item form */
+  /* active item state for inline comment editor */
+  const [editingCommentItemId, setEditingCommentItemId] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState('');
+
+  /* active item state for raising capa */
+  const [raisingCapaItemId, setRaisingCapaItemId] = useState<string | null>(null);
+  const [itemCapaTitle, setItemCapaTitle] = useState('');
+  const [itemCapaOwner, setItemCapaOwner] = useState('');
+
+  /* active item for direct file input trigger */
+  const [activeUploadItemId, setActiveUploadItemId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  /* state for general new capa form */
   const [showAddCapa, setShowAddCapa] = useState(false);
   const [newCapaTitle, setNewCapaTitle] = useState('');
   const [newCapaOwner, setNewCapaOwner] = useState('');
   const [newCapaDueDate, setNewCapaDueDate] = useState('');
 
-  /* state for evidence upload form per item */
-  const [activeEvidenceItemId, setActiveEvidenceItemId] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [newEvidenceTitle, setNewEvidenceTitle] = useState('');
-  const [newEvidenceType, setNewEvidenceType] = useState<'Photo' | 'Document'>('Photo');
-  const [isUploading, setIsUploading] = useState(false);
-
-  /* state for comment editing per item */
-  const [activeCommentItemId, setActiveCommentItemId] = useState<string | null>(null);
-  const [commentInput, setCommentInput] = useState('');
-
-  /* state for direct item capa creation */
-  const [activeItemCapaId, setActiveItemCapaId] = useState<string | null>(null);
-  const [itemCapaTitle, setItemCapaTitle] = useState('');
-  const [itemCapaOwner, setItemCapaOwner] = useState('');
-  const [itemCapaDueDate, setItemCapaDueDate] = useState('');
-
+  /* status change automatically prompts for notes when observation or deficiency is set */
   const handleStatusChange = (id: string, newStatus: 'Satisfactory' | 'Observation' | 'Deficiency') => {
     setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
+      prev.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, status: newStatus };
+          if (newStatus !== 'Satisfactory' && !item.findingNotes) {
+            setEditingCommentItemId(id);
+            setCommentText('');
+          }
+          return updated;
+        }
+        return item;
+      })
     );
   };
 
-  /* handle simulated file selection from input */
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setNewEvidenceTitle(file.name);
-      if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name)) {
-        setNewEvidenceType('Photo');
-      } else {
-        setNewEvidenceType('Document');
-      }
+  /* one-click file upload handler */
+  const triggerDirectUpload = (itemId: string) => {
+    setActiveUploadItemId(itemId);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
-  /* handle simulated evidence file upload */
-  const handleAddEvidence = (itemId: string) => {
-    const titleToUse = newEvidenceTitle.trim() || selectedFile?.name || 'Evidence Attachment';
-    setIsUploading(true);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeUploadItemId) return;
 
-    setTimeout(() => {
-      const formattedSize = selectedFile
-        ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`
-        : '1.5 MB';
+    const isPhoto = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name);
+    const evType: 'Photo' | 'Document' = isPhoto ? 'Photo' : 'Document';
+    const formattedSize = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
 
-      const newEv: EvidenceItem = {
-        id: `EV-${Date.now().toString().slice(-4)}`,
-        title: titleToUse,
-        type: newEvidenceType,
-        fileName: selectedFile?.name || `${titleToUse.toLowerCase().replace(/\s+/g, '_')}.jpg`,
-        fileSize: formattedSize,
-      };
+    const newEv: EvidenceItem = {
+      id: `EV-${Date.now().toString().slice(-4)}`,
+      title: file.name.replace(/\.[^/.]+$/, ''),
+      type: evType,
+      fileName: file.name,
+      fileSize: formattedSize,
+    };
 
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === itemId
-            ? { ...item, evidences: [...item.evidences, newEv] }
-            : item
-        )
-      );
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === activeUploadItemId
+          ? { ...item, evidences: [...item.evidences, newEv] }
+          : item
+      )
+    );
 
-      logAuditEvent({
-        userId: 'USR-INSPEC-01',
-        userRole: activePersona,
-        organization: 'Meridian Marine Surveyors',
-        action: `Uploaded ${newEvidenceType} Evidence for ${itemId}`,
-        targetAsset: vesselName,
-        justificationNotes: `Attached file: ${newEv.fileName} (${newEv.fileSize})`,
-      });
+    logAuditEvent({
+      userId: 'USR-INSPEC-01',
+      userRole: activePersona,
+      organization: 'Meridian Marine Surveyors',
+      action: `Uploaded ${evType} Evidence for ${activeUploadItemId}`,
+      targetAsset: vesselName,
+      justificationNotes: `Attached file: ${newEv.fileName} (${newEv.fileSize})`,
+    });
 
-      setIsUploading(false);
-      setSelectedFile(null);
-      setNewEvidenceTitle('');
-      setActiveEvidenceItemId(null);
-    }, 500);
+    setActiveUploadItemId(null);
+    e.target.value = '';
   };
 
   /* remove evidence item */
@@ -217,7 +213,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
   const handleSaveComment = (itemId: string) => {
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, findingNotes: commentInput.trim() || undefined } : item
+        item.id === itemId ? { ...item, findingNotes: commentText.trim() || undefined } : item
       )
     );
 
@@ -225,13 +221,13 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
       userId: 'USR-INSPEC-01',
       userRole: activePersona,
       organization: 'Meridian Marine Surveyors',
-      action: `Updated Comment for ${itemId}`,
+      action: `Updated Finding Comment for ${itemId}`,
       targetAsset: vesselName,
       justificationNotes: `Finding comment saved for ${itemId}`,
     });
 
-    setActiveCommentItemId(null);
-    setCommentInput('');
+    setEditingCommentItemId(null);
+    setCommentText('');
   };
 
   /* raise corrective action directly for a checklist item */
@@ -243,12 +239,11 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
     const newCapa: CapaActionItem = {
       id: capaCode,
       title: itemCapaTitle.trim(),
-      owner: itemCapaOwner.trim() || 'Inspector Assigned',
-      dueDate: itemCapaDueDate || '30 Oct 2026',
+      owner: itemCapaOwner.trim() || 'Northwind Marine',
+      dueDate: '30 Oct 2026',
       status: 'Open',
     };
 
-    /* add to global capa list and link to item */
     setCapaActions((prev) => [newCapa, ...prev]);
     setItems((prev) =>
       prev.map((it) => (it.id === item.id ? { ...it, capaCode: capaCode } : it))
@@ -263,10 +258,9 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
       justificationNotes: `CAPA ${capaCode} linked to ${item.title}`,
     });
 
-    setActiveItemCapaId(null);
+    setRaisingCapaItemId(null);
     setItemCapaTitle('');
     setItemCapaOwner('');
-    setItemCapaDueDate('');
   };
 
   /* add a general new corrective action item */
@@ -278,7 +272,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
     const newCapa: CapaActionItem = {
       id: `CAPA-${nextCapaNum}`,
       title: newCapaTitle.trim(),
-      owner: newCapaOwner.trim() || 'Inspector Assigned',
+      owner: newCapaOwner.trim() || 'Northwind Technical Services',
       dueDate: newCapaDueDate || '30 Oct 2026',
       status: 'Open',
     };
@@ -315,12 +309,22 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
 
   return (
     <>
+      {/* hidden global file input for one-click direct uploads */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="d-none"
+        onChange={handleFileChange}
+        accept="image/*,.pdf,.doc,.docx"
+      />
+
       <div className="map-modal-backdrop" onClick={onClose} style={{ zIndex: 1040 }} />
       <div
         className="offcanvas offcanvas-end show bg-light text-dark border-start shadow-lg"
         style={{ width: '92vw', maxWidth: '1260px', visibility: 'visible', zIndex: 1050 }}
         tabIndex={-1}
       >
+        {/* modal header */}
         <div className="offcanvas-header border-bottom p-3 bg-white d-flex align-items-center justify-content-between">
           <div>
             <div className="font-mono-code text-uppercase small" style={{ fontSize: '0.725rem', color: '#94a3b8', letterSpacing: '0.05em' }}>
@@ -338,106 +342,94 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
 
         <div className="offcanvas-body p-4" style={{ backgroundColor: '#f1f5f9' }}>
           <div className="row g-4">
-            {/* left column: statutory visual inspection checklist */}
+            {/* left column: checklist items */}
             <div className="col-lg-7 d-flex flex-column gap-3">
               <div className="card border-0 shadow-sm p-4" style={{ borderRadius: '10px', backgroundColor: '#ffffff' }}>
-                <div className="font-mono-code text-uppercase small mb-3" style={{ fontSize: '0.7rem', color: '#94a3b8', letterSpacing: '0.08em' }}>
-                  STATUTORY VISUAL INSPECTION CHECKLIST
-                </div>
-
                 <div className="d-flex flex-column gap-4">
                   {items.map((item) => (
-                    <div key={item.id} className="p-3 border rounded-3 bg-white shadow-sm">
-                      <div className="d-flex flex-column gap-2">
-                        {/* checklist item title and subtitle */}
-                        <div className="d-flex align-items-start justify-content-between gap-2">
-                          <div>
-                            <div className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>{item.title}</div>
-                            <div className="font-mono-code small" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{item.subtitle}</div>
-                          </div>
-                          {item.capaCode && (
-                            <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style={{ fontSize: '0.675rem' }}>
-                              Linked {item.capaCode}
-                            </span>
-                          )}
+                    <div key={item.id} className="p-3.5 border rounded-3 bg-white shadow-2xs">
+                      {/* item header */}
+                      <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                        <div>
+                          <div className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>{item.title}</div>
+                          <div className="font-mono-code small" style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{item.subtitle}</div>
                         </div>
-
-                        {/* rating status pill buttons */}
-                        <div className="d-flex align-items-center gap-1.5 mt-1">
-                          <button
-                            type="button"
-                            className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Satisfactory'
-                              ? 'btn-outline-primary fw-semibold active'
-                              : 'btn-light text-secondary border'
-                              }`}
-                            style={{
-                              fontSize: '0.775rem',
-                              borderColor: item.status === 'Satisfactory' ? '#0d9488' : '#e2e8f0',
-                              color: item.status === 'Satisfactory' ? '#0d9488' : '#64748b',
-                              backgroundColor: item.status === 'Satisfactory' ? '#f0fdf4' : '#f8fafc',
-                            }}
-                            onClick={() => handleStatusChange(item.id, 'Satisfactory')}
-                          >
-                            Satisfactory
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Observation'
-                              ? 'btn-outline-info fw-semibold active'
-                              : 'btn-light text-secondary border'
-                              }`}
-                            style={{
-                              fontSize: '0.775rem',
-                              borderColor: item.status === 'Observation' ? '#0284c7' : '#e2e8f0',
-                              color: item.status === 'Observation' ? '#0369a1' : '#64748b',
-                              backgroundColor: item.status === 'Observation' ? '#e0f2fe' : '#f8fafc',
-                            }}
-                            onClick={() => handleStatusChange(item.id, 'Observation')}
-                          >
-                            Observation
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Deficiency'
-                              ? 'btn-outline-danger fw-semibold active'
-                              : 'btn-light text-secondary border'
-                              }`}
-                            style={{
-                              fontSize: '0.775rem',
-                              borderColor: item.status === 'Deficiency' ? '#b91c1c' : '#e2e8f0',
-                              color: item.status === 'Deficiency' ? '#b91c1c' : '#64748b',
-                              backgroundColor: item.status === 'Deficiency' ? '#fee2e2' : '#f8fafc',
-                            }}
-                            onClick={() => handleStatusChange(item.id, 'Deficiency')}
-                          >
-                            Deficiency
-                          </button>
-                        </div>
+                        {item.capaCode && (
+                          <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style={{ fontSize: '0.675rem' }}>
+                            Linked {item.capaCode}
+                          </span>
+                        )}
                       </div>
 
-                      {/* finding notes callout box */}
-                      {item.findingNotes && (
-                        <div
-                          className="mt-3 p-3 rounded-2"
+                      {/* rating status pill buttons */}
+                      <div className="d-flex align-items-center gap-1.5 mb-3">
+                        <button
+                          type="button"
+                          className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Satisfactory'
+                            ? 'btn-outline-primary fw-semibold active'
+                            : 'btn-light text-secondary border'
+                            }`}
                           style={{
-                            backgroundColor: '#fffbeb',
-                            border: '1px solid #fde68a',
+                            fontSize: '0.775rem',
+                            borderColor: item.status === 'Satisfactory' ? '#0d9488' : '#e2e8f0',
+                            color: item.status === 'Satisfactory' ? '#0d9488' : '#64748b',
+                            backgroundColor: item.status === 'Satisfactory' ? '#f0fdf4' : '#f8fafc',
                           }}
+                          onClick={() => handleStatusChange(item.id, 'Satisfactory')}
                         >
+                          Satisfactory
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Observation'
+                            ? 'btn-outline-info fw-semibold active'
+                            : 'btn-light text-secondary border'
+                            }`}
+                          style={{
+                            fontSize: '0.775rem',
+                            borderColor: item.status === 'Observation' ? '#0284c7' : '#e2e8f0',
+                            color: item.status === 'Observation' ? '#0369a1' : '#64748b',
+                            backgroundColor: item.status === 'Observation' ? '#e0f2fe' : '#f8fafc',
+                          }}
+                          onClick={() => handleStatusChange(item.id, 'Observation')}
+                        >
+                          Observation
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Deficiency'
+                            ? 'btn-outline-danger fw-semibold active'
+                            : 'btn-light text-secondary border'
+                            }`}
+                          style={{
+                            fontSize: '0.775rem',
+                            borderColor: item.status === 'Deficiency' ? '#b91c1c' : '#e2e8f0',
+                            color: item.status === 'Deficiency' ? '#b91c1c' : '#64748b',
+                            backgroundColor: item.status === 'Deficiency' ? '#fee2e2' : '#f8fafc',
+                          }}
+                          onClick={() => handleStatusChange(item.id, 'Deficiency')}
+                        >
+                          Deficiency
+                        </button>
+                      </div>
+
+                      {/* finding comment callout */}
+                      {item.findingNotes && editingCommentItemId !== item.id && (
+                        <div className="p-3 rounded-2 mb-3" style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a' }}>
                           <div className="d-flex align-items-center justify-content-between mb-1">
-                            <div className="fw-bold" style={{ fontSize: '0.8rem', color: '#b45309' }}>
+                            <span className="fw-bold" style={{ fontSize: '0.8rem', color: '#b45309' }}>
                               Finding recorded
-                            </div>
+                            </span>
                             <button
                               type="button"
                               className="btn btn-link btn-sm p-0 text-decoration-none"
                               style={{ fontSize: '0.725rem', color: '#b45309' }}
                               onClick={() => {
-                                setActiveCommentItemId(item.id);
-                                setCommentInput(item.findingNotes || '');
+                                setEditingCommentItemId(item.id);
+                                setCommentText(item.findingNotes || '');
                               }}
                             >
-                              Edit Comment
+                              Edit Note
                             </button>
                           </div>
                           <div style={{ fontSize: '0.775rem', color: '#92400e', lineHeight: '1.4' }}>
@@ -447,25 +439,25 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                       )}
 
                       {/* inline finding comment editor */}
-                      {activeCommentItemId === item.id && (
-                        <div className="mt-3 p-3 border rounded bg-light">
+                      {editingCommentItemId === item.id && (
+                        <div className="p-3 border rounded-2 bg-light mb-3">
                           <div className="fw-bold text-dark small mb-2" style={{ fontSize: '0.8rem' }}>
-                            Add / Edit Finding Comment for {item.id}
+                            Finding Note for {item.title}
                           </div>
                           <textarea
                             className="form-control form-control-sm mb-2"
                             rows={2}
-                            placeholder="Enter detailed observation notes or finding comment..."
-                            value={commentInput}
-                            onChange={(e) => setCommentInput(e.target.value)}
+                            placeholder="Enter detailed observation notes..."
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
                             style={{ fontSize: '0.775rem' }}
                           />
-                          <div className="d-flex align-items-center justify-content-end gap-2">
+                          <div className="d-flex justify-content-end gap-2">
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-secondary"
                               style={{ fontSize: '0.725rem' }}
-                              onClick={() => setActiveCommentItemId(null)}
+                              onClick={() => setEditingCommentItemId(null)}
                             >
                               Cancel
                             </button>
@@ -475,56 +467,40 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                               style={{ fontSize: '0.725rem', backgroundColor: '#0284c7', borderColor: '#0284c7' }}
                               onClick={() => handleSaveComment(item.id)}
                             >
-                              Save Comment
+                              Save Note
                             </button>
                           </div>
                         </div>
                       )}
 
-                      {/* inline item capa creation form */}
-                      {activeItemCapaId === item.id && (
-                        <div className="mt-3 p-3 border rounded bg-light">
+                      {/* inline raise CAPA form */}
+                      {raisingCapaItemId === item.id && (
+                        <div className="p-3 border rounded-2 bg-light mb-3">
                           <div className="fw-bold text-dark small mb-2" style={{ fontSize: '0.8rem' }}>
                             Raise Corrective Action (CAPA) for {item.title}
                           </div>
-                          <div className="mb-2">
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              placeholder="Action required description..."
-                              value={itemCapaTitle}
-                              onChange={(e) => setItemCapaTitle(e.target.value)}
-                              style={{ fontSize: '0.775rem' }}
-                            />
-                          </div>
-                          <div className="row g-2 mb-2">
-                            <div className="col-6">
-                              <input
-                                type="text"
-                                className="form-control form-control-sm"
-                                placeholder="Assigned Owner..."
-                                value={itemCapaOwner}
-                                onChange={(e) => setItemCapaOwner(e.target.value)}
-                                style={{ fontSize: '0.775rem' }}
-                              />
-                            </div>
-                            <div className="col-6">
-                              <input
-                                type="text"
-                                className="form-control form-control-sm"
-                                placeholder="Due date e.g. 15 Oct 2026..."
-                                value={itemCapaDueDate}
-                                onChange={(e) => setItemCapaDueDate(e.target.value)}
-                                style={{ fontSize: '0.775rem' }}
-                              />
-                            </div>
-                          </div>
-                          <div className="d-flex align-items-center justify-content-end gap-2">
+                          <input
+                            type="text"
+                            className="form-control form-control-sm mb-2"
+                            placeholder="Action required description..."
+                            value={itemCapaTitle}
+                            onChange={(e) => setItemCapaTitle(e.target.value)}
+                            style={{ fontSize: '0.775rem' }}
+                          />
+                          <input
+                            type="text"
+                            className="form-control form-control-sm mb-2"
+                            placeholder="Assigned Owner (e.g. Northwind Marine)..."
+                            value={itemCapaOwner}
+                            onChange={(e) => setItemCapaOwner(e.target.value)}
+                            style={{ fontSize: '0.775rem' }}
+                          />
+                          <div className="d-flex justify-content-end gap-2">
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-secondary"
                               style={{ fontSize: '0.725rem' }}
-                              onClick={() => setActiveItemCapaId(null)}
+                              onClick={() => setRaisingCapaItemId(null)}
                             >
                               Cancel
                             </button>
@@ -534,89 +510,76 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                               style={{ fontSize: '0.725rem' }}
                               onClick={() => handleRaiseItemCapa(item)}
                             >
-                              Raise CAPA Item
+                              Raise CAPA
                             </button>
                           </div>
                         </div>
                       )}
 
-                      {/* item action bar: comment, raise capa, add evidence */}
-                      <div className="mt-3 pt-2 border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <div className="d-flex align-items-center gap-2">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-light border text-secondary px-2.5 py-1"
-                            style={{ fontSize: '0.725rem' }}
-                            onClick={() => {
-                              setActiveCommentItemId(activeCommentItemId === item.id ? null : item.id);
-                              setCommentInput(item.findingNotes || '');
-                            }}
-                          >
-                            + Add Comment
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-light border text-secondary px-2.5 py-1"
-                            style={{ fontSize: '0.725rem' }}
-                            onClick={() => {
-                              setActiveItemCapaId(activeItemCapaId === item.id ? null : item.id);
-                              setItemCapaTitle(`Corrective action for ${item.title}`);
-                            }}
-                          >
-                            + Raise CAPA
-                          </button>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-primary px-2.5 py-1 fw-semibold"
-                          style={{ fontSize: '0.725rem', borderColor: '#0284c7', color: '#0284c7' }}
-                          onClick={() => {
-                            if (activeEvidenceItemId === item.id) {
-                              setActiveEvidenceItemId(null);
-                              setSelectedFile(null);
-                            } else {
-                              setActiveEvidenceItemId(item.id);
-                              setSelectedFile(null);
-                              setNewEvidenceTitle('');
-                            }
-                          }}
-                        >
-                          {activeEvidenceItemId === item.id ? 'Close Upload' : '+ Attach Evidence'}
-                        </button>
-                      </div>
-
-                      {/* evidence items display section */}
-                      <div className="mt-2.5">
+                      {/* item evidence list with generous padding and 52x52px thumbnails */}
+                      <div className="mb-3">
                         <div className="font-mono-code text-uppercase small mb-2" style={{ fontSize: '0.65rem', color: '#64748b', letterSpacing: '0.05em' }}>
                           Supporting Evidence ({item.evidences.length})
                         </div>
 
-                        <div className="d-flex flex-wrap gap-2">
+                        <div className="d-flex flex-wrap gap-2.5">
                           {item.evidences.map((ev) => (
                             <div
                               key={ev.id}
-                              className="px-2.5 py-1.5 border rounded-2 d-flex align-items-center gap-2 shadow-2xs"
-                              style={{ backgroundColor: '#f8fafc', borderColor: '#cbd5e1', fontSize: '0.75rem' }}
+                              className="p-3 border rounded-3 d-flex align-items-center gap-3 bg-white shadow-2xs position-relative"
+                              style={{ borderColor: '#e2e8f0', minWidth: '220px', flex: '1 1 220px', maxWidth: '320px' }}
                             >
-                              <span
-                                className="font-mono-code fw-bold text-uppercase px-1.5 py-0.5 rounded"
-                                style={{ fontSize: '0.625rem', backgroundColor: '#e0f2fe', color: '#0369a1' }}
+                              {/* 52x52px thumbnail preview container */}
+                              <div
+                                className="d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
+                                style={{
+                                  width: '52px',
+                                  height: '52px',
+                                  backgroundColor: ev.type === 'Photo' ? '#e0f2fe' : '#f1f5f9',
+                                  border: '1px solid',
+                                  borderColor: ev.type === 'Photo' ? '#bae6fd' : '#cbd5e1',
+                                }}
                               >
-                                {ev.type}
-                              </span>
-                              <div className="d-flex flex-column lh-1">
-                                <span className="text-dark fw-medium" style={{ fontSize: '0.75rem' }}>{ev.title}</span>
-                                {ev.fileName && (
-                                  <span className="font-mono-code text-muted" style={{ fontSize: '0.625rem' }}>
-                                    {ev.fileName} {ev.fileSize ? `(${ev.fileSize})` : ''}
-                                  </span>
+                                {ev.type === 'Photo' ? (
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                    <circle cx="12" cy="13" r="4" />
+                                  </svg>
+                                ) : (
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <line x1="16" y1="13" x2="8" y2="13" />
+                                    <line x1="16" y1="17" x2="8" y2="17" />
+                                  </svg>
                                 )}
                               </div>
+
+                              <div className="d-flex flex-column flex-grow-1 overflow-hidden">
+                                <span
+                                  className="font-mono-code fw-bold text-uppercase px-2 py-0.5 rounded align-self-start mb-0.5"
+                                  style={{
+                                    fontSize: '0.625rem',
+                                    backgroundColor: ev.type === 'Photo' ? '#e0f2fe' : '#f1f5f9',
+                                    color: ev.type === 'Photo' ? '#0369a1' : '#475569',
+                                  }}
+                                >
+                                  {ev.type}
+                                </span>
+                                <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>
+                                  {ev.title}
+                                </div>
+                                {ev.fileName && (
+                                  <div className="font-mono-code text-muted small text-truncate mt-0.5" style={{ fontSize: '0.675rem' }}>
+                                    {ev.fileName} {ev.fileSize ? `(${ev.fileSize})` : ''}
+                                  </div>
+                                )}
+                              </div>
+
                               <button
                                 type="button"
-                                className="btn-close ms-1"
-                                style={{ fontSize: '0.55rem' }}
+                                className="btn-close ms-auto flex-shrink-0 align-self-start"
+                                style={{ fontSize: '0.6rem' }}
                                 aria-label="Remove evidence"
                                 onClick={() => handleRemoveEvidence(item.id, ev.id)}
                               />
@@ -624,109 +587,44 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                           ))}
                           {item.evidences.length === 0 && (
                             <span className="text-muted small fst-italic" style={{ fontSize: '0.725rem' }}>
-                              No supporting evidence attached to this checklist item.
+                              No supporting evidence attached.
                             </span>
                           )}
                         </div>
+                      </div>
 
-                        {/* inline simulated file upload form per checklist item */}
-                        {activeEvidenceItemId === item.id && (
-                          <div className="mt-3 p-3 border rounded-3 bg-white shadow-sm">
-                            <div className="d-flex align-items-center justify-content-between mb-2">
-                              <div className="fw-bold small text-dark" style={{ fontSize: '0.8rem' }}>
-                                Upload Evidence to {item.title}
-                              </div>
-                              <button
-                                type="button"
-                                className="btn-close"
-                                style={{ fontSize: '0.65rem' }}
-                                aria-label="Close"
-                                onClick={() => {
-                                  setActiveEvidenceItemId(null);
-                                  setSelectedFile(null);
-                                }}
-                              />
-                            </div>
-
-                            {/* file input dropzone / picker */}
-                            <input
-                              type="file"
-                              id={`evidence-file-input-${item.id}`}
-                              className="d-none"
-                              onChange={handleFileSelect}
-                              accept="image/*,.pdf,.doc,.docx"
-                            />
-                            <label
-                              htmlFor={`evidence-file-input-${item.id}`}
-                              className="p-3 border rounded-2 text-center cursor-pointer w-100 bg-light d-block mb-3"
-                              style={{ borderStyle: 'dashed', borderColor: '#cbd5e1' }}
-                            >
-                              <div className="font-mono-code text-uppercase fw-bold mb-1" style={{ fontSize: '0.725rem', color: '#0284c7' }}>
-                                {selectedFile ? 'Change Selected File' : 'Click to Browse / Select File'}
-                              </div>
-                              <div className="small text-muted" style={{ fontSize: '0.725rem' }}>
-                                {selectedFile
-                                  ? `Selected: ${selectedFile.name} (${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB)`
-                                  : 'Supports images (.jpg, .png) and documents (.pdf, .doc)'}
-                              </div>
-                            </label>
-
-                            <div className="row g-2 align-items-center">
-                              <div className="col-md-6">
-                                <label className="form-label small text-muted m-0" style={{ fontSize: '0.7rem' }}>Evidence Label</label>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  placeholder="e.g. Liferaft HRU expiration tag"
-                                  value={newEvidenceTitle}
-                                  onChange={(e) => setNewEvidenceTitle(e.target.value)}
-                                  style={{ fontSize: '0.775rem' }}
-                                />
-                              </div>
-                              <div className="col-md-3">
-                                <label className="form-label small text-muted m-0" style={{ fontSize: '0.7rem' }}>Category</label>
-                                <select
-                                  className="form-select form-select-sm"
-                                  value={newEvidenceType}
-                                  onChange={(e) => setNewEvidenceType(e.target.value as 'Photo' | 'Document')}
-                                  style={{ fontSize: '0.775rem' }}
-                                >
-                                  <option value="Photo">Photo</option>
-                                  <option value="Document">Document</option>
-                                </select>
-                              </div>
-                              <div className="col-md-3 d-flex align-items-end gap-1" style={{ marginTop: '1.25rem' }}>
-                                <button
-                                  type="button"
-                                  className="btn btn-outline-secondary btn-sm flex-fill"
-                                  style={{ fontSize: '0.75rem' }}
-                                  onClick={() => {
-                                    setActiveEvidenceItemId(null);
-                                    setSelectedFile(null);
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-primary btn-sm flex-fill fw-semibold d-flex align-items-center justify-content-center gap-1"
-                                  style={{ fontSize: '0.75rem', backgroundColor: '#0284c7', borderColor: '#0284c7' }}
-                                  disabled={isUploading}
-                                  onClick={() => handleAddEvidence(item.id)}
-                                >
-                                  {isUploading ? (
-                                    <>
-                                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" style={{ width: '0.75rem', height: '0.75rem' }} />
-                                      Uploading...
-                                    </>
-                                  ) : (
-                                    'Upload & Attach'
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                      {/* frictionless item action toolbar */}
+                      <div className="pt-2 border-top d-flex align-items-center gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-light border text-secondary px-2.5 py-1"
+                          style={{ fontSize: '0.725rem' }}
+                          onClick={() => {
+                            setEditingCommentItemId(editingCommentItemId === item.id ? null : item.id);
+                            setCommentText(item.findingNotes || '');
+                          }}
+                        >
+                          {item.findingNotes ? 'Edit Note' : '+ Add Note'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-light border text-secondary px-2.5 py-1"
+                          style={{ fontSize: '0.725rem' }}
+                          onClick={() => {
+                            setRaisingCapaItemId(raisingCapaItemId === item.id ? null : item.id);
+                            setItemCapaTitle(`Corrective action for ${item.title}`);
+                          }}
+                        >
+                          + Raise CAPA
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary px-2.5 py-1 fw-semibold ms-auto"
+                          style={{ fontSize: '0.725rem', borderColor: '#0284c7', color: '#0284c7' }}
+                          onClick={() => triggerDirectUpload(item.id)}
+                        >
+                          + Attach File
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -734,9 +632,9 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
               </div>
             </div>
 
-            {/* right column: inspection result card & corrective actions list */}
+            {/* right column: inspection result & corrective actions */}
             <div className="col-lg-5 d-flex flex-column gap-3">
-              {/* inspection result submission card (dark navy background) */}
+              {/* inspection result card */}
               <div
                 className="card border-0 shadow-sm p-4 text-white"
                 style={{
@@ -818,7 +716,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                 </div>
               </div>
 
-              {/* corrective actions card with dynamic item entry */}
+              {/* corrective actions list card */}
               <div className="card border-0 shadow-sm p-4" style={{ borderRadius: '10px', backgroundColor: '#ffffff' }}>
                 <div className="d-flex align-items-center justify-content-between mb-3">
                   <h6 className="fw-bold text-dark m-0" style={{ fontSize: '1rem' }}>
@@ -834,7 +732,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                   </button>
                 </div>
 
-                {/* form for inspector to put a new corrective action item */}
+                {/* general new CAPA creation form */}
                 {showAddCapa && (
                   <form onSubmit={handleAddCapaItem} className="p-3 border rounded bg-light mb-3">
                     <div className="fw-bold text-dark small mb-2" style={{ fontSize: '0.8rem' }}>

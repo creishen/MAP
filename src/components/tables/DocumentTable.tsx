@@ -1,5 +1,5 @@
 /* 
-  file summary: master document vault data table component with grouped search box/filters on left and grouped export/upload buttons on right.
+  file summary: Document Library data table component with grouped search box/filters on left and grouped export/upload buttons on right.
   responsibilities: presents certificate numbers, issuing authorities, ocr confidence scores, and action controls on opposite side of search.
   role in system: main data table for DocumentLibraryView.tsx.
 */
@@ -18,7 +18,7 @@ interface DocumentTableProps {
 }
 
 /**
-  what: renders master document vault table with search filters and export/upload actions.
+  what: renders Document Library table with search filters and export/upload actions.
   how: filters documents array and triggers csv/pdf exports or opens upload modal on button clicks.
   with what file: src/components/tables/DocumentTable.tsx loaded by DocumentLibraryView.tsx.
 */
@@ -83,7 +83,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       d.complianceState,
       d.currentVersion,
     ]);
-    exportToPdf('Master Document Vault', headers, rows);
+    exportToPdf('Document Library', headers, rows);
     setIsExportOpen(false);
   };
 

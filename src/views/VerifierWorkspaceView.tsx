@@ -115,7 +115,7 @@ export const VerifierWorkspaceView: React.FC = () => {
                   <td>{doc.issuingAuthority}</td>
                   <td className="small text-secondary">{doc.verificationNotes || 'Verified'}</td>
                   <td>
-                    <span className="badge bg-success text-white">Verified [OK]</span>
+                    <span className="badge bg-success text-white">Verified</span>
                   </td>
                 </tr>
               ))}

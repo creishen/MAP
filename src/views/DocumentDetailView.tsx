@@ -57,15 +57,14 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
           </div>
           <div>
             <span
-              className={`badge p-2 fs-6 ${
-                doc.verificationStatus === 'Verified'
+              className={`badge p-2 fs-6 ${doc.verificationStatus === 'Verified'
                   ? 'bg-success text-white'
                   : doc.verificationStatus === 'Correction Requested'
-                  ? 'bg-warning text-dark'
-                  : doc.verificationStatus === 'Rejected'
-                  ? 'bg-danger text-white'
-                  : 'bg-secondary text-white'
-              }`}
+                    ? 'bg-warning text-dark'
+                    : doc.verificationStatus === 'Rejected'
+                      ? 'bg-danger text-white'
+                      : 'bg-secondary text-white'
+                }`}
             >
               Status: {doc.verificationStatus}
             </span>
@@ -115,7 +114,7 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
                 <span className="text-secondary">Flag State:</span> <div><strong className="text-dark">{doc.vesselAttributes.flagState}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">100% Asset Match:</span> <div><span className="badge bg-success text-white">MATCH VERIFIED [OK]</span></div>
+                <span className="text-secondary">100% Asset Match:</span> <div><span className="badge bg-success text-white">MATCH Verified</span></div>
               </div>
               <div className="col-md-4">
                 <span className="text-secondary">Last Survey Date:</span> <div className="font-mono-code"><strong className="text-dark">{formatMaritimeDate(doc.vesselAttributes.lastSurveyDate)}</strong></div>

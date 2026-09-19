@@ -63,7 +63,7 @@ export const AppSidebar: React.FC = () => {
     },
     {
       key: 'documents',
-      label: 'Master Document Vault',
+      label: 'Document Library',
       allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
     },
     {
