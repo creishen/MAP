@@ -21,10 +21,10 @@ interface DocumentDetailViewProps {
   with what file: src/views/DocumentDetailView.tsx loaded by App.tsx.
 */
 export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentId }) => {
-  const { documents, setCurrentHashView, previousHashView, activePersona } = useMapStore();
+  const { documents, setCurrentHashView, previousHashView, previousEntityId, activePersona } = useMapStore();
   const [isExportOpen, setIsExportOpen] = useState(false);
 
-  const backInfo = getBackButtonInfo('documents', 'Document Vault', previousHashView, activePersona);
+  const backInfo = getBackButtonInfo('documents', 'Document Vault', previousHashView, activePersona, previousEntityId);
 
   const doc = documents.find((d) => d.id === documentId) || documents[0];
 
@@ -122,7 +122,7 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
         <button
           type="button"
           className="btn btn-sm btn-outline-secondary"
-          onClick={() => setCurrentHashView(backInfo.targetView)}
+          onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
         >
           {backInfo.label}
         </button>

@@ -23,6 +23,8 @@ import { InspectorWorkspaceView } from './views/InspectorWorkspaceView';
 import { InspectionChecklistView } from './views/InspectionChecklistView';
 import { AuditTrailView } from './views/AuditTrailView';
 import { UserManagementView } from './views/UserManagementView';
+import { CrewView } from './views/CrewView';
+import { CrewDetailView } from './views/CrewDetailView';
 import './App.css';
 
 import { isViewAccessibleToPersona } from './utils/rbacHelpers';
@@ -86,6 +88,8 @@ export const App: React.FC = () => {
         return <AuditTrailView />;
       case 'users':
         return <UserManagementView />;
+      case 'crew':
+        return currentEntityId ? <CrewDetailView crewId={currentEntityId} /> : <CrewView />;
       case 'dashboard':
       default:
         return <DashboardView />;

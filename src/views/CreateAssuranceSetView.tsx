@@ -36,9 +36,9 @@ const INITIAL_MASTER_DOCS: MasterDocItem[] = [
   with what file: src/views/CreateAssuranceSetView.tsx rendered by App.tsx.
 */
 export const CreateAssuranceSetView: React.FC = () => {
-  const { vessels, assuranceSets, addAssuranceSet, activePersona, setCurrentHashView, previousHashView, users } = useMapStore();
+  const { vessels, assuranceSets, addAssuranceSet, activePersona, setCurrentHashView, previousHashView, previousEntityId, users } = useMapStore();
 
-  const backInfo = getBackButtonInfo('assurance-sets', 'Assurance Sets', previousHashView, activePersona);
+  const backInfo = getBackButtonInfo('assurance-sets', 'Assurance Sets', previousHashView, activePersona, previousEntityId);
 
   const [title, setTitle] = useState('');
   const [vesselId, setVesselId] = useState(vessels[0]?.id || '');
@@ -200,7 +200,7 @@ export const CreateAssuranceSetView: React.FC = () => {
                 <button
                   type="button"
                   className="btn btn-link p-0 text-decoration-none text-secondary"
-                  onClick={() => setCurrentHashView(backInfo.targetView)}
+                  onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
                 >
                   {backInfo.label.replace('← ', '')}
                 </button>

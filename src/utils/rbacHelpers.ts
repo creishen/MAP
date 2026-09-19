@@ -122,21 +122,24 @@ export function filterAuditTrailForPersona(
   with what file: src/utils/rbacHelpers.ts consumed by HeaderBanner, VesselDetailView, DocumentDetailView, InspectionChecklistView, and CreateAssuranceSetView.
 */
 export function getBackButtonInfo(
-  parentView: 'assurance-sets' | 'vessels' | 'documents' | 'inspector',
+  parentView: 'assurance-sets' | 'vessels' | 'documents' | 'inspector' | 'crew',
   parentLabel: string,
   previousHashView: string | undefined,
-  activePersona: UserRolePersona
-): { label: string; targetView: string } {
+  activePersona: UserRolePersona,
+  previousEntityId?: string
+): { label: string; targetView: string; targetEntityId?: string } {
   let isParentAllowedInSidepanel = true;
 
   if (parentView === 'vessels') {
     isParentAllowedInSidepanel = ['Administrator', 'C Admin', 'Submitter'].includes(activePersona);
   } else if (parentView === 'assurance-sets') {
-    isParentAllowedInSidepanel = ['Administrator', 'C Admin', 'Submitter', 'Verifier'].includes(activePersona);
+    isParentAllowedInSidepanel = ['Administrator', 'C Admin', 'Submitter'].includes(activePersona);
   } else if (parentView === 'documents') {
     isParentAllowedInSidepanel = ['Administrator', 'Submitter'].includes(activePersona);
   } else if (parentView === 'inspector') {
     isParentAllowedInSidepanel = ['Administrator'].includes(activePersona);
+  } else if (parentView === 'crew') {
+    isParentAllowedInSidepanel = ['Administrator', 'Submitter'].includes(activePersona);
   }
 
   if (previousHashView === 'dashboard' || !isParentAllowedInSidepanel) {
@@ -146,15 +149,48 @@ export function getBackButtonInfo(
     };
   }
 
+  if (previousHashView === 'crew') {
+    return {
+      label: previousEntityId ? '← Back to Seafarer Profile' : '← Back to Crew Directory',
+      targetView: 'crew',
+      targetEntityId: previousEntityId,
+    };
+  }
+
+  if (previousHashView === 'vessels') {
+    return {
+      label: previousEntityId ? '← Back to Vessel Detail' : '← Back to Fleet Registry',
+      targetView: 'vessels',
+      targetEntityId: previousEntityId,
+    };
+  }
+
+  if (previousHashView === 'assurance-sets') {
+    return {
+      label: previousEntityId ? '← Back to Assurance Set' : '← Back to Assurance Sets',
+      targetView: 'assurance-sets',
+      targetEntityId: previousEntityId,
+    };
+  }
+
+  if (previousHashView === 'documents') {
+    return {
+      label: previousEntityId ? '← Back to Document Detail' : '← Back to Document Library',
+      targetView: 'documents',
+      targetEntityId: previousEntityId,
+    };
+  }
+
   return {
     label: `← Back to ${parentLabel}`,
     targetView: parentView,
+    targetEntityId: undefined,
   };
 }
 
 /**
   what: checks if a specific view route and optional entity ID is accessible to the specified user persona.
-  how: checks view path against persona RBAC restrictions for vessels, assurance-sets, documents, verifier, and inspector screens.
+  how: checks view path against persona RBAC restrictions for vessels, assurance-sets, documents, verifier, inspector, and crew screens.
   with what file: src/utils/rbacHelpers.ts used by useMapStore.ts and App.tsx.
 */
 export function isViewAccessibleToPersona(
@@ -164,6 +200,7 @@ export function isViewAccessibleToPersona(
 ): boolean {
   if (persona === 'Administrator') return true;
   if (view === 'users') return false;
+  if (view === 'crew' && !['Administrator', 'Submitter'].includes(persona)) return false;
   if (view === 'dashboard' || view === 'audit') return true;
 
   if (persona === 'C Admin') {

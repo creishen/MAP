@@ -59,12 +59,18 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'assurance-sets',
       label: 'Assurance Sets',
-      allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier'],
+      allowedRoles: ['Administrator', 'C Admin', 'Submitter',],
     },
     {
       key: 'documents',
       label: 'Document Library',
       allowedRoles: ['Administrator', 'Submitter'],
+    },
+    {
+      key: 'crew',
+      label: 'Crew Directory',
+      allowedRoles: ['Administrator', 'Submitter'],
+      badgeText: 'STCW',
     },
     {
       key: 'verifier',

@@ -10,9 +10,11 @@ import { VesselParticulars } from '../types/vessel';
 import { AssuranceSet, AssuranceStage } from '../types/assurance';
 import { MasterDocument } from '../types/document';
 import { MOCK_VESSELS, MOCK_ASSURANCE_SETS, MOCK_DOCUMENTS, MOCK_AUDIT_TRAIL, MOCK_USERS } from './mockData';
+import { MOCK_CREW } from './crewMockData';
 import { isDuplicateVessel } from '../utils/validation';
 import { isViewAccessibleToPersona } from '../utils/rbacHelpers';
 import { UserProfile } from '../types/user';
+import { CrewMember, STCWDocumentItem } from '../types/crew';
 
 export interface MapStoreState {
   // Authentication State
@@ -28,6 +30,7 @@ export interface MapStoreState {
   currentHashView: string;
   previousHashView?: string;
   currentEntityId?: string;
+  previousEntityId?: string;
   setCurrentHashView: (view: string, entityId?: string) => void;
 
   // Active Asset Context
@@ -80,6 +83,13 @@ export interface MapStoreState {
   users: UserProfile[];
   addUser: (user: UserProfile) => void;
   updateUserStatus: (userId: string, status: UserProfile['status']) => void;
+
+  // Crew Directory State
+  crew: CrewMember[];
+  addCrewMember: (crew: CrewMember) => void;
+  addCrewDocument: (crewId: string, doc: STCWDocumentItem) => void;
+  updateCrewDocument: (crewId: string, doc: STCWDocumentItem) => void;
+  deleteCrewDocument: (crewId: string, docId: string) => void;
 
   // Global Drawers State
   isAuditDrawerOpen: boolean;
@@ -136,11 +146,26 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   currentHashView: 'dashboard',
   previousHashView: undefined,
   currentEntityId: undefined,
+  previousEntityId: undefined,
   setCurrentHashView: (view, entityId) => {
-    const current = get().currentHashView;
-    const prev = current !== view ? current : get().previousHashView;
+    const currentView = get().currentHashView;
+    const currentId = get().currentEntityId;
+
+    let prevView = get().previousHashView;
+    let prevId = get().previousEntityId;
+
+    if (currentView !== view || currentId !== entityId) {
+      prevView = currentView;
+      prevId = currentId;
+    }
+
     window.location.hash = entityId ? `#/${view}/${entityId}` : `#/${view}`;
-    set({ previousHashView: prev, currentHashView: view, currentEntityId: entityId });
+    set({
+      previousHashView: prevView,
+      previousEntityId: prevId,
+      currentHashView: view,
+      currentEntityId: entityId,
+    });
   },
 
   activeVesselId: 'VESSEL-001',
@@ -459,6 +484,93 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set((state) => ({
       users: state.users.map((u) => (u.id === userId ? { ...u, status } : u)),
     }));
+  },
+
+  // Crew Directory
+  crew: MOCK_CREW,
+  addCrewMember: (newCrew) => {
+    set((state) => ({ crew: [newCrew, ...state.crew] }));
+    get().logAuditEvent({
+      userId: 'USR-CURRENT',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Registered Crew Member',
+      targetAsset: `${newCrew.fullName} (${newCrew.rank})`,
+      justificationNotes: `Registered crew member with Seaman's Book ${newCrew.seamansBookNo}`,
+    });
+  },
+  addCrewDocument: (crewId, doc) => {
+    set((state) => ({
+      crew: state.crew.map((c) => {
+        if (c.id !== crewId) return c;
+        const isLayer1 = doc.layer === 'Layer 1 - Universal Core';
+        const updatedL1 = isLayer1 ? [doc, ...c.layer1CoreDocuments] : c.layer1CoreDocuments;
+        const updatedL2 = !isLayer1 ? [doc, ...c.layer2Endorsements] : c.layer2Endorsements;
+        return {
+          ...c,
+          layer1CoreDocuments: updatedL1,
+          layer2Endorsements: updatedL2,
+          lastAuditedDate: new Date().toISOString().split('T')[0],
+        };
+      }),
+    }));
+    get().logAuditEvent({
+      userId: 'USR-CURRENT',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: `Uploaded Crew STCW Document (${doc.title})`,
+      targetAsset: `Crew ${crewId} / ${doc.certificateNo}`,
+      justificationNotes: `Uploaded ${doc.layer} certificate for STCW compliance tracking.`,
+    });
+  },
+  updateCrewDocument: (crewId, doc) => {
+    set((state) => ({
+      crew: state.crew.map((c) => {
+        if (c.id !== crewId) return c;
+        const filteredL1 = c.layer1CoreDocuments.filter((d) => d.id !== doc.id);
+        const filteredL2 = c.layer2Endorsements.filter((d) => d.id !== doc.id);
+        const isLayer1 = doc.layer === 'Layer 1 - Universal Core';
+        const updatedL1 = isLayer1 ? [doc, ...filteredL1] : filteredL1;
+        const updatedL2 = !isLayer1 ? [doc, ...filteredL2] : filteredL2;
+        return {
+          ...c,
+          layer1CoreDocuments: updatedL1,
+          layer2Endorsements: updatedL2,
+          lastAuditedDate: new Date().toISOString().split('T')[0],
+        };
+      }),
+    }));
+    get().logAuditEvent({
+      userId: 'USR-CURRENT',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: `Updated / Reuploaded Crew STCW Document (${doc.title})`,
+      targetAsset: `Crew ${crewId} / ${doc.certificateNo}`,
+      justificationNotes: `Reuploaded / updated ${doc.layer} certificate status (${doc.verificationStatus}), expiry date ${doc.expiryDate}.`,
+    });
+  },
+  deleteCrewDocument: (crewId, docId) => {
+    set((state) => ({
+      crew: state.crew.map((c) => {
+        if (c.id !== crewId) return c;
+        const updatedL1 = c.layer1CoreDocuments.filter((d) => d.id !== docId);
+        const updatedL2 = c.layer2Endorsements.filter((d) => d.id !== docId);
+        return {
+          ...c,
+          layer1CoreDocuments: updatedL1,
+          layer2Endorsements: updatedL2,
+          lastAuditedDate: new Date().toISOString().split('T')[0],
+        };
+      }),
+    }));
+    get().logAuditEvent({
+      userId: 'USR-CURRENT',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Deleted Crew STCW Document',
+      targetAsset: `Crew ${crewId} / Doc ${docId}`,
+      justificationNotes: 'Removed STCW certificate record from crew profile.',
+    });
   },
 
   isAuditDrawerOpen: false,

@@ -20,6 +20,7 @@ export const HeaderBanner: React.FC = () => {
     setActivePersona,
     currentHashView,
     previousHashView,
+    previousEntityId,
     currentEntityId,
     setCurrentHashView,
     vessels,
@@ -27,7 +28,7 @@ export const HeaderBanner: React.FC = () => {
     documents,
   } = useMapStore();
 
-  const backInfo = getBackButtonInfo('assurance-sets', 'Assurance Sets', previousHashView, activePersona);
+  const backInfo = getBackButtonInfo('assurance-sets', 'Assurance Sets', previousHashView, activePersona, previousEntityId);
 
   const rolesList: { role: UserRolePersona; label: string }[] = [
     { role: 'Administrator', label: 'Admin' },
@@ -97,7 +98,7 @@ export const HeaderBanner: React.FC = () => {
           <button
             type="button"
             className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold"
-            onClick={() => setCurrentHashView(backInfo.targetView)}
+            onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
           >
             {backInfo.label}
           </button>

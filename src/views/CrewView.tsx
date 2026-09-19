@@ -1,0 +1,82 @@
+/* 
+  file summary: master crew directory page view for administrator and submitter roles to track fleet seafarers.
+  responsibilities: presents stcw compliance KPI summary cards, master CrewTable matching assurance table grid format, and launches AddCrewModal.
+  role in system: main view for crew governance navigation (/crew) accessible by Administrator and Submitter personas.
+*/
+
+import React, { useState } from 'react';
+import { useMapStore } from '../store/useMapStore';
+import { CrewTable } from '../components/tables/CrewTable';
+import { AddCrewModal } from '../components/drawers/AddCrewModal';
+
+/**
+  what: renders crew directory master view in light theme.
+  how: aggregates stcw compliance statistics and displays CrewTable component with AddCrewModal integration.
+  with what file: src/views/CrewView.tsx loaded by App.tsx router.
+*/
+export const CrewView: React.FC = () => {
+  const { crew, setCurrentHashView } = useMapStore();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const fullyCompliantCount = crew.filter((c) => c.complianceStatus === 'Fully Compliant').length;
+  const expiringCount = crew.filter((c) => c.complianceStatus === 'Expiring < 60 Days').length;
+  const deficientCount = crew.filter((c) => c.complianceStatus === 'Document Deficient').length;
+
+  return (
+    <div className="d-flex flex-column gap-4">
+      {/* Top STCW Compliance Summary KPI Cards */}
+      <div className="row g-3">
+        <div className="col-md-3">
+          <div className="card map-card-custom p-3">
+            <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
+              Registered Fleet Crew
+            </div>
+            <div className="display-6 fw-bold text-primary font-mono-code mt-1">{crew.length}</div>
+            <div className="text-muted small mt-1">Active Seafarers & Officers</div>
+          </div>
+        </div>
+
+        <div className="col-md-3">
+          <div className="card map-card-custom p-3">
+            <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
+              Fully Compliant Crew
+            </div>
+            <div className="display-6 fw-bold text-success font-mono-code mt-1">{fullyCompliantCount}</div>
+            <div className="text-muted small mt-1">100% Valid STCW Documents</div>
+          </div>
+        </div>
+
+        <div className="col-md-3">
+          <div className="card map-card-custom p-3">
+            <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
+              Expiring &lt; 60 Days
+            </div>
+            <div className="display-6 fw-bold text-warning font-mono-code mt-1">{expiringCount}</div>
+            <div className="text-muted small mt-1">Requires Mandatory Renewal</div>
+          </div>
+        </div>
+
+        <div className="col-md-3">
+          <div className="card map-card-custom p-3">
+            <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
+              Document Deficient
+            </div>
+            <div className="display-6 fw-bold text-danger font-mono-code mt-1">{deficientCount}</div>
+            <div className="text-muted small mt-1">Expired / Missing Certificates</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Master Crew Directory Table matching Assurance Sets table grid format */}
+      <CrewTable
+        onSelectCrew={(selectedCrew) => {
+          setCurrentHashView('crew', selectedCrew.id);
+        }}
+        onRegisterCrew={() => setIsModalOpen(true)}
+      />
+
+      {/* Add Crew Member Modal */}
+      <AddCrewModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </div>
+  );
+};

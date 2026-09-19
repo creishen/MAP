@@ -1,6 +1,6 @@
 /* 
   file summary: master user directory table component matching exact assurance sets table format and header controls layout.
-  responsibilities: presents user ids, names, emails, role badges, organization scopes, classification badges, export controls, and user addition triggers.
+  responsibilities: presents names, emails, role badges, organization scopes, classification badges, export controls, and user addition triggers.
   role in system: main data table component for UserManagementView.tsx.
 */
 
@@ -32,7 +32,6 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
   const filteredUsers = users.filter((u) => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
-      u.id.toLowerCase().includes(term) ||
       u.name.toLowerCase().includes(term) ||
       u.email.toLowerCase().includes(term) ||
       u.organization.toLowerCase().includes(term) ||
@@ -68,7 +67,6 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
 
   const handleExportCsv = () => {
     const exportData = filteredUsers.map((u) => ({
-      UserID: u.id,
       Name: u.name,
       Email: u.email,
       AssignedRole: u.role,
@@ -83,9 +81,8 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
   };
 
   const handleExportPdf = () => {
-    const headers = ['User ID', 'Name & Email', 'Role', 'Classification', 'Organization & Scope', 'Status'];
+    const headers = ['Name & Email', 'Role', 'Classification', 'Organization & Scope', 'Status'];
     const rows = filteredUsers.map((u) => [
-      u.id,
       `${u.name}\n(${u.email})`,
       u.role,
       u.userType,
@@ -105,7 +102,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
           <input
             type="text"
             className="form-control form-control-sm bg-white text-dark border-secondary"
-            placeholder="Search User ID, Name, Email, Org..."
+            placeholder="Search Name, Email, Org..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ width: '260px' }}
@@ -195,7 +192,6 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th>User ID</th>
               <th>User Name & Email</th>
               <th>Assigned Role</th>
               <th>Classification</th>
@@ -215,7 +211,6 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
             ) : (
               filteredUsers.map((u) => (
                 <tr key={u.id}>
-                  <td className="font-mono-code fw-bold text-primary">{u.id}</td>
                   <td>
                     <div className="fw-semibold text-dark">{u.name}</div>
                     <div className="small font-mono-code text-muted">{u.email}</div>

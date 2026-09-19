@@ -45,9 +45,9 @@ interface InspectionChecklistViewProps {
   with what file: src/views/InspectionChecklistView.tsx loaded by App.tsx when hash is /inspector/:vesselName or /inspection/:vesselName.
 */
 export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = ({ vesselName = 'MV Pacific Endeavour' }) => {
-  const { logAuditEvent, activePersona, setCurrentHashView, previousHashView } = useMapStore();
+  const { logAuditEvent, activePersona, setCurrentHashView, previousHashView, previousEntityId } = useMapStore();
 
-  const backInfo = getBackButtonInfo('inspector', 'Physical Survey Schedule', previousHashView, activePersona);
+  const backInfo = getBackButtonInfo('inspector', 'Physical Survey Schedule', previousHashView, activePersona, previousEntityId);
 
   const [items, setItems] = useState<InspectionItem[]>([
     {
@@ -354,7 +354,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
             <button
               type="button"
               className="btn btn-sm btn-outline-secondary fw-semibold d-flex align-items-center gap-2"
-              onClick={() => setCurrentHashView(backInfo.targetView)}
+              onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
             >
               <span>{backInfo.label}</span>
             </button>
