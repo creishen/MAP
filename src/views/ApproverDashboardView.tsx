@@ -46,15 +46,6 @@ export const ApproverDashboardView: React.FC = () => {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Prominent C Admin Read-Only Rule Restriction Banner */}
-      {isCAdmin && (
-        <div className="map-cadmin-readonly-banner">
-          <div>
-            <strong>Client Admin (C Admin) View Mode:</strong> Reviewing readiness dashboard in read-only mode.
-          </div>
-        </div>
-      )}
-
       {/* Select Assurance Set Dropdown */}
       <div className="card map-card-custom p-3">
         <div className="row align-items-center">
@@ -182,6 +173,7 @@ export const ApproverDashboardView: React.FC = () => {
                   type="button"
                   className="btn btn-warning text-dark py-2 fw-semibold"
                   onClick={() => handleDecision('Returned for Correction')}
+                  disabled={isApprovalBlocked}
                 >
                   Return for Correction
                 </button>
@@ -189,6 +181,7 @@ export const ApproverDashboardView: React.FC = () => {
                   type="button"
                   className="btn btn-danger text-white py-2 fw-semibold"
                   onClick={() => handleDecision('Rejected')}
+                  disabled={isApprovalBlocked}
                 >
                   Reject Assurance Set
                 </button>

@@ -12,15 +12,18 @@ import { ConfidenceBadge } from '../components/common/ConfidenceBadge';
 import { formatMaritimeDate } from '../utils/formatters';
 
 import { isAssuranceSetAssignedToPersona } from '../utils/rbacHelpers';
+import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 
 /**
-  what: renders verifier operational workspace view in light theme.
-  how: lists assigned assurance sets and documents requiring verifier sign-off and opens DocumentReviewDrawer on row click.
+  what: renders verifier operational workspace view in light theme with table export capabilities.
+  how: lists assigned assurance sets and documents requiring verifier sign-off with export options for pending/verified queues.
   with what file: src/views/VerifierWorkspaceView.tsx loaded by App.tsx.
 */
 export const VerifierWorkspaceView: React.FC = () => {
   const { documents, assuranceSets, activePersona, setCurrentHashView } = useMapStore();
   const [selectedDoc, setSelectedDoc] = useState<MasterDocument | null>(null);
+  const [isPendingExportOpen, setIsPendingExportOpen] = useState(false);
+  const [isVerifiedExportOpen, setIsVerifiedExportOpen] = useState(false);
 
   const isCAdmin = activePersona === 'C Admin';
 
@@ -28,79 +31,123 @@ export const VerifierWorkspaceView: React.FC = () => {
   const pendingDocs = documents.filter((d) => d.verificationStatus === 'Pending' || d.verificationStatus === 'Correction Requested');
   const verifiedDocs = documents.filter((d) => d.verificationStatus === 'Verified');
 
+  const handleExportPendingCsv = () => {
+    const exportData = pendingDocs.map((d) => ({
+      Title: d.title,
+      EntityType: d.entityType,
+      CertificateNo: d.certificateNo,
+      IssuingAuthority: d.issuingAuthority,
+      ExpiryDate: d.expiryDate,
+      OcrConfidence: `${d.ocrConfidence}%`,
+      Status: d.verificationStatus,
+    }));
+    exportToCsv('Pending_Verification_Queue', exportData);
+    setIsPendingExportOpen(false);
+  };
+
+  const handleExportPendingPdf = () => {
+    const headers = ['Title', 'Type', 'Cert No', 'Authority', 'Expiry Date', 'OCR Conf', 'Status'];
+    const rows = pendingDocs.map((d) => [
+      d.title,
+      d.entityType,
+      d.certificateNo,
+      d.issuingAuthority,
+      d.expiryDate,
+      `${d.ocrConfidence}%`,
+      d.verificationStatus,
+    ]);
+    exportToPdf('Pending Verification Queue', headers, rows);
+    setIsPendingExportOpen(false);
+  };
+
+  const handleExportVerifiedCsv = () => {
+    const exportData = verifiedDocs.map((d) => ({
+      Title: d.title,
+      CertificateNo: d.certificateNo,
+      IssuingAuthority: d.issuingAuthority,
+      Notes: d.verificationNotes || 'Verified',
+      Status: 'Verified',
+    }));
+    exportToCsv('Verified_Documents_Log', exportData);
+    setIsVerifiedExportOpen(false);
+  };
+
+  const handleExportVerifiedPdf = () => {
+    const headers = ['Title', 'Cert No', 'Issuing Authority', 'Notes', 'Status'];
+    const rows = verifiedDocs.map((d) => [
+      d.title,
+      d.certificateNo,
+      d.issuingAuthority,
+      d.verificationNotes || 'Verified',
+      'Verified',
+    ]);
+    exportToPdf('Recently Verified Documents', headers, rows);
+    setIsVerifiedExportOpen(false);
+  };
+
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Prominent C Admin Read-Only Rule Restriction Banner */}
-      {isCAdmin && (
-        <div className="map-cadmin-readonly-banner">
-          <div>
-            <strong>Client Admin (C Admin) View Mode:</strong> Reviewing verification queue in read-only mode.
-          </div>
-        </div>
-      )}
-
-      {/* Assurance Sets Stakeholder Role Assignments Overview */}
-      <div className="card map-card-custom p-4">
-        <div className="d-flex align-items-center justify-between mb-3">
-          <div>
-            <h5 className="fw-bold m-0 text-primary">Assigned Assurance Sets & Stakeholder Teams</h5>
-            <div className="text-secondary small">Overview of assigned stakeholder roles across active campaigns</div>
-          </div>
-          <span className="badge bg-light text-dark border font-mono-code">{assignedSets.length} Campaigns Assigned</span>
-        </div>
-
-        <div className="row g-3">
-          {assignedSets.map((set) => (
-            <div key={set.id} className="col-lg-4 col-md-6">
-              <div className="p-3 border rounded bg-white shadow-2xs h-100 d-flex flex-column justify-between">
-                <div>
-                  <div className="d-flex align-items-center justify-between mb-2">
-                    <span className="font-mono-code fw-bold text-primary small">{set.id}</span>
-                    <span className="badge bg-light text-dark border" style={{ fontSize: '0.7rem' }}>{set.stage}</span>
-                  </div>
-                  <h6 className="fw-bold text-dark mb-1">{set.title}</h6>
-                  <div className="text-secondary small font-mono-code mb-3">Vessel: {set.vesselName}</div>
-
-                  <div className="d-flex flex-column gap-1.5 small border-top pt-2">
-                    <div className="d-flex justify-between">
-                      <span className="text-secondary">Submitter:</span>
-                      <span className="fw-semibold text-dark text-truncate" style={{ maxWidth: '180px' }}>{set.assignedSubmitter || 'Unassigned'}</span>
-                    </div>
-                    <div className="d-flex justify-between">
-                      <span className="text-secondary">Verifier:</span>
-                      <span className="fw-semibold text-primary text-truncate" style={{ maxWidth: '180px' }}>{set.assignedVerifier || 'Unassigned'}</span>
-                    </div>
-                    <div className="d-flex justify-between">
-                      <span className="text-secondary">Inspector:</span>
-                      <span className="fw-semibold text-dark text-truncate" style={{ maxWidth: '180px' }}>
-                        {set.mandatoryInspectionRequired ? (set.assignedInspector || 'Unassigned') : 'N/A'}
-                      </span>
-                    </div>
-                    <div className="d-flex justify-between">
-                      <span className="text-secondary">Approver:</span>
-                      <span className="fw-semibold text-dark text-truncate" style={{ maxWidth: '180px' }}>{set.assignedApprover || 'Unassigned'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-primary w-100 mt-3"
-                  onClick={() => setCurrentHashView('assurance-sets', set.id)}
+      {/* Assurance Sets Overview Cards */}
+      <div className="row g-3">
+        {assignedSets.map((set) => (
+          <div key={set.id} className="col-lg-4 col-md-6">
+            <div className="p-4 border rounded-3 bg-white shadow-sm h-100 d-flex flex-column justify-between position-relative">
+              <div>
+                <span
+                  className="badge bg-light text-dark border font-mono-code position-absolute top-0 end-0 mt-3.5 me-3.5"
+                  style={{ fontSize: '0.725rem' }}
                 >
-                  View Command Center
-                </button>
+                  {set.stage}
+                </span>
+                <div className="font-mono-code fw-bold text-primary small mb-2">{set.id}</div>
+                <h6 className="fw-bold text-dark mb-2 pe-5" style={{ fontSize: '1rem', lineHeight: '1.3' }}>
+                  {set.title}
+                </h6>
+                <div className="text-secondary small font-mono-code">Vessel: {set.vesselName}</div>
               </div>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary w-100 mt-4 py-2 fw-semibold"
+                onClick={() => setCurrentHashView('assurance-sets', set.id)}
+              >
+                View Command Center
+              </button>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
+
 
       {/* Pending Items Queue */}
       <div className="card map-card-custom">
-        <div className="card-header d-flex align-items-center justify-between">
-          <span>Pending Verification Queue ({pendingDocs.length} Items)</span>
-          <span className="badge bg-warning text-dark font-mono-code">Action Required</span>
+        <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
+          <div className="fw-bold text-dark">
+            Pending Verification Queue ({pendingDocs.length} Items)
+          </div>
+          <div className="dropdown position-relative ms-auto">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
+              onClick={() => setIsPendingExportOpen(!isPendingExportOpen)}
+            >
+              Export Data
+            </button>
+            {isPendingExportOpen && (
+              <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border">
+                <li>
+                  <button type="button" className="dropdown-item small" onClick={handleExportPendingCsv}>
+                    Export as CSV (.csv)
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="dropdown-item small" onClick={handleExportPendingPdf}>
+                    Export as PDF (.pdf)
+                  </button>
+                </li>
+              </ul>
+            )}
+          </div>
         </div>
         <div className="table-responsive">
           <table className="table map-table-custom align-middle mb-0">
@@ -155,7 +202,34 @@ export const VerifierWorkspaceView: React.FC = () => {
 
       {/* Verified Items Log */}
       <div className="card map-card-custom">
-        <div className="card-header">Recently Verified Documents ({verifiedDocs.length})</div>
+        <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
+          <div className="fw-bold text-dark">
+            Recently Verified Documents ({verifiedDocs.length})
+          </div>
+          <div className="dropdown position-relative ms-auto">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
+              onClick={() => setIsVerifiedExportOpen(!isVerifiedExportOpen)}
+            >
+              Export Data
+            </button>
+            {isVerifiedExportOpen && (
+              <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border">
+                <li>
+                  <button type="button" className="dropdown-item small" onClick={handleExportVerifiedCsv}>
+                    Export as CSV (.csv)
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="dropdown-item small" onClick={handleExportVerifiedPdf}>
+                    Export as PDF (.pdf)
+                  </button>
+                </li>
+              </ul>
+            )}
+          </div>
+        </div>
         <div className="table-responsive">
           <table className="table map-table-custom align-middle mb-0">
             <thead>

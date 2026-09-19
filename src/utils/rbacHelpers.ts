@@ -5,7 +5,7 @@
 */
 
 import { AssuranceSet } from '../types/assurance';
-import { UserRolePersona } from '../types/audit';
+import { AuditTrailEvent, UserRolePersona } from '../types/audit';
 import { VesselParticulars } from '../types/vessel';
 
 /**
@@ -53,3 +53,165 @@ export function filterVesselsForPersona(
 
   return vessels.filter((v) => assignedSetVesselIds.has(v.id));
 }
+
+/**
+  what: filters audit trail event logs based on active user persona RBAC rules.
+  how: returns all events for Administrator, and for non-admin personas returns only events for tasks related to them or performed by the system.
+  with what file: src/utils/rbacHelpers.ts consumed by AuditTrailView, AuditTrailDrawer, DashboardView, and VesselDetailView.
+*/
+export function filterAuditTrailForPersona(
+  events: AuditTrailEvent[],
+  persona: UserRolePersona,
+  assuranceSets: AssuranceSet[],
+  vessels: VesselParticulars[]
+): AuditTrailEvent[] {
+  if (persona === 'Administrator') {
+    return events;
+  }
+
+  /* get IDs and names of assurance sets and vessels assigned to persona */
+  const assignedSets = assuranceSets.filter((set) => isAssuranceSetAssignedToPersona(set, persona));
+  const assignedVessels = filterVesselsForPersona(vessels, assuranceSets, persona);
+
+  const assignedSetKeys = new Set<string>();
+  assignedSets.forEach((set) => {
+    if (set.id) assignedSetKeys.add(set.id.toLowerCase());
+    if (set.title) assignedSetKeys.add(set.title.toLowerCase());
+    if (set.vesselName) assignedSetKeys.add(set.vesselName.toLowerCase());
+  });
+
+  const assignedVesselKeys = new Set<string>();
+  assignedVessels.forEach((v) => {
+    if (v.id) assignedVesselKeys.add(v.id.toLowerCase());
+    if (v.name) assignedVesselKeys.add(v.name.toLowerCase());
+    if (v.imoNumber) assignedVesselKeys.add(v.imoNumber.toLowerCase());
+  });
+
+  return events.filter((ev) => {
+    /* 1. Tasks performed by system / automated background routines */
+    const isSystemEvent =
+      ev.userRole === ('System' as any) ||
+      ev.userRole.toLowerCase().includes('system') ||
+      ev.userRole.toLowerCase().includes('ocr') ||
+      ev.userId.toLowerCase().includes('sys') ||
+      ev.userId.toLowerCase().includes('system');
+
+    if (isSystemEvent) return true;
+
+    /* 2. Tasks performed by active persona role */
+    if (ev.userRole === persona) return true;
+
+    /* 3. Tasks related to assigned sets or vessels */
+    const targetLower = (ev.targetAsset || '').toLowerCase();
+
+    for (const key of assignedSetKeys) {
+      if (key && targetLower.includes(key)) return true;
+    }
+
+    for (const key of assignedVesselKeys) {
+      if (key && targetLower.includes(key)) return true;
+    }
+
+    return false;
+  });
+}
+
+/**
+  what: computes dynamic back button label and target route based on previous hash view and active persona RBAC sidepanel access.
+  how: returns 'Back to Dashboard' if opened from dashboard or if the active persona has no sidepanel button for the parent view.
+  with what file: src/utils/rbacHelpers.ts consumed by HeaderBanner, VesselDetailView, DocumentDetailView, InspectionChecklistView, and CreateAssuranceSetView.
+*/
+export function getBackButtonInfo(
+  parentView: 'assurance-sets' | 'vessels' | 'documents' | 'inspector',
+  parentLabel: string,
+  previousHashView: string | undefined,
+  activePersona: UserRolePersona
+): { label: string; targetView: string } {
+  let isParentAllowedInSidepanel = true;
+
+  if (parentView === 'vessels') {
+    isParentAllowedInSidepanel = ['Administrator', 'C Admin', 'Submitter'].includes(activePersona);
+  } else if (parentView === 'assurance-sets') {
+    isParentAllowedInSidepanel = ['Administrator', 'C Admin', 'Submitter', 'Verifier'].includes(activePersona);
+  } else if (parentView === 'documents') {
+    isParentAllowedInSidepanel = ['Administrator', 'Submitter'].includes(activePersona);
+  } else if (parentView === 'inspector') {
+    isParentAllowedInSidepanel = ['Administrator'].includes(activePersona);
+  }
+
+  if (previousHashView === 'dashboard' || !isParentAllowedInSidepanel) {
+    return {
+      label: '← Back to Dashboard',
+      targetView: 'dashboard',
+    };
+  }
+
+  return {
+    label: `← Back to ${parentLabel}`,
+    targetView: parentView,
+  };
+}
+
+/**
+  what: checks if a specific view route and optional entity ID is accessible to the specified user persona.
+  how: checks view path against persona RBAC restrictions for vessels, assurance-sets, documents, verifier, and inspector screens.
+  with what file: src/utils/rbacHelpers.ts used by useMapStore.ts and App.tsx.
+*/
+export function isViewAccessibleToPersona(
+  view: string,
+  entityId: string | undefined | null,
+  persona: UserRolePersona
+): boolean {
+  if (persona === 'Administrator') return true;
+  if (view === 'users') return false;
+  if (view === 'dashboard' || view === 'audit') return true;
+
+  if (persona === 'C Admin') {
+    if (['documents', 'verifier', 'inspector', 'inspection', 'create-assurance-set'].includes(view)) {
+      return false;
+    }
+    return true;
+  }
+
+  if (persona === 'Submitter') {
+    if (['verifier', 'inspector', 'inspection'].includes(view)) {
+      return false;
+    }
+    return true;
+  }
+
+  if (persona === 'Verifier') {
+    if (['vessels', 'documents', 'inspector', 'inspection', 'create-assurance-set'].includes(view)) {
+      return false;
+    }
+    if (view === 'assurance-sets' && !entityId) {
+      return false;
+    }
+    return true;
+  }
+
+  if (persona === 'Inspector') {
+    if (['vessels', 'assurance-sets', 'documents', 'verifier', 'create-assurance-set'].includes(view)) {
+      return false;
+    }
+    if (view === 'inspector' && !entityId) {
+      return false;
+    }
+    return true;
+  }
+
+  if (persona === 'Approver') {
+    if (['vessels', 'documents', 'verifier', 'inspector', 'inspection', 'create-assurance-set'].includes(view)) {
+      return false;
+    }
+    if (view === 'assurance-sets' && !entityId) {
+      return false;
+    }
+    return true;
+  }
+
+  return true;
+}
+
+
+

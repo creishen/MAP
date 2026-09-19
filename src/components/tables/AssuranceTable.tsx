@@ -43,6 +43,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
 
   const getStageBadgeClass = (stage: AssuranceStage) => {
     switch (stage) {
+      case 'Approved & Certified':
       case 'Certified': return 'bg-success text-white';
       case 'Approval': return 'bg-info text-dark';
       case 'Inspection': return 'bg-primary text-white';
@@ -112,8 +113,8 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
           </select>
         </div>
 
-        {/* Opposite (Right) Side: Export & Initiate Buttons */}
-        <div className="d-flex align-items-center gap-2">
+        {/* Opposite (Right) Side: Export & Initiate Buttons on corner right of the row */}
+        <div className="d-flex align-items-center gap-2 ms-auto">
           {/* Export Dropdown */}
           <div className="dropdown position-relative">
             <button
@@ -160,7 +161,6 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
               <th>Campaign / Set Title</th>
               <th>Vessel Name</th>
               <th>Initiating Organization</th>
-              <th>Assigned Stakeholders</th>
               <th>Stage</th>
               <th>Readiness Score</th>
               <th className="text-end">Actions</th>
@@ -180,14 +180,6 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
                   <span className="badge bg-light text-dark border" style={{ fontSize: '0.75rem' }}>
                     {s.initiatorOrg}
                   </span>
-                </td>
-                <td>
-                  <div className="d-flex flex-column gap-0.5 text-slate-700" style={{ fontSize: '0.75rem' }}>
-                    {s.assignedSubmitter && <div><strong className="text-dark">S:</strong> {s.assignedSubmitter}</div>}
-                    {s.assignedVerifier && <div><strong className="text-dark">V:</strong> {s.assignedVerifier}</div>}
-                    {s.assignedInspector && <div><strong className="text-dark">I:</strong> {s.assignedInspector}</div>}
-                    {s.assignedApprover && <div><strong className="text-dark">A:</strong> {s.assignedApprover}</div>}
-                  </div>
                 </td>
                 <td>
                   <span className={`badge ${getStageBadgeClass(s.stage)}`}>{s.stage}</span>

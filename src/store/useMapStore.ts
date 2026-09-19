@@ -9,8 +9,10 @@ import { UserRolePersona, AuditTrailEvent } from '../types/audit';
 import { VesselParticulars } from '../types/vessel';
 import { AssuranceSet, AssuranceStage } from '../types/assurance';
 import { MasterDocument } from '../types/document';
-import { MOCK_VESSELS, MOCK_ASSURANCE_SETS, MOCK_DOCUMENTS, MOCK_AUDIT_TRAIL } from './mockData';
+import { MOCK_VESSELS, MOCK_ASSURANCE_SETS, MOCK_DOCUMENTS, MOCK_AUDIT_TRAIL, MOCK_USERS } from './mockData';
 import { isDuplicateVessel } from '../utils/validation';
+import { isViewAccessibleToPersona } from '../utils/rbacHelpers';
+import { UserProfile } from '../types/user';
 
 export interface MapStoreState {
   // Authentication State
@@ -24,6 +26,7 @@ export interface MapStoreState {
 
   // Hash Navigation State
   currentHashView: string;
+  previousHashView?: string;
   currentEntityId?: string;
   setCurrentHashView: (view: string, entityId?: string) => void;
 
@@ -73,6 +76,11 @@ export interface MapStoreState {
   auditEvents: AuditTrailEvent[];
   logAuditEvent: (event: Omit<AuditTrailEvent, 'id' | 'timestampUtc'>) => void;
 
+  // User Management State
+  users: UserProfile[];
+  addUser: (user: UserProfile) => void;
+  updateUserStatus: (userId: string, status: UserProfile['status']) => void;
+
   // Global Drawers State
   isAuditDrawerOpen: boolean;
   setAuditDrawerOpen: (open: boolean) => void;
@@ -113,14 +121,26 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       targetAsset: 'Global System Context',
       justificationNotes: `Persona set to ${persona}`,
     });
+
+    /* default to dashboard if active view is not accessible to newly selected persona */
+    const currentView = get().currentHashView;
+    const currentId = get().currentEntityId;
+
+    if (!isViewAccessibleToPersona(currentView, currentId, persona)) {
+      get().setCurrentHashView('dashboard');
+    }
+
     set({ activePersona: persona });
   },
 
   currentHashView: 'dashboard',
+  previousHashView: undefined,
   currentEntityId: undefined,
   setCurrentHashView: (view, entityId) => {
+    const current = get().currentHashView;
+    const prev = current !== view ? current : get().previousHashView;
     window.location.hash = entityId ? `#/${view}/${entityId}` : `#/${view}`;
-    set({ currentHashView: view, currentEntityId: entityId });
+    set({ previousHashView: prev, currentHashView: view, currentEntityId: entityId });
   },
 
   activeVesselId: 'VESSEL-001',
@@ -420,6 +440,25 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       ...eventData,
     };
     set((state) => ({ auditEvents: [newEvent, ...state.auditEvents] }));
+  },
+
+  // User Management
+  users: MOCK_USERS,
+  addUser: (newUser) => {
+    set((state) => ({ users: [newUser, ...state.users] }));
+    get().logAuditEvent({
+      userId: 'USR-CURRENT',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: `Provisioned New User Profile (${newUser.userType})`,
+      targetAsset: `${newUser.name} (${newUser.email})`,
+      justificationNotes: `Added ${newUser.userType} user assigned as ${newUser.role} for ${newUser.organization}.`,
+    });
+  },
+  updateUserStatus: (userId, status) => {
+    set((state) => ({
+      users: state.users.map((u) => (u.id === userId ? { ...u, status } : u)),
+    }));
   },
 
   isAuditDrawerOpen: false,

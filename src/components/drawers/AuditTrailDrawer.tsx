@@ -7,19 +7,22 @@
 import React, { useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { formatMaritimeDate } from '../../utils/formatters';
+import { filterAuditTrailForPersona } from '../../utils/rbacHelpers';
 
 /**
   what: renders the offcanvas audit trail drawer in clean light theme.
-  how: fetches auditEvents array from zustand store and filters items based on search term query.
+  how: fetches auditEvents array from zustand store and filters items based on persona RBAC rules and search query.
   with what file: src/components/drawers/AuditTrailDrawer.tsx loaded by App.tsx.
 */
 export const AuditTrailDrawer: React.FC = () => {
-  const { isAuditDrawerOpen, setAuditDrawerOpen, auditEvents } = useMapStore();
+  const { isAuditDrawerOpen, setAuditDrawerOpen, auditEvents, activePersona, assuranceSets, vessels } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
 
   if (!isAuditDrawerOpen) return null;
 
-  const filteredEvents = auditEvents.filter((ev) =>
+  const visibleEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
+
+  const filteredEvents = visibleEvents.filter((ev) =>
     ev.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ev.targetAsset.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ev.userRole.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -34,9 +37,9 @@ export const AuditTrailDrawer: React.FC = () => {
     >
       <div className="offcanvas-header border-bottom p-3 bg-light">
         <h5 className="offcanvas-title d-flex align-items-center gap-2 fw-bold text-slate-900">
-          <span>Immutable Audit Trail</span>
+          <span>Audit Trail</span>
           <span className="badge bg-secondary font-mono-code" style={{ fontSize: '0.75rem' }}>
-            {auditEvents.length} Events
+            {visibleEvents.length} Events
           </span>
         </h5>
         <button

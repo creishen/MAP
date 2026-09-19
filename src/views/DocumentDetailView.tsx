@@ -4,26 +4,116 @@
   role in system: deep-dive view rendered when a document row is selected.
 */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { ConfidenceBadge } from '../components/common/ConfidenceBadge';
 import { formatMaritimeDate } from '../utils/formatters';
+import { getBackButtonInfo } from '../utils/rbacHelpers';
+import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 
 interface DocumentDetailViewProps {
   documentId: string;
 }
 
 /**
-  what: renders document deep-dive detail view in light theme.
+  what: renders document deep-dive detail view in light theme with version history export controls.
   how: fetches document from store by documentId and displays 13 vessel or 11 crew extracted attributes.
   with what file: src/views/DocumentDetailView.tsx loaded by App.tsx.
 */
 export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentId }) => {
-  const { documents, setCurrentHashView } = useMapStore();
+  const { documents, setCurrentHashView, previousHashView, activePersona } = useMapStore();
+  const [isExportOpen, setIsExportOpen] = useState(false);
+
+  const backInfo = getBackButtonInfo('documents', 'Document Vault', previousHashView, activePersona);
 
   const doc = documents.find((d) => d.id === documentId) || documents[0];
 
   if (!doc) return <div>Document not found.</div>;
+
+  const handleExportCsv = () => {
+    const metaRows: Record<string, string>[] = [
+      {
+        Section: 'DOCUMENT SUMMARY',
+        AttributeOrFile: 'Title & Cert No',
+        ValueOrTimestamp: `${doc.title} (${doc.certificateNo})`,
+        AuthorityOrUploader: doc.issuingAuthority,
+        StatusOrSize: doc.verificationStatus,
+        Details: `Entity: ${doc.entityType} | Expiry: ${doc.expiryDate} | OCR Conf: ${doc.ocrConfidence}% | Version: ${doc.currentVersion}`,
+      },
+    ];
+
+    if (doc.vesselAttributes) {
+      Object.entries(doc.vesselAttributes).forEach(([key, val]) => {
+        metaRows.push({
+          Section: 'EXTRACTED ATTRIBUTES',
+          AttributeOrFile: key,
+          ValueOrTimestamp: String(val),
+          AuthorityOrUploader: 'OCR Extracted',
+          StatusOrSize: 'Valid',
+          Details: 'Vessel Particular Attribute',
+        });
+      });
+    } else if (doc.crewAttributes) {
+      Object.entries(doc.crewAttributes).forEach(([key, val]) => {
+        metaRows.push({
+          Section: 'EXTRACTED ATTRIBUTES',
+          AttributeOrFile: key,
+          ValueOrTimestamp: String(val),
+          AuthorityOrUploader: 'OCR Extracted',
+          StatusOrSize: 'Valid',
+          Details: 'Crew Attribute',
+        });
+      });
+    }
+
+    const versionRows = doc.versions.map((v) => ({
+      Section: 'FILE REVISION HISTORY',
+      AttributeOrFile: v.fileName,
+      ValueOrTimestamp: v.uploadedAt,
+      AuthorityOrUploader: v.uploadedBy,
+      StatusOrSize: `${(v.fileSizeBytes / (1024 * 1024)).toFixed(1)} MB`,
+      Details: `Version: ${v.versionLabel} | ${v.changeSummary}`,
+    }));
+
+    exportToCsv(`${doc.certificateNo}_Complete_Document_Detail`, [...metaRows, ...versionRows]);
+    setIsExportOpen(false);
+  };
+
+  const handleExportPdf = () => {
+    const headers = ['Section', 'Attribute / File Name', 'Value / Timestamp', 'Authority / Uploader', 'Status / Size', 'Details'];
+    const metaRows: (string | number)[][] = [
+      [
+        'DOCUMENT SUMMARY',
+        `${doc.title} (${doc.certificateNo})`,
+        `Expiry: ${doc.expiryDate}`,
+        doc.issuingAuthority,
+        doc.verificationStatus,
+        `Type: ${doc.entityType} | OCR: ${doc.ocrConfidence}% | Version: ${doc.currentVersion}`,
+      ],
+    ];
+
+    if (doc.vesselAttributes) {
+      Object.entries(doc.vesselAttributes).forEach(([key, val]) => {
+        metaRows.push(['EXTRACTED ATTRIBUTES', key, String(val), 'OCR System', 'Verified', 'Vessel Attribute']);
+      });
+    } else if (doc.crewAttributes) {
+      Object.entries(doc.crewAttributes).forEach(([key, val]) => {
+        metaRows.push(['EXTRACTED ATTRIBUTES', key, String(val), 'OCR System', 'Verified', 'Crew Attribute']);
+      });
+    }
+
+    const versionRows: (string | number)[][] = doc.versions.map((v) => [
+      'FILE REVISION HISTORY',
+      v.fileName,
+      v.uploadedAt,
+      v.uploadedBy,
+      `${(v.fileSizeBytes / (1024 * 1024)).toFixed(1)} MB`,
+      `Version ${v.versionLabel}: ${v.changeSummary}`,
+    ]);
+
+    exportToPdf(`${doc.title} Complete Detail Report`, headers, [...metaRows, ...versionRows]);
+    setIsExportOpen(false);
+  };
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -32,9 +122,9 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
         <button
           type="button"
           className="btn btn-sm btn-outline-secondary"
-          onClick={() => setCurrentHashView('documents')}
+          onClick={() => setCurrentHashView(backInfo.targetView)}
         >
-          ← Back to Document Vault
+          {backInfo.label}
         </button>
         <div className="badge bg-light text-dark border font-mono-code p-2">
           Cert #: {doc.certificateNo} | Entity: {doc.entityType}
@@ -55,7 +145,9 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
               Issuing Authority: <strong>{doc.issuingAuthority}</strong> | Expiry: <span className="font-mono-code">{formatMaritimeDate(doc.expiryDate)}</span>
             </div>
           </div>
-          <div>
+
+          {/* Opposite Corner Controls: Status Badge + Export Data Button */}
+          <div className="d-flex align-items-center gap-3 ms-auto">
             <span
               className={`badge p-2 fs-6 ${doc.verificationStatus === 'Verified'
                   ? 'bg-success text-white'
@@ -68,6 +160,31 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
             >
               Status: {doc.verificationStatus}
             </span>
+
+            {/* Export Data Button in opposite corner */}
+            <div className="dropdown position-relative">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
+                onClick={() => setIsExportOpen(!isExportOpen)}
+              >
+                Export Data
+              </button>
+              {isExportOpen && (
+                <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border" style={{ zIndex: 1050 }}>
+                  <li>
+                    <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
+                      Export as CSV (.csv)
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
+                      Export as PDF (.pdf)
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -161,7 +278,9 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
 
       {/* Version History Table */}
       <div className="card map-card-custom">
-        <div className="card-header">File Revision History ({doc.versions.length} Versions)</div>
+        <div className="card-header p-3 fw-bold text-dark">
+          File Revision History ({doc.versions.length} Versions)
+        </div>
         <div className="table-responsive">
           <table className="table map-table-custom align-middle mb-0">
             <thead>

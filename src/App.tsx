@@ -20,9 +20,12 @@ import { DocumentLibraryView } from './views/DocumentLibraryView';
 import { DocumentDetailView } from './views/DocumentDetailView';
 import { VerifierWorkspaceView } from './views/VerifierWorkspaceView';
 import { InspectorWorkspaceView } from './views/InspectorWorkspaceView';
-import { ApproverDashboardView } from './views/ApproverDashboardView';
+import { InspectionChecklistView } from './views/InspectionChecklistView';
 import { AuditTrailView } from './views/AuditTrailView';
+import { UserManagementView } from './views/UserManagementView';
 import './App.css';
+
+import { isViewAccessibleToPersona } from './utils/rbacHelpers';
 
 /**
   what: renders the root application shell and handles window hash change navigation or login page.
@@ -30,7 +33,7 @@ import './App.css';
   with what file: src/App.tsx mounted by src/main.tsx.
 */
 export const App: React.FC = () => {
-  const { currentHashView, currentEntityId, setCurrentHashView, isAuthenticated } = useMapStore();
+  const { currentHashView, currentEntityId, setCurrentHashView, isAuthenticated, activePersona } = useMapStore();
 
   useEffect(() => {
     /* parse initial hash route on mount */
@@ -51,6 +54,13 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  /* enforce RBAC route restriction across all active user personas */
+  useEffect(() => {
+    if (!isViewAccessibleToPersona(currentHashView, currentEntityId, activePersona)) {
+      setCurrentHashView('dashboard');
+    }
+  }, [activePersona, currentHashView, currentEntityId, setCurrentHashView]);
+
   /* render login view if user is unauthenticated */
   if (!isAuthenticated) {
     return <LoginView />;
@@ -69,12 +79,13 @@ export const App: React.FC = () => {
         return currentEntityId ? <DocumentDetailView documentId={currentEntityId} /> : <DocumentLibraryView />;
       case 'verifier':
         return <VerifierWorkspaceView />;
+      case 'inspection':
       case 'inspector':
-        return <InspectorWorkspaceView />;
-      case 'approver':
-        return <ApproverDashboardView />;
+        return currentEntityId ? <InspectionChecklistView vesselName={currentEntityId} /> : <InspectorWorkspaceView />;
       case 'audit':
         return <AuditTrailView />;
+      case 'users':
+        return <UserManagementView />;
       case 'dashboard':
       default:
         return <DashboardView />;

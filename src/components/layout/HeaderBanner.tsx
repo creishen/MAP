@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { UserRolePersona } from '../../types/audit';
+import { getBackButtonInfo } from '../../utils/rbacHelpers';
 
 /**
   what: renders top header bar with breadcrumb page title, scenario toggle, and viewing as persona pills matching the mockup design.
@@ -18,12 +19,15 @@ export const HeaderBanner: React.FC = () => {
     activePersona,
     setActivePersona,
     currentHashView,
+    previousHashView,
     currentEntityId,
     setCurrentHashView,
     vessels,
     assuranceSets,
     documents,
   } = useMapStore();
+
+  const backInfo = getBackButtonInfo('assurance-sets', 'Assurance Sets', previousHashView, activePersona);
 
   const rolesList: { role: UserRolePersona; label: string }[] = [
     { role: 'Administrator', label: 'Admin' },
@@ -93,9 +97,9 @@ export const HeaderBanner: React.FC = () => {
           <button
             type="button"
             className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold"
-            onClick={() => setCurrentHashView('assurance-sets')}
+            onClick={() => setCurrentHashView(backInfo.targetView)}
           >
-            ← Back to Assurance Sets
+            {backInfo.label}
           </button>
         ) : (
           <>

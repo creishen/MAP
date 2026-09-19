@@ -110,8 +110,8 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
           </select>
         </div>
 
-        {/* Right: Export & Register Buttons */}
-        <div className="d-flex align-items-center gap-2">
+        {/* Right: Export & Register Buttons on corner right of the row */}
+        <div className="d-flex align-items-center gap-2 ms-auto">
           <div className="dropdown position-relative">
             <button
               type="button"

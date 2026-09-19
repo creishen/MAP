@@ -124,8 +124,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
           </select>
         </div>
 
-        {/* Group 2 (Right): Export & Upload Action Buttons */}
-        <div className="d-flex align-items-center gap-2">
+        {/* Group 2 (Right): Export & Upload Action Buttons on corner right of the row */}
+        <div className="d-flex align-items-center gap-2 ms-auto">
           {/* Export Dropdown */}
           <div className="dropdown position-relative">
             <button

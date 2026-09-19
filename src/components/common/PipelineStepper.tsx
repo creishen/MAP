@@ -28,11 +28,29 @@ export const PipelineStepper: React.FC<PipelineStepperProps> = ({
     { stage: 'Validation', label: '2. Validation', num: 2 },
     { stage: 'Verification', label: '3. Verification', num: 3 },
     { stage: 'Inspection', label: '4. Inspection', num: 4 },
-    { stage: 'Approval', label: '5. Approval', num: 5 },
-    { stage: 'Certified', label: '6. Certified', num: 6 },
+    { stage: 'Certified', label: '5. Approved & Certified', num: 5 },
   ];
 
-  const currentIdx = stages.findIndex((s) => s.stage === currentStage);
+  const getStageIndex = (stage: AssuranceStage): number => {
+    switch (stage) {
+      case 'Initiated':
+        return 0;
+      case 'Validation':
+        return 1;
+      case 'Verification':
+        return 2;
+      case 'Inspection':
+        return 3;
+      case 'Approval':
+      case 'Certified':
+      case 'Approved & Certified':
+        return 4;
+      default:
+        return 0;
+    }
+  };
+
+  const currentIdx = getStageIndex(currentStage);
 
   if (orientation === 'vertical') {
     return (
@@ -44,24 +62,22 @@ export const PipelineStepper: React.FC<PipelineStepperProps> = ({
           return (
             <div
               key={s.stage}
-              className={`d-flex align-items-center gap-3 p-2 rounded-2 transition-all ${
-                isActive
-                  ? 'bg-primary-subtle text-primary fw-bold border border-primary-subtle'
-                  : isCompleted
+              className={`d-flex align-items-center gap-3 p-2 rounded-2 transition-all ${isActive
+                ? 'bg-primary-subtle text-primary fw-bold border border-primary-subtle'
+                : isCompleted
                   ? 'text-success'
                   : 'text-secondary opacity-75'
-              }`}
+                }`}
               onClick={() => onStageSelect && onStageSelect(s.stage)}
               style={{ cursor: onStageSelect ? 'pointer' : 'default', fontSize: '0.8rem' }}
             >
               <div
-                className={`d-flex align-items-center justify-content-center rounded-circle font-mono-code fw-bold flex-shrink-0 ${
-                  isCompleted
-                    ? 'bg-success text-white'
-                    : isActive
+                className={`d-flex align-items-center justify-content-center rounded-circle font-mono-code fw-bold flex-shrink-0 ${isCompleted
+                  ? 'bg-success text-white'
+                  : isActive
                     ? 'bg-primary text-white shadow-2xs'
                     : 'bg-light text-secondary border'
-                }`}
+                  }`}
                 style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}
               >
                 {isCompleted ? '✓' : s.num}

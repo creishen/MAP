@@ -54,34 +54,28 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'vessels',
       label: 'Vessels',
-      allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
+      allowedRoles: ['Administrator', 'C Admin', 'Submitter'],
     },
     {
       key: 'assurance-sets',
       label: 'Assurance Sets',
-      allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
+      allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier'],
     },
     {
       key: 'documents',
       label: 'Document Library',
-      allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
+      allowedRoles: ['Administrator', 'Submitter'],
     },
     {
       key: 'verifier',
       label: 'Verification Queue',
-      allowedRoles: ['Administrator', 'C Admin', 'Verifier'],
+      allowedRoles: ['Administrator'],
       badgeText: '2',
     },
     {
       key: 'inspector',
       label: 'Physical Inspections',
-      allowedRoles: ['Administrator', 'Inspector'],
-      badgeText: '1',
-    },
-    {
-      key: 'approver',
-      label: 'Approvals & Readiness',
-      allowedRoles: ['Administrator', 'C Admin', 'Approver'],
+      allowedRoles: ['Administrator'],
       badgeText: '1',
     },
     {
@@ -89,6 +83,12 @@ export const AppSidebar: React.FC = () => {
       label: 'Immutable Audit Trail',
       allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
       badgeText: 'Logs',
+    },
+    {
+      key: 'users',
+      label: 'User Management',
+      allowedRoles: ['Administrator'],
+      badgeText: 'Admin',
     },
   ];
 

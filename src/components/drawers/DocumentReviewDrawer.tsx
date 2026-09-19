@@ -11,6 +11,7 @@ import { DocumentUploadModal } from './DocumentUploadModal';
 
 interface DocumentReviewDrawerProps {
   document: MasterDocument | null;
+  requirementNotes?: string;
   onClose: () => void;
 }
 
@@ -27,7 +28,7 @@ interface ExtractedAttribute {
   how: displays document metadata header, scanned page preview box with quality checks, OCR extracted attributes with progress bars, and exception action banner.
   with what file: src/components/drawers/DocumentReviewDrawer.tsx loaded by VerifierWorkspaceView.tsx and AssuranceDetailView.tsx.
 */
-export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ document, onClose }) => {
+export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ document, requirementNotes, onClose }) => {
   const { verifyDocument, activePersona } = useMapStore();
   const [comment, setComment] = useState('');
   const [showManualEdit, setShowManualEdit] = useState(false);
@@ -37,9 +38,10 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
 
   const isVerified = document.verificationStatus === 'Verified';
   const canSubmit = activePersona === 'Submitter' || activePersona === 'Administrator';
-  const canVerify = activePersona === 'Verifier' || activePersona === 'Administrator';
+  const canVerify = activePersona === 'Verifier' || activePersona === 'Administrator' || activePersona === 'Approver';
 
   const isReuploaded = document.versions.length > 1 || document.currentVersion !== 'v1.0' || (document.ocrConfidence && document.ocrConfidence >= 90);
+  const activeNotes = requirementNotes || document.verificationNotes || (document.versions.length > 0 ? document.versions[0].changeSummary : undefined);
 
   /* mock extracted attributes matching design screenshot */
   const extractedAttributes: ExtractedAttribute[] = document.crewAttributes
@@ -172,6 +174,18 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
 
             {/* right column: extracted metadata attributes & ocr confidence bars */}
             <div className="col-md-8 col-lg-9 d-flex flex-column gap-1">
+              {/* Verification Notes & Audit Feedback Card */}
+              {activeNotes && (
+                <div className="p-3 bg-light border border-info-subtle rounded-3 mb-2.5 font-mono-code small">
+                  <div className="fw-bold text-uppercase text-secondary mb-1" style={{ fontSize: '0.675rem', letterSpacing: '0.06em' }}>
+                    Requirement Verification Notes & Feedback
+                  </div>
+                  <div className="text-dark fw-semibold" style={{ fontSize: '0.825rem' }}>
+                    {activeNotes}
+                  </div>
+                </div>
+              )}
+
               {extractedAttributes.map((attr) => {
                 const isBelowThreshold = attr.confidence < 90 && attr.confidence > 0;
                 const isMissing = attr.isMandatoryMissing;
@@ -222,48 +236,78 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
             </div>
           </div>
 
-          {/* Locked Notice if Verified */}
+          {/* Locked Notice if Verified / Approved */}
           {isVerified ? (
             <div
-              className="p-3.5 rounded-3 d-flex align-items-center justify-content-between border shadow-2xs"
+              className="p-4 rounded-3 d-flex flex-column gap-3 border shadow-2xs my-3"
               style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}
             >
-              <div>
-                <div className="fw-bold text-success-emphasis mb-0.5" style={{ fontSize: '0.875rem' }}>
-                  Document Verified & Locked
+              <div className="d-flex align-items-center justify-content-between">
+                <div>
+                  <div className="fw-bold text-success-emphasis mb-1" style={{ fontSize: '0.95rem' }}>
+                    Approvals & Readiness Review — Document Approved & Certified
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#166534', lineHeight: '1.4' }}>
+                    This statutory document has been approved and verified for compliance readiness.
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#166534', lineHeight: '1.4' }}>
-                  This statutory document has been verified. Verified data cannot be altered or re-uploaded.
-                </div>
+                <span className="badge bg-success text-white font-mono-code px-3 py-2" style={{ fontSize: '0.8rem' }}>
+                  Approved & Certified
+                </span>
               </div>
-              <span className="badge bg-success text-white font-mono-code px-3 py-2" style={{ fontSize: '0.775rem' }}>
-                Verified
-              </span>
+              {document.verificationNotes && (
+                <div className="p-3 rounded-3 bg-white border border-success-subtle text-dark small shadow-2xs" style={{ fontSize: '0.8rem' }}>
+                  <div className="fw-bold text-success-emphasis mb-1" style={{ fontSize: '0.725rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Approval & Verification Notes
+                  </div>
+                  <div className="text-dark">{document.verificationNotes}</div>
+                </div>
+              )}
             </div>
           ) : (
-            /* Bottom sticky exception action banner for unverified documents */
+            /* Bottom sticky compact Approvals & Readiness Review section */
             <div
-              className="p-3.5 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3 border shadow-sm"
+              className="p-4 rounded-3 border shadow-sm my-3"
               style={{
-                backgroundColor: '#fffbeb',
-                borderColor: '#fde68a',
+                backgroundColor: '#f8fafc',
+                borderColor: '#cbd5e1',
               }}
             >
-              <div>
-                <div className="fw-bold mb-0.5" style={{ fontSize: '0.875rem', color: '#92400e' }}>
-                  Verification Pending / Exception Review
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                  <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.95rem' }}>
+                    Approvals & Readiness Review
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    Review extracted attributes and record executive justification notes before approval or returning for correction.
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#78350f', lineHeight: '1.4' }}>
-                  Review extracted attributes. Verifiers may request correction or verify; Submitters can submit replacement revisions.
-                </div>
+                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>
+                  Pending Sign-Off
+                </span>
               </div>
 
-              <div className="d-flex align-items-center gap-2 flex-shrink-0">
+              {/* Justification & Feedback Notes Field */}
+              <div className="mb-3.5">
+                <label className="form-label text-dark small fw-semibold mb-1.5" style={{ fontSize: '0.8rem' }}>
+                  Approver / Verifier Justification Notes
+                </label>
+                <textarea
+                  className="form-control bg-white text-dark border p-3"
+                  rows={2}
+                  placeholder="Enter approval justification notes or return for correction feedback..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  style={{ fontSize: '0.825rem', borderRadius: '6px' }}
+                />
+              </div>
+
+              <div className="d-flex align-items-center justify-content-end gap-2.5 pt-3 border-top">
                 {canSubmit && (
                   <button
                     type="button"
-                    className="btn btn-sm btn-primary text-white px-3 py-2 fw-bold shadow-sm"
-                    style={{ fontSize: '0.775rem' }}
+                    className="btn btn-primary text-white px-3.5 py-2 fw-bold shadow-sm"
+                    style={{ fontSize: '0.8rem' }}
                     onClick={() => setIsUploadModalOpen(true)}
                   >
                     Upload Replacement Revision
@@ -273,19 +317,19 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                   <>
                     <button
                       type="button"
-                      className="btn btn-sm text-white px-3 py-2 fw-bold shadow-sm"
-                      style={{ fontSize: '0.775rem', backgroundColor: '#c2410c', borderColor: '#c2410c' }}
+                      className="btn text-dark px-3.5 py-2 fw-bold shadow-sm"
+                      style={{ fontSize: '0.8rem', backgroundColor: '#fef3c7', borderColor: '#fde68a' }}
                       onClick={handleCorrection}
                     >
-                      Request Correction
+                      Return for Correction
                     </button>
                     <button
                       type="button"
-                      className="btn btn-sm btn-success text-white px-3 py-2 fw-bold shadow-sm"
-                      style={{ fontSize: '0.775rem', backgroundColor: '#059669', borderColor: '#059669' }}
+                      className="btn btn-success text-white px-3.5 py-2 fw-bold shadow-sm"
+                      style={{ fontSize: '0.8rem', backgroundColor: '#059669', borderColor: '#059669' }}
                       onClick={handleVerify}
                     >
-                      Verify Document
+                      Approve & Certify Document
                     </button>
                   </>
                 )}

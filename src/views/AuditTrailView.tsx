@@ -7,18 +7,23 @@
 import React, { useState } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { formatMaritimeDate } from '../utils/formatters';
+import { filterAuditTrailForPersona } from '../utils/rbacHelpers';
+import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 
 /**
-  what: renders the full-page immutable audit trail view in clean light theme.
-  how: fetches auditEvents array from zustand store and renders filterable audit table with field deltas.
+  what: renders the full-page immutable audit trail view in clean light theme with data export capabilities.
+  how: fetches auditEvents array from zustand store, filters items based on persona RBAC rules and search query, and provides export to CSV/PDF.
   with what file: src/views/AuditTrailView.tsx loaded by App.tsx router.
 */
 export const AuditTrailView: React.FC = () => {
-  const { auditEvents } = useMapStore();
+  const { auditEvents, activePersona, assuranceSets, vessels } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
-  const filteredEvents = auditEvents.filter((ev) => {
+  const visibleEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
+
+  const filteredEvents = visibleEvents.filter((ev) => {
     const matchesSearch =
       ev.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ev.targetAsset.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -27,6 +32,32 @@ export const AuditTrailView: React.FC = () => {
     const matchesRole = roleFilter === 'ALL' || ev.userRole === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  const handleExportCsv = () => {
+    const exportData = filteredEvents.map((ev) => ({
+      TimestampUtc: ev.timestampUtc,
+      Action: ev.action,
+      TargetAsset: ev.targetAsset,
+      UserRole: ev.userRole,
+      Organization: ev.organization,
+      Notes: ev.justificationNotes || '',
+    }));
+    exportToCsv('System_Audit_Trail', exportData);
+    setIsExportOpen(false);
+  };
+
+  const handleExportPdf = () => {
+    const headers = ['Timestamp (UTC)', 'Action', 'Target Asset', 'User Role & Org', 'Notes'];
+    const rows = filteredEvents.map((ev) => [
+      ev.timestampUtc,
+      ev.action,
+      ev.targetAsset,
+      `${ev.userRole} (${ev.organization})`,
+      ev.justificationNotes || '-',
+    ]);
+    exportToPdf('System Regulatory Audit Trail Log', headers, rows);
+    setIsExportOpen(false);
+  };
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -58,8 +89,34 @@ export const AuditTrailView: React.FC = () => {
               <option value="Approver">Approver</option>
             </select>
           </div>
-          <div className="text-secondary small">
-            Showing <strong className="text-dark">{filteredEvents.length}</strong> of {auditEvents.length} logs
+
+          <div className="d-flex align-items-center gap-3 ms-auto">
+            <div className="text-secondary small">
+              Showing <strong className="text-dark">{filteredEvents.length}</strong> of {visibleEvents.length} logs
+            </div>
+            <div className="dropdown position-relative">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
+                onClick={() => setIsExportOpen(!isExportOpen)}
+              >
+                Export Data
+              </button>
+              {isExportOpen && (
+                <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border">
+                  <li>
+                    <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
+                      Export as CSV (.csv)
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
+                      Export as PDF (.pdf)
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
           </div>
         </div>
 

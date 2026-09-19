@@ -9,21 +9,25 @@ import { useMapStore } from '../store/useMapStore';
 import { VesselParticulars } from '../types/vessel';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
+import { filterAuditTrailForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 
 interface VesselDetailViewProps {
   vesselId: string;
 }
 
 export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) => {
-  const { 
-    vessels, 
-    updateVessel, 
-    setCurrentHashView, 
-    activePersona, 
-    assuranceSets, 
-    documents, 
-    auditEvents 
+  const {
+    vessels,
+    updateVessel,
+    setCurrentHashView,
+    previousHashView,
+    activePersona,
+    assuranceSets,
+    documents,
+    auditEvents
   } = useMapStore();
+
+  const backInfo = getBackButtonInfo('vessels', 'Fleet Registry', previousHashView, activePersona);
 
   const vessel = vessels.find((v) => v.id === vesselId) || vessels[0];
 
@@ -40,10 +44,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
     return <div className="p-4 text-center">Vessel not found.</div>;
   }
 
+  const visibleAuditEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
+
   // Linked assurance sets, documents, and audit items for this vessel
   const linkedSets = assuranceSets.filter((s) => s.vesselId === vessel.id);
   const linkedDocs = documents.filter((d) => d.vesselId === vessel.id);
-  const linkedAudits = auditEvents.filter(
+  const linkedAudits = visibleAuditEvents.filter(
     (a) => a.targetAsset.includes(vessel.imoNumber) || a.targetAsset.includes(vessel.name)
   );
 
@@ -77,9 +83,9 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         <button
           type="button"
           className="btn btn-sm btn-outline-secondary"
-          onClick={() => setCurrentHashView('vessels')}
+          onClick={() => setCurrentHashView(backInfo.targetView)}
         >
-          &larr; Back to Fleet Registry
+          {backInfo.label}
         </button>
 
         <div className="d-flex align-items-center gap-2">

@@ -7,7 +7,8 @@
 import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { AssuranceSet, AssuranceRequirement } from '../types/assurance';
-import { MOCK_SYSTEM_USERS } from '../types/user';
+import { UserProfile } from '../types/user';
+import { getBackButtonInfo } from '../utils/rbacHelpers';
 
 interface MasterDocItem {
   id: string;
@@ -35,7 +36,9 @@ const INITIAL_MASTER_DOCS: MasterDocItem[] = [
   with what file: src/views/CreateAssuranceSetView.tsx rendered by App.tsx.
 */
 export const CreateAssuranceSetView: React.FC = () => {
-  const { vessels, assuranceSets, addAssuranceSet, activePersona, setCurrentHashView } = useMapStore();
+  const { vessels, assuranceSets, addAssuranceSet, activePersona, setCurrentHashView, previousHashView, users } = useMapStore();
+
+  const backInfo = getBackButtonInfo('assurance-sets', 'Assurance Sets', previousHashView, activePersona);
 
   const [title, setTitle] = useState('');
   const [vesselId, setVesselId] = useState(vessels[0]?.id || '');
@@ -57,10 +60,10 @@ export const CreateAssuranceSetView: React.FC = () => {
   const [approvalRequired, setApprovalRequired] = useState(true);
 
   /* filter users by role */
-  const submitterUsers = MOCK_SYSTEM_USERS.filter((u) => u.role === 'Submitter');
-  const verifierUsers = MOCK_SYSTEM_USERS.filter((u) => u.role === 'Verifier');
-  const inspectorUsers = MOCK_SYSTEM_USERS.filter((u) => u.role === 'Inspector');
-  const approverUsers = MOCK_SYSTEM_USERS.filter((u) => u.role === 'Approver');
+  const submitterUsers = users.filter((u: UserProfile) => u.role === 'Submitter');
+  const verifierUsers = users.filter((u: UserProfile) => u.role === 'Verifier');
+  const inspectorUsers = users.filter((u: UserProfile) => u.role === 'Inspector');
+  const approverUsers = users.filter((u: UserProfile) => u.role === 'Approver');
 
   /* stakeholder assignment state */
   const [assignedSubmitter, setAssignedSubmitter] = useState(submitterUsers[0]?.id || '');
@@ -81,7 +84,7 @@ export const CreateAssuranceSetView: React.FC = () => {
     if (recentVesselSet) {
       if (recentVesselSet.assignedSubmitter) {
         const matchSub = submitterUsers.find(
-          (u) =>
+          (u: UserProfile) =>
             recentVesselSet.assignedSubmitter?.includes(u.name) ||
             recentVesselSet.assignedSubmitter?.includes(u.organization)
         );
@@ -89,7 +92,7 @@ export const CreateAssuranceSetView: React.FC = () => {
       }
       if (recentVesselSet.assignedVerifier) {
         const matchVer = verifierUsers.find(
-          (u) =>
+          (u: UserProfile) =>
             recentVesselSet.assignedVerifier?.includes(u.name) ||
             recentVesselSet.assignedVerifier?.includes(u.organization)
         );
@@ -97,7 +100,7 @@ export const CreateAssuranceSetView: React.FC = () => {
       }
       if (recentVesselSet.assignedInspector) {
         const matchIns = inspectorUsers.find(
-          (u) =>
+          (u: UserProfile) =>
             recentVesselSet.assignedInspector?.includes(u.name) ||
             recentVesselSet.assignedInspector?.includes(u.organization)
         );
@@ -105,7 +108,7 @@ export const CreateAssuranceSetView: React.FC = () => {
       }
       if (recentVesselSet.assignedApprover) {
         const matchApp = approverUsers.find(
-          (u) =>
+          (u: UserProfile) =>
             recentVesselSet.assignedApprover?.includes(u.name) ||
             recentVesselSet.assignedApprover?.includes(u.organization)
         );
@@ -121,10 +124,10 @@ export const CreateAssuranceSetView: React.FC = () => {
     }));
   };
 
-  const selectedSubmitter = MOCK_SYSTEM_USERS.find((u) => u.id === assignedSubmitter);
-  const selectedVerifier = MOCK_SYSTEM_USERS.find((u) => u.id === assignedVerifier);
-  const selectedInspector = MOCK_SYSTEM_USERS.find((u) => u.id === assignedInspector);
-  const selectedApprover = MOCK_SYSTEM_USERS.find((u) => u.id === assignedApprover);
+  const selectedSubmitter = users.find((u: UserProfile) => u.id === assignedSubmitter);
+  const selectedVerifier = users.find((u: UserProfile) => u.id === assignedVerifier);
+  const selectedInspector = users.find((u: UserProfile) => u.id === assignedInspector);
+  const selectedApprover = users.find((u: UserProfile) => u.id === assignedApprover);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,9 +200,9 @@ export const CreateAssuranceSetView: React.FC = () => {
                 <button
                   type="button"
                   className="btn btn-link p-0 text-decoration-none text-secondary"
-                  onClick={() => setCurrentHashView('assurance-sets')}
+                  onClick={() => setCurrentHashView(backInfo.targetView)}
                 >
-                  Assurance Sets
+                  {backInfo.label.replace('← ', '')}
                 </button>
               </li>
               <li className="breadcrumb-item active text-dark fw-semibold" aria-current="page">
@@ -339,16 +342,6 @@ export const CreateAssuranceSetView: React.FC = () => {
                   </div>
                 </div>
                 <div className="card-body p-4">
-                  {/* auto-population indicator notice */}
-                  {recentVesselSet && (
-                    <div className="p-3 border rounded-3 bg-primary-subtle text-primary-emphasis border-primary-subtle mb-3 d-flex align-items-center justify-content-between">
-                      <div className="small">
-                        <strong>Established Vessel Stakeholders Pre-Populated:</strong> Role assignments have been automatically loaded from {selectedVessel.name}'s recent campaign ({recentVesselSet.id}).
-                      </div>
-                      <span className="badge bg-primary text-white font-mono-code ms-2">Admin Editable</span>
-                    </div>
-                  )}
-
                   <div className="d-flex flex-column gap-3">
                     {/* submitter assignment (always required) */}
                     <div className="p-3 border rounded-3 bg-light-subtle">
@@ -367,9 +360,9 @@ export const CreateAssuranceSetView: React.FC = () => {
                         onChange={(e) => setAssignedSubmitter(e.target.value)}
                         required
                       >
-                        {submitterUsers.map((u) => (
+                        {submitterUsers.map((u: UserProfile) => (
                           <option key={u.id} value={u.id}>
-                            {u.name} ({u.organization}) — {u.title}
+                            {u.name} ({u.organization}) — {u.departmentOrScope}
                           </option>
                         ))}
                       </select>
@@ -399,9 +392,9 @@ export const CreateAssuranceSetView: React.FC = () => {
                           onChange={(e) => setAssignedVerifier(e.target.value)}
                           required
                         >
-                          {verifierUsers.map((u) => (
+                          {verifierUsers.map((u: UserProfile) => (
                             <option key={u.id} value={u.id}>
-                              {u.name} ({u.organization}) — {u.title}
+                              {u.name} ({u.organization}) — {u.departmentOrScope}
                             </option>
                           ))}
                         </select>
@@ -432,9 +425,9 @@ export const CreateAssuranceSetView: React.FC = () => {
                           onChange={(e) => setAssignedInspector(e.target.value)}
                           required
                         >
-                          {inspectorUsers.map((u) => (
+                          {inspectorUsers.map((u: UserProfile) => (
                             <option key={u.id} value={u.id}>
-                              {u.name} ({u.organization}) — {u.title}
+                              {u.name} ({u.organization}) — {u.departmentOrScope}
                             </option>
                           ))}
                         </select>
@@ -465,9 +458,9 @@ export const CreateAssuranceSetView: React.FC = () => {
                           onChange={(e) => setAssignedApprover(e.target.value)}
                           required
                         >
-                          {approverUsers.map((u) => (
+                          {approverUsers.map((u: UserProfile) => (
                             <option key={u.id} value={u.id}>
-                              {u.name} ({u.organization}) — {u.title}
+                              {u.name} ({u.organization}) — {u.departmentOrScope}
                             </option>
                           ))}
                         </select>
