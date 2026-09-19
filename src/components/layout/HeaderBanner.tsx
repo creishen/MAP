@@ -24,8 +24,6 @@ export const HeaderBanner: React.FC = () => {
     documents,
   } = useMapStore();
 
-  const [scenario, setScenario] = useState<'Provider-initiated' | 'Client-initiated'>('Provider-initiated');
-
   const rolesList: { role: UserRolePersona; label: string }[] = [
     { role: 'Administrator', label: 'Admin' },
     { role: 'C Admin', label: 'C Admin' },
@@ -50,10 +48,9 @@ export const HeaderBanner: React.FC = () => {
       }
       case 'assurance-sets': {
         if (currentEntityId) {
-          const s = assuranceSets.find((item) => item.id === currentEntityId);
           return {
-            breadcrumb: `AS-2041 · ASSURANCE SET`,
-            title: s ? s.title : 'Assurance Set Detail',
+            breadcrumb: '',
+            title: 'Assurance Set Detail Page',
           };
         }
         return { breadcrumb: 'AS-2041 · Fleet overview', title: 'Assurance dashboard' };
@@ -101,31 +98,6 @@ export const HeaderBanner: React.FC = () => {
 
       {/* right side: scenario selector & viewing as persona pills */}
       <div className="d-flex align-items-center gap-4">
-        {/* scenario selector pills */}
-        <div className="d-flex align-items-center gap-2 bg-light p-1 rounded-pill border" style={{ backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}>
-          <span className="text-uppercase fw-bold px-2" style={{ fontSize: '0.625rem', color: '#94a3b8', letterSpacing: '0.08em' }}>
-            SCENARIO
-          </span>
-          <button
-            type="button"
-            className={`btn btn-sm rounded-pill px-3 py-1 ${scenario === 'Provider-initiated' ? 'bg-dark text-white fw-semibold' : 'text-secondary bg-transparent border-0'
-              }`}
-            style={{ fontSize: '0.75rem', transition: 'all 0.15s ease' }}
-            onClick={() => setScenario('Provider-initiated')}
-          >
-            Provider-initiated
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm rounded-pill px-3 py-1 ${scenario === 'Client-initiated' ? 'bg-dark text-white fw-semibold' : 'text-secondary bg-transparent border-0'
-              }`}
-            style={{ fontSize: '0.75rem', transition: 'all 0.15s ease' }}
-            onClick={() => setScenario('Client-initiated')}
-          >
-            Client-initiated
-          </button>
-        </div>
-
         {/* viewing as persona selector pills */}
         <div className="d-flex align-items-center gap-2">
           <span className="text-uppercase fw-bold me-1" style={{ fontSize: '0.625rem', color: '#94a3b8', letterSpacing: '0.08em' }}>

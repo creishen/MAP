@@ -213,6 +213,10 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     readinessScore: 94,
     mandatoryInspectionRequired: true,
     inspectionCompleted: true,
+    assignedSubmitter: 'M. Chen (Pacific Ocean Logistics Operations)',
+    assignedVerifier: 'A. Fontaine (DNV Compliance Services)',
+    assignedInspector: 'N. Technical (AMSA Marine Audit Division)',
+    assignedApprover: 'P. Nardelli (Chevron Australia Pty Ltd)',
     requirements: [
       {
         id: 'REQ-101',
@@ -274,6 +278,9 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     readinessScore: 88,
     mandatoryInspectionRequired: false,
     inspectionCompleted: false,
+    assignedSubmitter: 'E. Ramirez (Northwind Marine Pty Ltd)',
+    assignedVerifier: "R. Thorne (Lloyd's Register Marine)",
+    assignedApprover: 'K. Osei (Southern Basin Energy Operations)',
     requirements: [
       {
         id: 'REQ-201',
@@ -301,6 +308,10 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     readinessScore: 78,
     mandatoryInspectionRequired: true,
     inspectionCompleted: false,
+    assignedSubmitter: 'S. Taylor (Coral Marine Assets Ltd)',
+    assignedVerifier: 'L. Vance (ABS Maritime Inspectorate)',
+    assignedInspector: 'G. Harrison (Marine Inspection Bureau)',
+    assignedApprover: 'H. Miller (Inpex Operations Australia)',
     requirements: [
       {
         id: 'REQ-301',

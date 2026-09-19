@@ -32,8 +32,10 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
 
   const isCAdmin = activePersona === 'C Admin';
 
-  const fulfilledCount = assuranceSet.requirements.filter((r) => r.isFulfilled).length;
+  /* requirement is fulfilled ONLY if verifier status is 'Verified' */
+  const verifiedCount = assuranceSet.requirements.filter((r) => r.verifierStatus === 'Verified').length;
   const totalCount = assuranceSet.requirements.length;
+  const isSetFullyFulfilled = totalCount > 0 && verifiedCount === totalCount;
 
   return (
     <div className="d-flex flex-column gap-4">
@@ -46,9 +48,6 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
         >
           ← Back to Assurance Sets
         </button>
-        <div className="badge bg-light text-dark border font-mono-code p-2">
-          Set ID: {assuranceSet.id} | Initiator: {assuranceSet.initiatorOrg}
-        </div>
       </div>
 
       {/* Prominent C Admin Read-Only Rule Restriction Banner */}
@@ -67,9 +66,28 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
           <div>
             <span className="badge bg-primary mb-2">{assuranceSet.initiatorRole}</span>
             <h3 className="fw-bold mb-1 text-primary">{assuranceSet.title}</h3>
+            <div className="text-secondary small font-mono-code mb-2">
+              Set ID: AS-2026-001 | Initiator: Chevron Australia Pty Ltd
+            </div>
             <div className="text-secondary small font-mono-code">
               Vessel: <strong className="text-dark">{assuranceSet.vesselName}</strong> (IMO {assuranceSet.imoNumber}) | Charter Window: {formatMaritimeDate(assuranceSet.charterWindowStart)} - {formatMaritimeDate(assuranceSet.charterWindowEnd)}
             </div>
+            {(assuranceSet.assignedSubmitter || assuranceSet.assignedVerifier || assuranceSet.assignedInspector || assuranceSet.assignedApprover) && (
+              <div className="d-flex flex-wrap align-items-center gap-3 mt-2 pt-2 border-top small text-slate-700">
+                {assuranceSet.assignedSubmitter && (
+                  <span><strong className="text-dark">Submitter:</strong> {assuranceSet.assignedSubmitter}</span>
+                )}
+                {assuranceSet.assignedVerifier && (
+                  <span><strong className="text-dark">Verifier:</strong> {assuranceSet.assignedVerifier}</span>
+                )}
+                {assuranceSet.assignedInspector && (
+                  <span><strong className="text-dark">Inspector:</strong> {assuranceSet.assignedInspector}</span>
+                )}
+                {assuranceSet.assignedApprover && (
+                  <span><strong className="text-dark">Approver:</strong> {assuranceSet.assignedApprover}</span>
+                )}
+              </div>
+            )}
           </div>
           <div className="d-flex align-items-center gap-4">
             <div>
@@ -80,22 +98,18 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
         </div>
       </div>
 
-      {/* Pipeline Stepper Component */}
-      <div className="card map-card-custom p-3">
-        <div className="text-uppercase text-secondary small fw-bold mb-2" style={{ letterSpacing: '0.05em' }}>
-          Compliance Lifecycle Stage Progress
-        </div>
-        <PipelineStepper
-          currentStage={assuranceSet.stage}
-          onStageSelect={isCAdmin ? undefined : (newStage) => updateAssuranceStage(assuranceSet.id, newStage)}
-        />
-      </div>
-
       {/* Requirements Register Table */}
       <div className="card map-card-custom">
         <div className="card-header d-flex align-items-center justify-between">
-          <span>Requirements Register ({fulfilledCount}/{totalCount} Fulfilled)</span>
-          <span className="badge bg-light text-dark border font-mono-code">Mandatory Verification Scope</span>
+          <div className="d-flex align-items-center gap-2">
+            <span className="fw-bold">Requirements Register</span>
+            <span className={`badge ${isSetFullyFulfilled ? 'bg-success text-white' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'}`}>
+              {verifiedCount}/{totalCount} Fulfilled {isSetFullyFulfilled ? '(All Verified)' : '(Pending Verification)'}
+            </span>
+          </div>
+          <span className="badge bg-light text-dark border font-mono-code">
+            Fulfillment Requires 'Verified' Status
+          </span>
         </div>
         <div className="table-responsive">
           <table className="table map-table-custom align-middle mb-0">
@@ -106,6 +120,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                 <th>Mandatory</th>
                 <th>OCR Confidence</th>
                 <th>Verifier Status</th>
+                <th>Fulfillment</th>
                 <th>Notes / Feedback</th>
                 <th className="text-end">Actions</th>
               </tr>
@@ -113,6 +128,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
             <tbody>
               {assuranceSet.requirements.map((req) => {
                 const linkedDoc = documents.find((d) => d.id === req.documentId);
+                const isVerified = req.verifierStatus === 'Verified';
 
                 return (
                   <tr key={req.id}>
@@ -124,7 +140,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                     <td className="fw-semibold text-dark">{req.title}</td>
                     <td>
                       <span className={`badge ${req.isMandatory ? 'bg-danger text-white' : 'bg-secondary text-white'}`}>
-                        {req.isMandatory ? 'Mandatory' : 'Optional'}
+                        {req.isMandatory ? 'Yes' : 'No'}
                       </span>
                     </td>
                     <td>
@@ -132,18 +148,28 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                     </td>
                     <td>
                       <span
-                        className={`badge ${
-                          req.verifierStatus === 'Verified'
-                            ? 'bg-success text-white'
-                            : req.verifierStatus === 'Correction Requested'
+                        className={`badge ${isVerified
+                          ? 'bg-success text-white'
+                          : req.verifierStatus === 'Correction Requested'
                             ? 'bg-warning text-dark'
                             : req.verifierStatus === 'Rejected'
-                            ? 'bg-danger text-white'
-                            : 'bg-light text-dark border'
-                        }`}
+                              ? 'bg-danger text-white'
+                              : 'bg-light text-dark border'
+                          }`}
                       >
                         {req.verifierStatus}
                       </span>
+                    </td>
+                    <td>
+                      {isVerified ? (
+                        <span className="badge bg-success-subtle text-success-emphasis border border-success-subtle font-mono-code" style={{ fontSize: '0.725rem' }}>
+                          Fulfilled
+                        </span>
+                      ) : (
+                        <span className="badge bg-light text-secondary border font-mono-code" style={{ fontSize: '0.725rem' }}>
+                          Unfulfilled
+                        </span>
+                      )}
                     </td>
                     <td className="small text-secondary">{req.notes || '-'}</td>
                     <td className="text-end">
@@ -156,13 +182,13 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                           Review Evidence
                         </button>
                       )}
-                      {!isCAdmin && (
+                      {!isCAdmin && !isVerified && (
                         <button
                           type="button"
                           className="btn btn-sm btn-success text-white me-1"
                           onClick={() => updateRequirementStatus(assuranceSet.id, req.id, 'Verified')}
                         >
-                          Quick Verify
+                          Verify & Fulfill
                         </button>
                       )}
                     </td>

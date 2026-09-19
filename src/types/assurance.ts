@@ -35,6 +35,10 @@ export interface AssuranceSet {
   requirements: AssuranceRequirement[];
   mandatoryInspectionRequired: boolean;
   inspectionCompleted: boolean;
+  assignedSubmitter?: string;
+  assignedVerifier?: string;
+  assignedInspector?: string;
+  assignedApprover?: string;
   approverDecision?: 'Approved' | 'Returned for Correction' | 'Rejected' | 'Pending';
   approverNotes?: string;
 }

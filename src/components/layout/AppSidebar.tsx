@@ -144,7 +144,9 @@ export const AppSidebar: React.FC = () => {
       {/* main navigation list with dot highlights */}
       <div className="nav flex-column nav-pills px-2">
         {visibleItems.map((item) => {
-          const isActive = currentHashView === item.key;
+          const isActive =
+            currentHashView === item.key ||
+            (item.key === 'assurance-sets' && currentHashView === 'create-assurance-set');
           return (
             <button
               key={item.key}

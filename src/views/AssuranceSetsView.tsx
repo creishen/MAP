@@ -1,22 +1,20 @@
 /* 
-  file summary: assurance sets view presenting active campaigns list and initiation modal trigger.
-  responsibilities: renders AssuranceTable component and connects initiation action trigger in table header.
+  file summary: assurance sets view presenting active campaigns list and initiation page trigger.
+  responsibilities: renders AssuranceTable component and connects initiation action navigation to create-assurance-set page.
   role in system: main view for Assurance Sets navigation (/assurance-sets).
 */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { AssuranceTable } from '../components/tables/AssuranceTable';
-import { AssuranceModal } from '../components/drawers/AssuranceModal';
 
 /**
   what: renders assurance sets campaign list view.
-  how: displays AssuranceTable component with inline controls and toggles AssuranceModal form.
+  how: displays AssuranceTable component with inline controls and navigates to create-assurance-set page route.
   with what file: src/views/AssuranceSetsView.tsx loaded by App.tsx.
 */
 export const AssuranceSetsView: React.FC = () => {
   const { setCurrentHashView } = useMapStore();
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <div className="d-flex flex-column gap-3">
@@ -25,11 +23,8 @@ export const AssuranceSetsView: React.FC = () => {
         onSelectSet={(set) => {
           setCurrentHashView('assurance-sets', set.id);
         }}
-        onInitiateSet={() => setIsModalOpen(true)}
+        onInitiateSet={() => setCurrentHashView('create-assurance-set')}
       />
-
-      {/* Initiation Modal */}
-      <AssuranceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 };

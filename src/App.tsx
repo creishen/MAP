@@ -14,6 +14,7 @@ import { DashboardView } from './views/DashboardView';
 import { FleetRegistryView } from './views/FleetRegistryView';
 import { VesselDetailView } from './views/VesselDetailView';
 import { AssuranceSetsView } from './views/AssuranceSetsView';
+import { CreateAssuranceSetView } from './views/CreateAssuranceSetView';
 import { AssuranceDetailView } from './views/AssuranceDetailView';
 import { DocumentLibraryView } from './views/DocumentLibraryView';
 import { DocumentDetailView } from './views/DocumentDetailView';
@@ -62,6 +63,8 @@ export const App: React.FC = () => {
         return currentEntityId ? <VesselDetailView vesselId={currentEntityId} /> : <FleetRegistryView />;
       case 'assurance-sets':
         return currentEntityId ? <AssuranceDetailView setId={currentEntityId} /> : <AssuranceSetsView />;
+      case 'create-assurance-set':
+        return <CreateAssuranceSetView />;
       case 'documents':
         return currentEntityId ? <DocumentDetailView documentId={currentEntityId} /> : <DocumentLibraryView />;
       case 'verifier':
