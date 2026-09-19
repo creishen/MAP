@@ -121,44 +121,6 @@ flowchart LR
 ```
 
 ---
-
-## Codebase Directory Structure
-
-```
-c:/mapFiles/MAP/
-├── src/
-│   ├── components/
-│   │   ├── drawers/
-│   │   │   └── InspectionDrawer.tsx       # UC-09 visual vessel survey modal
-│   │   ├── layout/
-│   │   │   ├── AppHeader.tsx              # Top navigation header
-│   │   │   └── AppSidebar.tsx             # 100vh left navigation sidebar
-│   │   ├── tables/                        # Data tables (audit trail, fleet)
-│   │   └── common/                        # Reusable badges, buttons, cards
-│   ├── store/
-│   │   └── useMapStore.ts                 # Zustand store for audit logs & persona state
-│   ├── types/
-│   │   └── index.ts                       # TypeScript interfaces for vessel, audit & CAPA
-│   ├── views/
-│   │   ├── InspectorWorkspaceView.tsx     # Inspector survey management
-│   │   ├── VerifierWorkspaceView.tsx      # Verifier document audit
-│   │   ├── ApproverDashboardView.tsx      # Approver sign-off dashboard
-│   │   ├── AuditTrailView.tsx             # System audit event logs
-│   │   ├── FleetRegistryView.tsx          # Vessel fleet management
-│   │   ├── VesselDetailView.tsx           # Single vessel assurance overview
-│   │   ├── DocumentDetailView.tsx         # Document verification detail view
-│   │   └── LoginView.tsx                  # Role authentication screen
-│   ├── App.tsx                            # Root routing layout
-│   ├── main.tsx                           # React entry point
-│   ├── index.css                          # Global typography & color tokens
-│   └── App.css                            # Layout stylesheet
-├── package.json                           # Project dependencies
-├── tsconfig.json                          # TypeScript configuration
-└── vite.config.ts                         # Vite build configuration
-```
-
----
-
 ## Getting Started
 
 ### Prerequisites
