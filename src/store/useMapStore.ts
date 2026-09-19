@@ -23,8 +23,8 @@ export interface MapStoreState {
   setActivePersona: (persona: UserRolePersona) => void;
 
   // Hash Navigation State
-  currentHashView: string; // e.g. "vessels", "assurance-sets", "documents", "verifier", "inspector", "approver"
-  currentEntityId?: string; // e.g. "VESSEL-001" or "AS-2026-001"
+  currentHashView: string;
+  currentEntityId?: string;
   setCurrentHashView: (view: string, entityId?: string) => void;
 
   // Active Asset Context
@@ -34,6 +34,7 @@ export interface MapStoreState {
   // Vessel Fleet State
   vessels: VesselParticulars[];
   addVessel: (vessel: VesselParticulars) => { success: boolean; message?: string };
+  updateVessel: (vessel: VesselParticulars) => void;
   updateVesselStatus: (vesselId: string, status: VesselParticulars['status']) => void;
 
   // Assurance Sets State
@@ -77,13 +78,7 @@ export interface MapStoreState {
   setAuditDrawerOpen: (open: boolean) => void;
 }
 
-/**
-  what: creates the unified zustand store holding state and actions for map.
-  how: initializes state with maritime mock data and exposes reactive action methods.
-  with what file: src/store/useMapStore.ts imported by views, layout, components, and tests.
-*/
 export const useMapStore = create<MapStoreState>((set, get) => ({
-  // Authentication defaults to true for smooth demo experience
   isAuthenticated: true,
   login: (role) => {
     get().logAuditEvent({
@@ -108,10 +103,8 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set({ isAuthenticated: false });
   },
 
-  // Active Persona defaults to Administrator
   activePersona: 'Administrator',
   setActivePersona: (persona) => {
-    /* log persona switch in audit trail */
     get().logAuditEvent({
       userId: 'USR-CURRENT',
       userRole: persona,
@@ -123,7 +116,6 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set({ activePersona: persona });
   },
 
-  // Hash view defaults to "dashboard"
   currentHashView: 'dashboard',
   currentEntityId: undefined,
   setCurrentHashView: (view, entityId) => {
@@ -131,14 +123,12 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set({ currentHashView: view, currentEntityId: entityId });
   },
 
-  // Active vessel defaults to VESSEL-001
   activeVesselId: 'VESSEL-001',
   setActiveVesselId: (id) => set({ activeVesselId: id }),
 
   // Fleet Vessels
   vessels: MOCK_VESSELS,
   addVessel: (newVessel) => {
-    /* enforce duplicate check validation for imo and official reg number */
     const dupCheck = isDuplicateVessel(newVessel.imoNumber, newVessel.officialRegNumber, get().vessels);
     if (dupCheck.isDuplicate) {
       return { success: false, message: dupCheck.reason };
@@ -157,6 +147,22 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
 
     return { success: true };
   },
+
+  updateVessel: (updatedVessel) => {
+    set((state) => ({
+      vessels: state.vessels.map((v) => (v.id === updatedVessel.id ? updatedVessel : v)),
+    }));
+
+    get().logAuditEvent({
+      userId: 'USR-CURRENT',
+      userRole: get().activePersona,
+      organization: get().activePersona === 'C Admin' ? 'Chevron Australia' : 'Pacific Ocean Logistics',
+      action: 'Updated Vessel Specifications',
+      targetAsset: `${updatedVessel.name} (IMO ${updatedVessel.imoNumber})`,
+      justificationNotes: `Updated vessel particulars for ${updatedVessel.name}`,
+    });
+  },
+
   updateVesselStatus: (vesselId, status) => {
     set((state) => ({
       vessels: state.vessels.map((v) => (v.id === vesselId ? { ...v, status } : v)),
@@ -188,7 +194,6 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
         const updatedReqs = s.requirements.map((r) =>
           r.id === reqId ? { ...r, verifierStatus: status, notes, isFulfilled: status === 'Verified' } : r
         );
-        /* calculate readiness score based on verified mandatory requirements */
         const verifiedCount = updatedReqs.filter((r) => r.verifierStatus === 'Verified').length;
         const newScore = Math.round((verifiedCount / updatedReqs.length) * 100);
 
@@ -305,7 +310,6 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set((state) => ({ auditEvents: [newEvent, ...state.auditEvents] }));
   },
 
-  // Audit Drawer Toggle
   isAuditDrawerOpen: false,
   setAuditDrawerOpen: (open) => set({ isAuditDrawerOpen: open }),
 }));

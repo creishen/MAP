@@ -83,3 +83,6 @@ export interface VesselParticulars {
   // Category 10 & 11 - Attachments & Meta
   masterCertificateUploadCount: number;
 }
+
+// Alias export so any component importing 'Vessel' or 'VesselParticulars' works seamlessly
+export type Vessel = VesselParticulars;

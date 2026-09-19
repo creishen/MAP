@@ -4,12 +4,12 @@
   role in system: loaded by Zustand store (useMapStore.ts) on initialization.
 */
 
-import { VesselParticulars } from '../types/vessel';
+import { Vessel } from '../types/vessel';
 import { AssuranceSet } from '../types/assurance';
 import { MasterDocument } from '../types/document';
 import { AuditTrailEvent } from '../types/audit';
 
-export const MOCK_VESSELS: VesselParticulars[] = [
+export const MOCK_VESSELS: Vessel[] = [
   {
     id: 'VESSEL-001',
     name: 'MV Pacific Endeavour',

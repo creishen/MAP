@@ -53,7 +53,7 @@ export const AppSidebar: React.FC = () => {
     },
     {
       key: 'vessels',
-      label: 'Fleet Master',
+      label: 'Vessels',
       allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
     },
     {

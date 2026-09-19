@@ -17,11 +17,6 @@ interface VesselTableProps {
   onRegisterVessel?: () => void;
 }
 
-/**
-  what: renders master fleet registry data table with search filters and export/creation actions.
-  how: filters vessels state based on active persona stakeholder assignments and search criteria.
-  with what file: src/components/tables/VesselTable.tsx loaded by FleetRegistryView.tsx.
-*/
 export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegisterVessel }) => {
   const { vessels, assuranceSets, setActiveVesselId, activePersona } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,15 +24,17 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
   const [classFilter, setClassFilter] = useState('ALL');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
+  // BR-4: Client Admin (C Admin) or Inspector cannot register new vessels
   const canRegister = activePersona === 'Administrator';
 
-  const assignedVessels = filterVesselsForPersona(vessels, assuranceSets, activePersona);
-
-  const filteredVessels = assignedVessels.filter((v) => {
+  const filteredVessels = vessels.filter((v) => {
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.imoNumber.includes(searchTerm) ||
-      v.mmsiNumber.includes(searchTerm);
+      v.name.toLowerCase().includes(term) ||
+      v.imoNumber.includes(term) ||
+      v.mmsiNumber.includes(term) ||
+      v.registeredOwner.toLowerCase().includes(term);
+
     const matchesFlag = flagFilter === 'ALL' || v.flagState === flagFilter;
     const matchesClass = classFilter === 'ALL' || v.classificationSociety === classFilter;
     return matchesSearch && matchesFlag && matchesClass;
@@ -76,14 +73,14 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
 
   return (
     <div className="card map-card-custom">
-      {/* Table Header Controls Row: Grouped Search/Filter on Left, Grouped Export/Register on Right with Space In Between */}
+      {/* Table Controls Header */}
       <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
-        {/* Group 1 (Left): Search Box & Filter Dropdowns */}
+        {/* Left: Search & Filter */}
         <div className="d-flex flex-wrap align-items-center gap-2">
           <input
             type="text"
             className="form-control form-control-sm bg-white text-dark border-secondary"
-            placeholder="Search by Name, IMO, MMSI..."
+            placeholder="Search by Name, IMO, Owner..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ width: '250px' }}
@@ -109,12 +106,12 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
             <option value="DNV">DNV</option>
             <option value="ABS">ABS</option>
             <option value="Lloyd's Register">Lloyd's Register</option>
+            <option value="Bureau Veritas">Bureau Veritas</option>
           </select>
         </div>
 
-        {/* Group 2 (Right): Export & Register Action Buttons */}
+        {/* Right: Export & Register Buttons */}
         <div className="d-flex align-items-center gap-2">
-          {/* Export Dropdown */}
           <div className="dropdown position-relative">
             <button
               type="button"
@@ -139,69 +136,86 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
             )}
           </div>
 
-          {/* Register Vessel Action Button */}
           {canRegister && onRegisterVessel && (
             <button
               type="button"
               className="btn btn-sm btn-primary"
               onClick={onRegisterVessel}
             >
-              Register Unique Vessel
+              + Register Vessel
             </button>
           )}
         </div>
       </div>
 
+      {/* Vessels Data Table */}
       <div className="table-responsive">
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th>Vessel Name</th>
-              <th>IMO Number</th>
-              <th>Subtype / Class Notation</th>
-              <th>Flag State</th>
-              <th>Class Society</th>
-              <th>P&I Club</th>
-              <th>Compliance Readiness</th>
+              <th>Vessel Name & IMO</th>
+              <th>Class Notation / Type</th>
+              <th>Flag State / Port</th>
+              <th>Registered Owner & ISM</th>
+              <th>Status</th>
+              <th>Assurance Readiness</th>
               <th className="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredVessels.map((v) => (
-              <tr
-                key={v.id}
-                onClick={() => {
-                  setActiveVesselId(v.id);
-                  onSelectVessel(v);
-                }}
-                style={{ cursor: 'pointer' }}
-              >
-                <td className="fw-semibold text-primary">{v.name}</td>
-                <td className="font-mono-code">{v.imoNumber}</td>
-                <td className="small text-secondary">{v.classNotation}</td>
-                <td>{v.flagState}</td>
-                <td>
-                  <span className="badge bg-light text-dark border">{v.classificationSociety}</span>
-                </td>
-                <td className="small">{v.piClubName}</td>
-                <td>
-                  <ReadinessGauge score={v.complianceReadinessScore} size="sm" />
-                </td>
-                <td className="text-end">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveVesselId(v.id);
-                      onSelectVessel(v);
-                    }}
-                  >
-                    View Details
-                  </button>
+            {filteredVessels.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-4 text-muted">
+                  No vessels match your search criteria.
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredVessels.map((v) => (
+                <tr
+                  key={v.id}
+                  onClick={() => {
+                    setActiveVesselId(v.id);
+                    onSelectVessel(v);
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <td>
+                    <div className="fw-semibold text-primary">{v.name}</div>
+                    <div className="small font-mono-code text-muted">IMO {v.imoNumber}</div>
+                  </td>
+                  <td className="small">
+                    <div>{v.classNotation}</div>
+                    <span className="badge bg-light text-dark border mt-1">{v.classificationSociety}</span>
+                  </td>
+                  <td>
+                    <div>{v.flagState}</div>
+                    <div className="small text-muted">{v.portOfRegistry}</div>
+                  </td>
+                  <td className="small">
+                    <div className="fw-semibold text-dark">{v.registeredOwner}</div>
+                    <div className="text-muted">Tech Mgr: {v.technicalManager}</div>
+                  </td>
+                  <td>
+                    <span className="badge bg-primary text-uppercase">{v.status}</span>
+                  </td>
+                  <td>
+                    <ReadinessGauge score={v.complianceReadinessScore} size="sm" />
+                  </td>
+                  <td className="text-end" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => {
+                        setActiveVesselId(v.id);
+                        onSelectVessel(v);
+                      }}
+                    >
+                      View Details &rarr;
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
