@@ -10,21 +10,24 @@ import { ConfidenceBadge } from '../components/common/ConfidenceBadge';
 import { formatMaritimeDate } from '../utils/formatters';
 import { getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
+import { DocumentUploadModal } from '../components/drawers/DocumentUploadModal';
 
 interface DocumentDetailViewProps {
   documentId: string;
 }
 
 /**
-  what: renders document deep-dive detail view in light theme with version history export controls.
-  how: fetches document from store by documentId and displays 13 vessel or 11 crew extracted attributes.
+  what: renders document deep-dive detail view in light theme with version history export controls and submitter version upload triggers.
+  how: fetches document from store by documentId, displays 13 vessel or 11 crew extracted attributes, and handles new version uploads for Submitter role.
   with what file: src/views/DocumentDetailView.tsx loaded by App.tsx.
 */
 export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentId }) => {
   const { documents, setCurrentHashView, previousHashView, previousEntityId, activePersona } = useMapStore();
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const backInfo = getBackButtonInfo('documents', 'Document Vault', previousHashView, activePersona, previousEntityId);
+  const canUpload = activePersona === 'Submitter' || activePersona === 'Administrator';
 
   const doc = documents.find((d) => d.id === documentId) || documents[0];
 
@@ -118,49 +121,50 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
   return (
     <div className="d-flex flex-column gap-4">
       {/* Top Header */}
-      <div className="d-flex align-items-center justify-between">
+      <div className="d-flex align-items-center">
         <button
           type="button"
-          className="btn btn-sm btn-outline-secondary"
+          className="btn btn-sm btn-outline-secondary font-mono-code"
           onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
         >
           {backInfo.label}
         </button>
-        <div className="badge bg-light text-dark border font-mono-code p-2">
-          Cert #: {doc.certificateNo} | Entity: {doc.entityType}
-        </div>
       </div>
 
       {/* Main Info Card */}
       <div className="card map-card-custom p-4">
         <div className="d-flex flex-wrap align-items-center justify-between gap-3">
           <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <span className="badge bg-primary">{doc.entityType}</span>
-              <ConfidenceBadge score={doc.ocrConfidence} />
-              <span className="badge bg-info text-dark font-mono-code">{doc.currentVersion}</span>
+            <div className="d-flex align-items-center gap-3 mb-1">
+              <h3 className="fw-bold mb-0 text-primary">{doc.title}</h3>
+              <span
+                className={`badge p-2 ${
+                  doc.verificationStatus === 'Verified'
+                    ? 'bg-success text-white'
+                    : doc.verificationStatus === 'Correction Requested'
+                      ? 'bg-warning text-dark'
+                      : doc.verificationStatus === 'Rejected'
+                        ? 'bg-danger text-white'
+                        : 'bg-secondary text-white'
+                }`}
+                style={{ fontSize: '0.825rem' }}
+              >
+                Status: {doc.verificationStatus}
+              </span>
             </div>
-            <h3 className="fw-bold mb-1 text-primary">{doc.title}</h3>
-            <div className="text-secondary small">
-              Issuing Authority: <strong>{doc.issuingAuthority}</strong> | Expiry: <span className="font-mono-code">{formatMaritimeDate(doc.expiryDate)}</span>
+            <div className="d-flex flex-wrap align-items-center gap-2 text-secondary small mt-1">
+              <span>Cert #: <strong className="text-dark font-mono-code">{doc.certificateNo}</strong></span>
+              <span>•</span>
+              <span>Entity: <strong className="text-dark">{doc.entityType}</strong></span>
+              <span>•</span>
+              <span>Issuing Authority: <strong className="text-dark">{doc.issuingAuthority}</strong></span>
+              <span>•</span>
+              <span>Expiry: <span className="font-mono-code text-dark fw-semibold">{formatMaritimeDate(doc.expiryDate)}</span></span>
             </div>
           </div>
 
-          {/* Opposite Corner Controls: Status Badge + Export Data Button */}
+          {/* Opposite Corner Controls: Export Data Button */}
           <div className="d-flex align-items-center gap-3 ms-auto">
-            <span
-              className={`badge p-2 fs-6 ${doc.verificationStatus === 'Verified'
-                  ? 'bg-success text-white'
-                  : doc.verificationStatus === 'Correction Requested'
-                    ? 'bg-warning text-dark'
-                    : doc.verificationStatus === 'Rejected'
-                      ? 'bg-danger text-white'
-                      : 'bg-secondary text-white'
-                }`}
-            >
-              Status: {doc.verificationStatus}
-            </span>
-
             {/* Export Data Button in opposite corner */}
             <div className="dropdown position-relative">
               <button
@@ -199,7 +203,6 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
 
       {/* Extracted Metadata Attributes Grid */}
       <div className="card map-card-custom">
-        <div className="card-header">Extracted Attributes Details</div>
         <div className="card-body p-4">
           {doc.vesselAttributes && (
             <div className="row g-3 small">
@@ -278,8 +281,19 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
 
       {/* Version History Table */}
       <div className="card map-card-custom">
-        <div className="card-header p-3 fw-bold text-dark">
-          File Revision History ({doc.versions.length} Versions)
+        <div className="card-header p-3 d-flex align-items-center justify-between fw-bold text-dark">
+          <div>
+            File Revision History ({doc.versions.length} Versions)
+          </div>
+          {canUpload && (
+            <button
+              type="button"
+              className="btn btn-sm btn-primary text-white font-mono-code ms-auto"
+              onClick={() => setIsUploadModalOpen(true)}
+            >
+              + Upload New Version
+            </button>
+          )}
         </div>
         <div className="table-responsive">
           <table className="table map-table-custom align-middle mb-0">
@@ -310,6 +324,13 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
           </table>
         </div>
       </div>
+
+      {/* Upload New Version Modal */}
+      <DocumentUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        existingDocument={doc}
+      />
     </div>
   );
 };

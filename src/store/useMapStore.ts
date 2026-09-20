@@ -350,10 +350,11 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
             return {
               ...r,
               documentId: docId,
+              documentVersion: newVersionLabel,
               verifierStatus: 'Pending' as const,
               isFulfilled: false,
               ocrConfidence: 98,
-              notes: changeSummary || 'Replacement revision uploaded by submitter.',
+              notes: changeSummary || `Replacement revision ${newVersionLabel} uploaded by submitter.`,
             };
           }
           return r;

@@ -59,6 +59,7 @@ describe('Map Store State Management', () => {
     expect(useMapStore.getState().vessels.length).toBe(initialCount + 1);
   });
 
+
   it('should update document verification status', () => {
     const store = useMapStore.getState();
     const targetDocId = store.documents[0].id;
@@ -148,4 +149,37 @@ describe('Map Store State Management', () => {
     expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'Submitter')).toBe(true);
     expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'Verifier')).toBe(false);
   });
+
+  it('should update document version, version history, linked assurance set requirements, and audit log on upload of new version', () => {
+    const store = useMapStore.getState();
+    const targetDoc = store.documents[0];
+
+    store.addDocumentVersion(
+      targetDoc.id,
+      'v1.2',
+      'Certificate_of_Class_v1.2.pdf',
+      2450000,
+      'Uploaded renewed Certificate of Class v1.2'
+    );
+
+    const updatedDoc = useMapStore.getState().documents.find((d) => d.id === targetDoc.id);
+    expect(updatedDoc?.currentVersion).toBe('v1.2');
+    expect(updatedDoc?.verificationStatus).toBe('Pending');
+    expect(updatedDoc?.versions.length).toBe((targetDoc.versions?.length || 1) + 1);
+
+    const linkedAssuranceSets = useMapStore.getState().assuranceSets.filter((s) =>
+      s.requirements.some((r) => r.documentId === targetDoc.id)
+    );
+
+    linkedAssuranceSets.forEach((s) => {
+      const matchingReq = s.requirements.find((r) => r.documentId === targetDoc.id);
+      expect(matchingReq?.documentVersion).toBe('v1.2');
+      expect(matchingReq?.verifierStatus).toBe('Pending');
+    });
+
+    const latestAudit = useMapStore.getState().auditEvents[0];
+    expect(latestAudit.action).toContain('Uploaded Document Revision');
+    expect(latestAudit.targetAsset).toContain(targetDoc.id);
+  });
 });
+

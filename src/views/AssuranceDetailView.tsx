@@ -260,7 +260,14 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                         {req.category}
                       </span>
                     </td>
-                    <td className="fw-semibold text-dark">{req.title}</td>
+                    <td className="fw-semibold text-dark">
+                      {req.title}
+                      {(linkedDoc?.currentVersion || req.documentVersion) && (
+                        <span className="badge bg-light text-secondary border font-mono-code ms-2" style={{ fontSize: '0.7rem' }}>
+                          {linkedDoc?.currentVersion || req.documentVersion}
+                        </span>
+                      )}
+                    </td>
                     <td>
                       <ConfidenceBadge score={req.ocrConfidence} />
                     </td>
