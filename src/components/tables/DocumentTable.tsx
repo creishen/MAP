@@ -224,7 +224,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       onSelectDocument(doc);
                     }}
                   >
-                    Deep Dive
+                    View Details
                   </button>
                 </td>
               </tr>

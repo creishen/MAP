@@ -110,7 +110,7 @@ export const LoginView: React.FC = () => {
               Sign in
             </h2>
             <div className="font-mono-code small" style={{ fontSize: '0.8rem', color: '#64748b' }}>
-              UC-01 · Authenticated role- and permission-based access
+              Authenticated role- and permission-based access
             </div>
           </div>
 

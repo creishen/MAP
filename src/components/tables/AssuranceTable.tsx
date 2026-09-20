@@ -196,7 +196,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
                       onSelectSet(s);
                     }}
                   >
-                    Command Center
+                    View Details
                   </button>
                 </td>
               </tr>

@@ -226,7 +226,7 @@ export const CrewTable: React.FC<CrewTableProps> = ({ onSelectCrew, onRegisterCr
                         onSelectCrew(c);
                       }}
                     >
-                      View Profile & Credentials &rarr;
+                      View Details
                     </button>
                   </td>
                 </tr>

@@ -111,7 +111,7 @@ export const VerifierWorkspaceView: React.FC = () => {
                 className="btn btn-sm btn-outline-primary w-100 mt-4 py-2 fw-semibold"
                 onClick={() => setCurrentHashView('assurance-sets', set.id)}
               >
-                View Command Center
+                View Details
               </button>
             </div>
           </div>

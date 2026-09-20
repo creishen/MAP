@@ -253,17 +253,6 @@ export const AppSidebar: React.FC = () => {
             </div>
             <button
               type="button"
-              className="btn btn-sm text-start text-light w-100 d-flex align-items-center gap-2 py-1 px-2 border-0 bg-transparent hover-bg-dark"
-              style={{ fontSize: '0.78rem' }}
-              onClick={() => {
-                setIsUserMenuOpen(false);
-                setCurrentHashView('audit');
-              }}
-            >
-              <span>Audit Trail Log</span>
-            </button>
-            <button
-              type="button"
               className="btn btn-sm text-start text-danger w-100 d-flex align-items-center gap-2 py-1 px-2 border-0 bg-transparent hover-bg-dark"
               style={{ fontSize: '0.78rem' }}
               onClick={() => {

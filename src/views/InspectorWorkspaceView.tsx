@@ -186,7 +186,7 @@ export const InspectorWorkspaceView: React.FC = () => {
                           setCurrentHashView('inspector', v.name);
                         }}
                       >
-                        Open Survey Checklist & CAPA Logger
+                        View Details
                       </button>
                     </td>
                   </tr>
