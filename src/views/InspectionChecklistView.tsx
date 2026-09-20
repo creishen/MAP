@@ -351,14 +351,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
       <div className="card map-card-custom p-3 bg-white">
         <div className="d-flex flex-wrap align-items-center justify-between gap-3">
           <div className="d-flex align-items-center gap-3">
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary fw-semibold d-flex align-items-center gap-2"
-              onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
-            >
-              <span>{backInfo.label}</span>
-            </button>
-            <div className="border-start ps-3" style={{ borderColor: '#cbd5e1' }}>
+            <div>
               <h5 className="fw-bold text-dark m-0" style={{ fontSize: '1.25rem' }}>
                 Visual Vessel Inspection & CAPA Logger
               </h5>

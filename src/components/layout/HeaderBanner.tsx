@@ -28,7 +28,26 @@ export const HeaderBanner: React.FC = () => {
     documents,
   } = useMapStore();
 
-  const backInfo = getBackButtonInfo('assurance-sets', 'Assurance Sets', previousHashView, activePersona, previousEntityId);
+  /* compute dynamic back button info based on active detail view */
+  const getHeaderBackInfo = () => {
+    switch (currentHashView) {
+      case 'vessels':
+        return getBackButtonInfo('vessels', 'Fleet Registry', previousHashView, activePersona, previousEntityId);
+      case 'documents':
+        return getBackButtonInfo('documents', 'Document Library', previousHashView, activePersona, previousEntityId);
+      case 'crew':
+        return getBackButtonInfo('crew', 'Crew Directory', previousHashView, activePersona, previousEntityId);
+      case 'inspection':
+        return getBackButtonInfo('inspector', 'Inspections', previousHashView, activePersona, previousEntityId);
+      case 'create-assurance-set':
+      case 'assurance-sets':
+      default:
+        return getBackButtonInfo('assurance-sets', 'Assurance Sets', previousHashView, activePersona, previousEntityId);
+    }
+  };
+
+  const isDetailPage = Boolean(currentEntityId) || currentHashView === 'create-assurance-set';
+  const headerBackInfo = getHeaderBackInfo();
 
   const rolesList: { role: UserRolePersona; label: string }[] = [
     { role: 'Administrator', label: 'Admin' },
@@ -92,15 +111,15 @@ export const HeaderBanner: React.FC = () => {
       className="map-top-banner d-flex align-items-center justify-content-between px-4 py-3 bg-white border-bottom"
       style={{ minHeight: '64px', borderColor: '#e2e8f0' }}
     >
-      {/* left side: breadcrumb & page title or back button */}
+      {/* left side: back button for any detail page or breadcrumb & page title */}
       <div>
-        {currentHashView === 'assurance-sets' && currentEntityId ? (
+        {isDetailPage ? (
           <button
             type="button"
             className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold"
-            onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
+            onClick={() => setCurrentHashView(headerBackInfo.targetView, headerBackInfo.targetEntityId)}
           >
-            {backInfo.label}
+            {headerBackInfo.label}
           </button>
         ) : (
           <>

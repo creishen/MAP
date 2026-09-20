@@ -120,90 +120,63 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Top Header */}
-      <div className="d-flex align-items-center">
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-secondary font-mono-code"
-          onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
-        >
-          {backInfo.label}
-        </button>
-      </div>
-
-      {/* Main Info Card */}
-      <div className="card map-card-custom p-4">
-        <div className="d-flex flex-wrap align-items-center justify-between gap-3">
-          <div>
-            <div className="d-flex align-items-center gap-3 mb-1">
-              <h3 className="fw-bold mb-0 text-primary">{doc.title}</h3>
-              <span
-                className={`badge p-2 ${
-                  doc.verificationStatus === 'Verified'
-                    ? 'bg-success text-white'
-                    : doc.verificationStatus === 'Correction Requested'
-                      ? 'bg-warning text-dark'
-                      : doc.verificationStatus === 'Rejected'
-                        ? 'bg-danger text-white'
-                        : 'bg-secondary text-white'
-                }`}
-                style={{ fontSize: '0.825rem' }}
-              >
-                Status: {doc.verificationStatus}
-              </span>
-            </div>
-            <div className="d-flex flex-wrap align-items-center gap-2 text-secondary small mt-1">
-              <span>Cert #: <strong className="text-dark font-mono-code">{doc.certificateNo}</strong></span>
-              <span>•</span>
-              <span>Entity: <strong className="text-dark">{doc.entityType}</strong></span>
-              <span>•</span>
-              <span>Issuing Authority: <strong className="text-dark">{doc.issuingAuthority}</strong></span>
-              <span>•</span>
-              <span>Expiry: <span className="font-mono-code text-dark fw-semibold">{formatMaritimeDate(doc.expiryDate)}</span></span>
-            </div>
-          </div>
-
-          {/* Opposite Corner Controls: Export Data Button */}
-          <div className="d-flex align-items-center gap-3 ms-auto">
-            {/* Export Data Button in opposite corner */}
-            <div className="dropdown position-relative">
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
-                onClick={() => setIsExportOpen(!isExportOpen)}
-              >
-                Export Data
-              </button>
-              {isExportOpen && (
-                <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border" style={{ zIndex: 1050 }}>
-                  <li>
-                    <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
-                      Export as CSV (.csv)
-                    </button>
-                  </li>
-                  <li>
-                    <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
-                      Export as PDF (.pdf)
-                    </button>
-                  </li>
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Exception Banner if validation failed */}
-      {!doc.validationRules.overallValid && (
-        <div className="alert alert-warning p-3 mb-0 border-warning">
-          <h6 className="fw-bold mb-1">Validation Exception / Charter Buffer Alert</h6>
-          <div>{doc.validationRules.exceptionDetails || 'Document requires attention prior to charter verification.'}</div>
-        </div>
-      )}
-
-      {/* Extracted Metadata Attributes Grid */}
+      {/* Unified Main Info & Extracted Attributes Card */}
       <div className="card map-card-custom">
+        {/* Card Header / Title Row */}
+        <div className="card-header p-4 bg-white border-bottom d-flex flex-wrap align-items-center justify-between gap-3">
+          <div className="d-flex align-items-center gap-3">
+            <h3 className="fw-bold mb-0 text-primary">{doc.title}</h3>
+            <span
+              className={`badge p-2 ${doc.verificationStatus === 'Verified'
+                ? 'bg-success text-white'
+                : doc.verificationStatus === 'Correction Requested'
+                  ? 'bg-warning text-dark'
+                  : doc.verificationStatus === 'Rejected'
+                    ? 'bg-danger text-white'
+                    : 'bg-secondary text-white'
+                }`}
+              style={{ fontSize: '0.825rem' }}
+            >
+              Status: {doc.verificationStatus}
+            </span>
+          </div>
+
+          {/* Export Data Button */}
+          <div className="dropdown position-relative ms-auto">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
+              onClick={() => setIsExportOpen(!isExportOpen)}
+            >
+              Export Data
+            </button>
+            {isExportOpen && (
+              <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border" style={{ zIndex: 1050 }}>
+                <li>
+                  <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
+                    Export as CSV (.csv)
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
+                    Export as PDF (.pdf)
+                  </button>
+                </li>
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* Card Body: Extracted Metadata Attributes Grid */}
         <div className="card-body p-4">
+          {/* Validation exception alert if any */}
+          {!doc.validationRules.overallValid && (
+            <div className="alert alert-warning p-3 mb-3 border-warning">
+              <h6 className="fw-bold mb-1">Validation Exception / Charter Buffer Alert</h6>
+              <div>{doc.validationRules.exceptionDetails || 'Document requires attention prior to charter verification.'}</div>
+            </div>
+          )}
+
           {doc.vesselAttributes && (
             <div className="row g-3 small">
               <div className="col-md-4">

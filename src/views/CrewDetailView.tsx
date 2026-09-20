@@ -125,32 +125,10 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Top Header Navigation & Back Button */}
-      <div className="d-flex align-items-center justify-between">
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-secondary fw-semibold d-flex align-items-center gap-2"
-          onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
-        >
-          <span>{backInfo.label}</span>
-        </button>
-        <div className="badge bg-light text-dark border font-mono-code p-2">
-          Crew ID: {crewMember.id} | Organization: {crewMember.organization || 'Northwind Marine Pty Ltd'} | Seaman's Book: {crewMember.seamansBookNo}
-        </div>
-      </div>
-
       {/* Main Profile Particulars & STCW Compliance Header Card */}
       <div className="card map-card-custom p-4">
         <div className="d-flex flex-wrap align-items-center justify-between gap-3 mb-3">
           <div>
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <span className="badge bg-primary">{crewMember.rank}</span>
-              <span className={`badge ${crewMember.complianceStatus === 'Fully Compliant' ? 'bg-success text-white' : crewMember.complianceStatus === 'Expiring < 60 Days' ? 'bg-warning text-dark' : 'bg-danger text-white'}`}>
-                {crewMember.complianceStatus}
-              </span>
-              <span className="badge bg-info text-dark">{crewMember.organization || 'Northwind Marine Pty Ltd'}</span>
-              <span className="badge bg-light text-dark border">{crewMember.nationality}</span>
-            </div>
             <h3 className="fw-bold mb-1 text-primary">{crewMember.fullName}</h3>
             <div className="text-secondary small font-mono-code d-flex align-items-center gap-2 flex-wrap">
               <span>Current Vessel:</span>
@@ -166,7 +144,6 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
               ) : (
                 <strong>{crewMember.currentVesselName || 'Unassigned / Ashore'}</strong>
               )}
-              <span>| Passport #: <strong>{crewMember.passportNo}</strong></span>
             </div>
           </div>
 
@@ -209,6 +186,36 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
         <div className="p-3 bg-light border rounded-3 font-mono-code small">
           <div className="row g-3">
             <div className="col-md-3 col-6">
+              <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Crew ID</span>
+              <strong className="text-dark">{crewMember.id}</strong>
+            </div>
+            <div className="col-md-3 col-6">
+              <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Rank</span>
+              <strong className="text-dark">{crewMember.rank}</strong>
+            </div>
+            <div className="col-md-3 col-6">
+              <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Compliance Status</span>
+              <span className={`badge ${crewMember.complianceStatus === 'Fully Compliant' ? 'bg-success text-white' : crewMember.complianceStatus === 'Expiring < 60 Days' ? 'bg-warning text-dark' : 'bg-danger text-white'}`}>
+                {crewMember.complianceStatus}
+              </span>
+            </div>
+            <div className="col-md-3 col-6">
+              <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Organization</span>
+              <strong className="text-dark text-truncate d-block">{crewMember.organization || 'Northwind Marine Pty Ltd'}</strong>
+            </div>
+            <div className="col-md-3 col-6">
+              <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Nationality</span>
+              <strong className="text-dark">{crewMember.nationality}</strong>
+            </div>
+            <div className="col-md-3 col-6">
+              <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Seaman's Book No</span>
+              <strong className="text-dark">{crewMember.seamansBookNo}</strong>
+            </div>
+            <div className="col-md-3 col-6">
+              <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Passport No</span>
+              <strong className="text-dark">{crewMember.passportNo}</strong>
+            </div>
+            <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Date of Birth</span>
               <strong className="text-dark">{crewMember.dateOfBirth}</strong>
             </div>
@@ -234,7 +241,7 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
       <div className="card map-card-custom">
         <div className="card-header p-3 border-bottom d-flex align-items-center justify-between">
           <div className="fw-bold text-dark fs-6">
-            Historical Sea Service & Vessel Assignments Register ({crewMember.assignments.length} Records) · Organization: <span className="text-primary">{crewMember.organization || 'Northwind Marine Pty Ltd'}</span>
+            Historical Sea Service & Vessel Assignments Register ({crewMember.assignments.length} Records)
           </div>
         </div>
         <div className="table-responsive">

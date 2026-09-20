@@ -89,50 +89,39 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         </div>
       )}
 
-      {/* Top Breadcrumb & Action Row */}
+      {/* Action Row */}
       <div className="d-flex flex-wrap align-items-center justify-between gap-2">
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-secondary"
-          onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
-        >
-          {backInfo.label}
-        </button>
-
-        <div className="d-flex align-items-center gap-2">
-          {!isReadOnly && (
-            <>
-              {isEditing ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-secondary"
-                    onClick={() => {
-                      setFormData(vessel);
-                      setIsEditing(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button type="button" className="btn btn-sm btn-success" onClick={handleSave}>
-                    Save Changes
-                  </button>
-                </>
-              ) : (
+        {!isReadOnly && (
+          <div className="d-flex align-items-center justify-content-end gap-2">
+            {isEditing ? (
+              <>
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-primary"
-                  onClick={() => setIsEditing(true)}
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => {
+                    setFormData(vessel);
+                    setIsEditing(false);
+                  }}
                 >
-                  Edit Particulars
+                  Cancel
                 </button>
-              )}
-            </>
-          )}
-
-          <div className="badge bg-light text-dark border font-mono-code p-2">
-            IMO: {vessel.imoNumber} | Reg: {vessel.officialRegNumber}
+                <button type="button" className="btn btn-sm btn-success" onClick={handleSave}>
+                  Save Changes
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary"
+                onClick={() => setIsEditing(true)}
+              >
+                Edit Vessel Particulars
+              </button>
+            )}
           </div>
+        )}
+        <div className="badge bg-light text-dark border font-mono-code p-2">
+          IMO: {vessel.imoNumber} | Reg: {vessel.officialRegNumber}
         </div>
       </div>
 
