@@ -33,7 +33,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
 
   const vessel = vessels.find((v) => v.id === vesselId);
 
-  const [activeTab, setActiveTab] = useState<'particulars' | 'vault' | 'assurance' | 'clients' | 'audit'>('particulars');
+  const [activeTab, setActiveTab] = useState<'particulars' | 'vault' | 'assurance' | 'clients' | 'crew' | 'audit'>('particulars');
   const [activeAccordion, setActiveAccordion] = useState<number | null>(1);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<VesselParticulars | null>(null);
@@ -254,6 +254,15 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             onClick={() => setActiveTab('clients')}
           >
             Client History ({vessel.clientHistory?.length ?? 0})
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link ${activeTab === 'crew' ? 'active fw-bold text-primary' : 'text-secondary'}`}
+            onClick={() => setActiveTab('crew')}
+          >
+            Assigned Crew ({linkedCrew.length})
           </button>
         </li>
         <li className="nav-item">
@@ -871,7 +880,80 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         </div>
       )}
 
-      {/* Tab 5: Audit Trail */}
+      {/* Tab 5: Assigned Crew Directory */}
+      {activeTab === 'crew' && (
+        <div className="card map-card-custom">
+          <div className="card-header p-3 border-bottom d-flex align-items-center justify-between">
+            <div className="fw-bold text-dark fs-6">
+              Registered Crew Members Assigned to {vessel.name} ({linkedCrew.length} Seafarers)
+            </div>
+          </div>
+          <div className="table-responsive">
+            <table className="table map-table-custom align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Seafarer Name</th>
+                  <th>Rank / Position</th>
+                  <th>Nationality</th>
+                  <th>Assignment Status</th>
+                  <th>STCW Score</th>
+                  <th>Compliance Status</th>
+                  <th className="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linkedCrew.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-4 text-muted">
+                      No crew members currently registered for this vessel.
+                    </td>
+                  </tr>
+                ) : (
+                  linkedCrew.map((c) => (
+                    <tr key={c.id}>
+                      <td className="fw-semibold text-primary">
+                        <button
+                          type="button"
+                          className="btn btn-link p-0 text-primary text-start fw-semibold text-decoration-underline border-0 bg-transparent align-baseline"
+                          onClick={() => setCurrentHashView('crew', c.id)}
+                          title={`View ${c.fullName} STCW seafarer dossier`}
+                        >
+                          {c.fullName}
+                        </button>
+                      </td>
+                      <td>{c.rank}</td>
+                      <td><span className="badge bg-light text-dark border">{c.nationality}</span></td>
+                      <td>
+                        <span className={`badge ${c.currentVesselId === vessel.id ? 'bg-success text-white' : 'bg-secondary text-white'}`}>
+                          {c.currentVesselId === vessel.id ? 'Current Assignment' : 'Historical Assignment'}
+                        </span>
+                      </td>
+                      <td className="font-mono-code fw-semibold">{c.overallComplianceScore}%</td>
+                      <td>
+                        <span className={`badge ${c.complianceStatus === 'Fully Compliant' ? 'bg-success text-white' : c.complianceStatus === 'Expiring < 60 Days' ? 'bg-warning text-dark' : 'bg-danger text-white'}`}>
+                          {c.complianceStatus}
+                        </span>
+                      </td>
+                      <td className="text-end">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary py-1 px-2"
+                          style={{ fontSize: '0.75rem' }}
+                          onClick={() => setCurrentHashView('crew', c.id)}
+                        >
+                          View Seafarer Profile
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 6: Audit Trail */}
       {activeTab === 'audit' && (
         <div className="card map-card-custom">
           <div className="card-header fw-bold">Tamper-Evident Asset Audit Trail (BR-2)</div>
