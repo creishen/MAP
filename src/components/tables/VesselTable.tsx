@@ -9,8 +9,16 @@ import { useMapStore } from '../../store/useMapStore';
 import { VesselParticulars } from '../../types/vessel';
 import { ReadinessGauge } from '../common/ReadinessGauge';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
+import { getDaysUntilExpiry } from '../../utils/formatters';
 
 import { filterVesselsForPersona } from '../../utils/rbacHelpers';
+
+function vesselHasExpiringCert(vessel: VesselParticulars): boolean {
+  return vessel.statutoryCertificates.some((cert) => {
+    const daysLeft = getDaysUntilExpiry(cert.expiryDate);
+    return daysLeft >= 0 && daysLeft < 90;
+  });
+}
 
 interface VesselTableProps {
   onSelectVessel: (vessel: VesselParticulars) => void;
@@ -158,6 +166,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
               <th>Flag State / Port</th>
               <th>Registered Owner & ISM</th>
               <th>Status</th>
+              <th>Cert Alerts</th>
               <th>Assurance Readiness</th>
               <th className="text-end">Actions</th>
             </tr>
@@ -165,8 +174,13 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
           <tbody>
             {filteredVessels.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-4 text-muted">
-                  No vessels match your search criteria.
+                <td colSpan={8} className="text-center py-5">
+                  <div className="map-vessel-empty-state">
+                    <div className="map-vessel-empty-title">No vessels match your search</div>
+                    <div className="map-vessel-empty-hint text-muted small">
+                      Try adjusting filters or register a new OSV vessel.
+                    </div>
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -197,6 +211,13 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
                   </td>
                   <td>
                     <span className="badge bg-primary text-uppercase">{v.status}</span>
+                  </td>
+                  <td>
+                    {vesselHasExpiringCert(v) ? (
+                      <span className="badge map-vessel-cert-warning">Expiring &lt; 90d</span>
+                    ) : (
+                      <span className="badge bg-light text-success border">All clear</span>
+                    )}
                   </td>
                   <td>
                     <ReadinessGauge score={v.complianceReadinessScore} size="sm" />

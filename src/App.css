@@ -272,3 +272,33 @@
   -webkit-backdrop-filter: blur(4px);
   z-index: 1040;
 }
+
+/* Vessels tab — registration wizard & fleet table */
+.map-vessel-upload-zone {
+  border-color: #e2e8f0 !important;
+}
+
+.map-vessel-upload-success {
+  color: #15803d;
+  font-weight: 500;
+}
+
+.map-vessel-cert-warning {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #fde68a;
+}
+
+.map-vessel-empty-state {
+  padding: 1.5rem 1rem;
+}
+
+.map-vessel-empty-title {
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.35rem;
+}
+
+.map-vessel-accordion-header {
+  cursor: pointer;
+}

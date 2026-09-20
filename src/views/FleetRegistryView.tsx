@@ -15,8 +15,13 @@ import { VesselModal } from '../components/drawers/VesselModal';
   with what file: src/views/FleetRegistryView.tsx loaded by App.tsx.
 */
 export const FleetRegistryView: React.FC = () => {
-  const { setCurrentHashView } = useMapStore();
+  const { setCurrentHashView, setActiveVesselId } = useMapStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleVesselRegistered = (vesselId: string) => {
+    setActiveVesselId(vesselId);
+    setCurrentHashView('vessels', vesselId);
+  };
 
   return (
     <div className="d-flex flex-column gap-3">
@@ -29,7 +34,11 @@ export const FleetRegistryView: React.FC = () => {
       />
 
       {/* Vessel Registration Modal */}
-      <VesselModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <VesselModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onRegistered={handleVesselRegistered}
+      />
     </div>
   );
 };

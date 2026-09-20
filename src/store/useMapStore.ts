@@ -36,7 +36,7 @@ export interface MapStoreState {
 
   // Vessel Fleet State
   vessels: VesselParticulars[];
-  addVessel: (vessel: VesselParticulars) => { success: boolean; message?: string };
+  addVessel: (vessel: VesselParticulars) => { success: boolean; message?: string; vesselId?: string };
   updateVessel: (vessel: VesselParticulars) => void;
   updateVesselStatus: (vesselId: string, status: VesselParticulars['status']) => void;
 
@@ -165,7 +165,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       justificationNotes: `Registered vessel under ${newVessel.flagState} flag.`,
     });
 
-    return { success: true };
+    return { success: true, vesselId: newVessel.id };
   },
 
   updateVessel: (updatedVessel) => {

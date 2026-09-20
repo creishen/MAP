@@ -12,9 +12,10 @@ import { validateImoNumber } from '../../utils/validation';
 interface VesselModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onRegistered?: (vesselId: string) => void;
 }
 
-export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose }) => {
+export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onRegistered }) => {
   const { addVessel } = useMapStore();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [errorMessage, setErrorMessage] = useState('');
@@ -85,6 +86,9 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose }) => 
   // 10. Environmental Information
   const [fuelType, setFuelType] = useState('MGO Low-Sulphur 0.1%');
   const [bwtsSpec, setBwtsSpec] = useState('Alfa Laval PureBallast 3.2');
+  const [registrationDocName, setRegistrationDocName] = useState('');
+  const [classCertDocName, setClassCertDocName] = useState('');
+  const [uploadNotice, setUploadNotice] = useState('');
 
   if (!isOpen) return null;
 
@@ -130,6 +134,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose }) => 
     const newVessel: VesselParticulars = {
       id: `VESSEL-${Math.floor(100 + Math.random() * 900)}`,
       name,
+      previousNames: previousNames || undefined,
       imoNumber,
       officialRegNumber,
       mmsiNumber: mmsiNumber || '503998124',
@@ -137,7 +142,11 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose }) => 
       flagState,
       portOfRegistry,
       status: vesselRegStatus,
-      complianceReadinessScore: 92,
+      complianceReadinessScore: registrationDocName || classCertDocName ? 92 : 85,
+      vesselType,
+      vesselSubtype,
+      intendedUse,
+      tradingArea,
       classificationSociety,
       classNotation,
       hullType,
@@ -181,7 +190,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose }) => 
       lowSulphurCompliant: true,
       bwtsSpec,
       owCalibrationDate: '2026-01-10',
-      masterCertificateUploadCount: 1,
+      masterCertificateUploadCount: (registrationDocName ? 1 : 0) + (classCertDocName ? 1 : 0),
     };
 
     const res = addVessel(newVessel);
@@ -191,6 +200,19 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose }) => 
     }
 
     onClose();
+    if (res.vesselId && onRegistered) {
+      onRegistered(res.vesselId);
+    }
+  };
+
+  const handleMockFileSelect = (file: File | undefined, type: 'registration' | 'class') => {
+    if (!file) return;
+    if (type === 'registration') {
+      setRegistrationDocName(file.name);
+    } else {
+      setClassCertDocName(file.name);
+    }
+    setUploadNotice(`${file.name} queued for Pre-Assurance Vault (mock upload).`);
   };
 
   return (
@@ -370,16 +392,14 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose }) => 
                   <div className="row g-2">
                     <div className="col-md-4">
                       <label className="form-label text-secondary small fw-semibold">Vessel Type</label>
-                      <select
-                        className="form-select form-select-sm"
+                      <input
+                        type="text"
+                        className="form-control form-control-sm bg-light"
                         value={vesselType}
-                        onChange={(e) => setVesselType(e.target.value)}
-                      >
-                        <option value="Offshore Support Vessel (OSV)">Offshore Support Vessel (OSV)</option>
-                        <option value="Tug / Workboat">Tug / Workboat</option>
-                        <option value="Cargo / Container">Cargo / Container</option>
-                        <option value="Tanker">Tanker</option>
-                      </select>
+                        readOnly
+                        title="MVP scope: Offshore Support Vessel (OSV) only"
+                      />
+                      <div className="form-text">MVP scope: OSV only</div>
                     </div>
                     <div className="col-md-4">
                       <label className="form-label text-secondary small fw-semibold">Vessel Subtype</label>
@@ -734,17 +754,37 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose }) => 
                     Pre-attach foundational statutory certificates for immediate OCR extraction and compliance readiness scoring (BR-5).
                   </p>
 
-                  <div className="border rounded p-3 bg-light">
+                  <div className="border rounded p-3 bg-light map-vessel-upload-zone">
                     <div className="fw-semibold text-dark mb-1">Upload Registration Document / Builder's Certificate</div>
                     <div className="text-muted small mb-2">Supported formats: PDF, JPG, PNG (Max 15MB)</div>
-                    <input type="file" className="form-control form-control-sm" />
+                    <input
+                      type="file"
+                      className="form-control form-control-sm"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleMockFileSelect(e.target.files?.[0], 'registration')}
+                    />
+                    {registrationDocName && (
+                      <div className="map-vessel-upload-success small mt-2">Selected: {registrationDocName}</div>
+                    )}
                   </div>
 
-                  <div className="border rounded p-3 bg-light">
+                  <div className="border rounded p-3 bg-light map-vessel-upload-zone">
                     <div className="fw-semibold text-dark mb-1">Upload Certificate of Class / Registry</div>
                     <div className="text-muted small mb-2">Initial proof for automatic OCR confidence matching (&ge; 95%)</div>
-                    <input type="file" className="form-control form-control-sm" />
+                    <input
+                      type="file"
+                      className="form-control form-control-sm"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleMockFileSelect(e.target.files?.[0], 'class')}
+                    />
+                    {classCertDocName && (
+                      <div className="map-vessel-upload-success small mt-2">Selected: {classCertDocName}</div>
+                    )}
                   </div>
+
+                  {uploadNotice && (
+                    <div className="alert alert-success py-2 small mt-2 mb-0">{uploadNotice}</div>
+                  )}
 
                   <div className="alert alert-info py-2 small mt-2">
                     <strong>Note:</strong> Additional statutory certificates (Safety Equipment, Load Line, IOPP) can be uploaded at any time in the <strong>Pre-Assurance Vault</strong> inside the vessel detail page.

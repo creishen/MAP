@@ -4,9 +4,9 @@
   role in system: deep-dive view rendered when a vessel row is selected from Fleet Master.
 */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../store/useMapStore';
-import { VesselParticulars } from '../types/vessel';
+import { VesselParticulars, ClassificationSociety } from '../types/vessel';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
 import { filterAuditTrailForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
@@ -29,18 +29,26 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
 
   const backInfo = getBackButtonInfo('vessels', 'Fleet Registry', previousHashView, activePersona);
 
-  const vessel = vessels.find((v) => v.id === vesselId) || vessels[0];
+  const vessel = vessels.find((v) => v.id === vesselId);
 
   const [activeTab, setActiveTab] = useState<'particulars' | 'vault' | 'assurance' | 'audit'>('particulars');
   const [activeAccordion, setActiveAccordion] = useState<number | null>(1);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<VesselParticulars>(vessel);
+  const [formData, setFormData] = useState<VesselParticulars | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const found = vessels.find((v) => v.id === vesselId);
+    if (found) {
+      setFormData(found);
+      setIsEditing(false);
+    }
+  }, [vesselId, vessels]);
 
   // BR-4: Client Admin (C Admin) or Inspector has read-only access
   const isReadOnly = activePersona === 'C Admin' || activePersona === 'Inspector';
 
-  if (!vessel) {
+  if (!vessel || !formData) {
     return <div className="p-4 text-center">Vessel not found.</div>;
   }
 
@@ -57,8 +65,8 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
     setActiveAccordion(activeAccordion === index ? null : index);
   };
 
-  const handleInputChange = (field: keyof VesselParticulars, val: any) => {
-    setFormData((prev) => ({ ...prev, [field]: val }));
+  const handleInputChange = (field: keyof VesselParticulars, val: VesselParticulars[keyof VesselParticulars]) => {
+    setFormData((prev) => (prev ? { ...prev, [field]: val } : prev));
   };
 
   const handleSave = () => {
@@ -228,7 +236,16 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">IMO Number:</span>
-                    <strong className="d-block font-mono-code text-dark">{vessel.imoNumber}</strong>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        className="form-control form-control-sm mt-1 font-mono-code"
+                        value={formData.imoNumber}
+                        onChange={(e) => handleInputChange('imoNumber', e.target.value)}
+                      />
+                    ) : (
+                      <strong className="d-block font-mono-code text-dark">{vessel.imoNumber}</strong>
+                    )}
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Official Reg #:</span>
@@ -307,8 +324,43 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
               {activeAccordion === 2 && (
                 <div className="p-3 bg-white row g-3 small border-top">
                   <div className="col-md-4">
+                    <span className="text-secondary">Vessel Type:</span>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        className="form-control form-control-sm mt-1"
+                        value={formData.vesselType}
+                        onChange={(e) => handleInputChange('vesselType', e.target.value)}
+                      />
+                    ) : (
+                      <strong className="d-block text-dark">{vessel.vesselType}</strong>
+                    )}
+                  </div>
+                  <div className="col-md-4">
+                    <span className="text-secondary">Subtype / Use:</span>
+                    <strong className="d-block text-dark">
+                      {vessel.vesselSubtype} &middot; {vessel.intendedUse}
+                    </strong>
+                  </div>
+                  <div className="col-md-4">
                     <span className="text-secondary">Class Society:</span>
-                    <strong className="d-block text-dark">{vessel.classificationSociety}</strong>
+                    {isEditing ? (
+                      <select
+                        className="form-select form-select-sm mt-1"
+                        value={formData.classificationSociety}
+                        onChange={(e) =>
+                          handleInputChange('classificationSociety', e.target.value as ClassificationSociety)
+                        }
+                      >
+                        <option value="DNV">DNV</option>
+                        <option value="ABS">ABS</option>
+                        <option value="Lloyd's Register">Lloyd's Register</option>
+                        <option value="Bureau Veritas">Bureau Veritas</option>
+                        <option value="RINA">RINA</option>
+                      </select>
+                    ) : (
+                      <strong className="d-block text-dark">{vessel.classificationSociety}</strong>
+                    )}
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Class Notation:</span>
@@ -345,7 +397,16 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 <div className="p-3 bg-white row g-3 small border-top">
                   <div className="col-md-4">
                     <span className="text-secondary">Year Built:</span>
-                    <strong className="d-block text-dark">{vessel.yearBuilt}</strong>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        className="form-control form-control-sm mt-1"
+                        value={formData.yearBuilt}
+                        onChange={(e) => handleInputChange('yearBuilt', parseInt(e.target.value, 10) || 0)}
+                      />
+                    ) : (
+                      <strong className="d-block text-dark">{vessel.yearBuilt}</strong>
+                    )}
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Shipyard:</span>
@@ -429,11 +490,29 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-6">
                     <span className="text-secondary">DOC Number:</span>
-                    <strong className="d-block font-mono-code text-dark">{vessel.docNumber}</strong>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        className="form-control form-control-sm mt-1 font-mono-code"
+                        value={formData.docNumber}
+                        onChange={(e) => handleInputChange('docNumber', e.target.value)}
+                      />
+                    ) : (
+                      <strong className="d-block font-mono-code text-dark">{vessel.docNumber}</strong>
+                    )}
                   </div>
                   <div className="col-md-6">
                     <span className="text-secondary">24/7 Ops Contact:</span>
-                    <strong className="d-block text-dark">{vessel.contact247}</strong>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        className="form-control form-control-sm mt-1"
+                        value={formData.contact247}
+                        onChange={(e) => handleInputChange('contact247', e.target.value)}
+                      />
+                    ) : (
+                      <strong className="d-block text-dark">{vessel.contact247}</strong>
+                    )}
                   </div>
                 </div>
               )}

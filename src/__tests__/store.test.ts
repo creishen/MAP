@@ -40,6 +40,23 @@ describe('Map Store State Management', () => {
     expect(result.message).toContain('already registered');
   });
 
+  it('should return vesselId on successful registration', () => {
+    const store = useMapStore.getState();
+    const initialCount = store.vessels.length;
+
+    const newVessel = {
+      ...store.vessels[0],
+      id: 'VESSEL-UNIT-TEST',
+      name: 'MV Unit Test Vessel',
+      imoNumber: '9999999',
+      officialRegNumber: 'UNIT-REG-001',
+    };
+
+    const result = store.addVessel(newVessel);
+    expect(result.success).toBe(true);
+    expect(result.vesselId).toBe('VESSEL-UNIT-TEST');
+    expect(useMapStore.getState().vessels.length).toBe(initialCount + 1);
+  });
   it('should update document verification status', () => {
     const store = useMapStore.getState();
     const targetDocId = store.documents[0].id;

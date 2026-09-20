@@ -22,6 +22,7 @@ export interface VesselParticulars {
   // Category 1 - Vessel Identification
   id: string;
   name: string; // e.g. MV Pacific Endeavour
+  previousNames?: string;
   imoNumber: string; // 7 digits, e.g. 9123456
   officialRegNumber: string; // e.g. OSV-44-2019
   mmsiNumber: string; // 9 digits, e.g. 503728940
@@ -32,8 +33,12 @@ export interface VesselParticulars {
   complianceReadinessScore: number; // 0 - 100%
 
   // Category 2 - Classification & Notation
+  vesselType: string; // e.g. Offshore Support Vessel (OSV)
+  vesselSubtype: string; // e.g. AHTS / PSV
+  intendedUse: string; // e.g. Offshore Supply & Towing
+  tradingArea: string; // e.g. International
   classificationSociety: ClassificationSociety;
-  classNotation: string; // e.g. +100A1 Offshore Supply Vessel
+  classNotation: string; // e.g. +100A1 Offshore Support Vessel
   hullType: string; // e.g. Double Bottom / Double Side Steel
   ispsSolasStatus: string; // e.g. Fully Compliant
 
