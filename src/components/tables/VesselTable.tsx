@@ -35,7 +35,9 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
   // BR-4: Client Admin (C Admin) or Inspector cannot register new vessels
   const canRegister = activePersona === 'Administrator';
 
-  const filteredVessels = vessels.filter((v) => {
+  const personaVessels = filterVesselsForPersona(vessels, assuranceSets, activePersona);
+
+  const filteredVessels = personaVessels.filter((v) => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       v.name.toLowerCase().includes(term) ||

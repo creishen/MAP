@@ -29,7 +29,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
   const [stageFilter, setStageFilter] = useState<string>('ALL');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
-  const canInitiate = activePersona === 'Administrator' || activePersona === 'C Admin' || activePersona === 'Submitter';
+  const canInitiate = activePersona === 'Administrator' || activePersona === 'C Admin';
 
   const filteredSets = assuranceSets.filter((s) => {
     const isAssigned = isAssuranceSetAssignedToPersona(s, activePersona);

@@ -191,6 +191,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
       bwtsSpec,
       owCalibrationDate: '2026-01-10',
       masterCertificateUploadCount: (registrationDocName ? 1 : 0) + (classCertDocName ? 1 : 0),
+      clientHistory: [],
     };
 
     const res = addVessel(newVessel);

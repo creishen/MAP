@@ -8,6 +8,19 @@ export type VesselRegistrationStatus = 'In Operations' | 'In Transit' | 'Dry Doc
 
 export type ClassificationSociety = 'DNV' | 'ABS' | "Lloyd's Register" | 'Bureau Veritas' | 'RINA';
 
+export type VesselClientCharterOutcome = 'Approved' | 'Rejected' | 'Returned for Correction' | 'In Progress' | 'Completed';
+
+export interface VesselClientHistoryRecord {
+  id: string;
+  clientOrganization: string;
+  charterTitle: string;
+  assuranceSetId?: string;
+  charterStart: string;
+  charterEnd: string;
+  outcome: VesselClientCharterOutcome;
+  notes?: string;
+}
+
 export interface StatutoryCertificateSummary {
   id: string;
   name: string;
@@ -87,6 +100,9 @@ export interface VesselParticulars {
 
   // Category 10 & 11 - Attachments & Meta
   masterCertificateUploadCount: number;
+
+  /** Past and current client / charter engagements for this vessel */
+  clientHistory: VesselClientHistoryRecord[];
 }
 
 // Alias export so any component importing 'Vessel' or 'VesselParticulars' works seamlessly

@@ -211,7 +211,7 @@ export function isViewAccessibleToPersona(
   }
 
   if (persona === 'Submitter') {
-    if (['verifier', 'inspector', 'inspection'].includes(view)) {
+    if (['verifier', 'inspector', 'inspection', 'create-assurance-set'].includes(view)) {
       return false;
     }
     return true;

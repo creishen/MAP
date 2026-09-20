@@ -302,3 +302,8 @@
 .map-vessel-accordion-header {
   cursor: pointer;
 }
+
+.map-vessel-client-history-table .btn-link {
+  text-decoration: none;
+  font-weight: 600;
+}

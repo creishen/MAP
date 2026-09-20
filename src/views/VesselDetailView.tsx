@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../store/useMapStore';
-import { VesselParticulars, ClassificationSociety } from '../types/vessel';
+import { VesselParticulars, ClassificationSociety, VesselRegistrationStatus } from '../types/vessel';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
 import { filterAuditTrailForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
@@ -33,7 +33,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
 
   const vessel = vessels.find((v) => v.id === vesselId);
 
-  const [activeTab, setActiveTab] = useState<'particulars' | 'vault' | 'assurance' | 'crew' | 'audit'>('particulars');
+  const [activeTab, setActiveTab] = useState<'particulars' | 'vault' | 'assurance' | 'clients' | 'audit'>('particulars');
   const [activeAccordion, setActiveAccordion] = useState<number | null>(1);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<VesselParticulars | null>(null);
@@ -47,12 +47,27 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
     }
   }, [vesselId, vessels]);
 
-  // BR-4: Client Admin (C Admin) or Inspector has read-only access
+  // RBAC: UC-02 registration edit = Administrator only; Category 10 status = Admin + Submitter
+  const isAdmin = activePersona === 'Administrator';
+  const isSubmitter = activePersona === 'Submitter';
   const isReadOnly = activePersona === 'C Admin' || activePersona === 'Inspector';
+  const canEditFull = isAdmin;
+  const canEditStatus = isAdmin || isSubmitter;
+  const canShowEditButton = canEditFull || canEditStatus;
+  const canUploadDocs = isAdmin || isSubmitter;
 
   if (!vessel || !formData) {
     return <div className="p-4 text-center">Vessel not found.</div>;
   }
+
+  const canEditField = (field: keyof VesselParticulars): boolean => {
+    if (isReadOnly) return false;
+    if (canEditFull) return true;
+    if (isSubmitter && field === 'status') return true;
+    return false;
+  };
+
+  const fieldEditable = (field: keyof VesselParticulars) => isEditing && canEditField(field);
 
   const visibleAuditEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
 
@@ -73,10 +88,31 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
   };
 
   const handleSave = () => {
-    updateVessel(formData);
+    if (canEditFull) {
+      updateVessel(formData);
+      setToastMessage('Vessel specifications updated successfully & recorded in audit trail.');
+    } else if (isSubmitter) {
+      updateVessel({ ...vessel, status: formData.status });
+      setToastMessage('Operating status updated successfully & recorded in audit trail.');
+    }
     setIsEditing(false);
-    setToastMessage('Vessel specifications updated successfully & recorded in audit trail.');
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const renderClientOutcomeBadge = (outcome: VesselParticulars['clientHistory'][0]['outcome']) => {
+    switch (outcome) {
+      case 'Approved':
+      case 'Completed':
+        return <span className="badge bg-success text-white">{outcome}</span>;
+      case 'Rejected':
+        return <span className="badge bg-danger text-white">{outcome}</span>;
+      case 'Returned for Correction':
+        return <span className="badge bg-warning text-dark">{outcome}</span>;
+      case 'In Progress':
+        return <span className="badge bg-primary text-white">{outcome}</span>;
+      default:
+        return <span className="badge bg-secondary">{outcome}</span>;
+    }
   };
 
   return (
@@ -91,37 +127,48 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
 
       {/* Action Row */}
       <div className="d-flex flex-wrap align-items-center justify-between gap-2">
-        {!isReadOnly && (
-          <div className="d-flex align-items-center justify-content-end gap-2">
-            {isEditing ? (
-              <>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary"
+          onClick={() => setCurrentHashView(backInfo.targetView)}
+        >
+          {backInfo.label}
+        </button>
+
+        <div className="d-flex align-items-center gap-2">
+          {canShowEditButton && (
+            <>
+              {isEditing ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => {
+                      setFormData(vessel);
+                      setIsEditing(false);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button type="button" className="btn btn-sm btn-success" onClick={handleSave}>
+                    Save Changes
+                  </button>
+                </>
+              ) : (
                 <button
                   type="button"
-                  className="btn btn-sm btn-secondary"
-                  onClick={() => {
-                    setFormData(vessel);
-                    setIsEditing(false);
-                  }}
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={() => setIsEditing(true)}
                 >
-                  Cancel
+                  {canEditFull ? 'Edit Particulars' : 'Update Operating Status'}
                 </button>
-                <button type="button" className="btn btn-sm btn-success" onClick={handleSave}>
-                  Save Changes
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-primary"
-                onClick={() => setIsEditing(true)}
-              >
-                Edit Vessel Particulars
-              </button>
-            )}
+              )}
+            </>
+          )}
+
+          <div className="badge bg-light text-dark border font-mono-code p-2">
+            IMO: {vessel.imoNumber} | Reg: {vessel.officialRegNumber}
           </div>
-        )}
-        <div className="badge bg-light text-dark border font-mono-code p-2">
-          IMO: {vessel.imoNumber} | Reg: {vessel.officialRegNumber}
         </div>
       </div>
 
@@ -131,7 +178,25 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
           <div>
             <div className="d-flex align-items-center gap-2">
               <h2 className="fw-bold mb-1 text-primary m-0">{vessel.name}</h2>
-              <span className="badge bg-primary text-uppercase">{vessel.status}</span>
+              {fieldEditable('status') ? (
+                <select
+                  className="form-select form-select-sm"
+                  style={{ width: 'auto' }}
+                  value={formData.status}
+                  onChange={(e) =>
+                    handleInputChange('status', e.target.value as VesselRegistrationStatus)
+                  }
+                >
+                  <option value="In Operations">In Operations</option>
+                  <option value="In Transit">In Transit</option>
+                  <option value="Dry Docking">Dry Docking</option>
+                  <option value="Lay-up">Lay-up</option>
+                  <option value="Port Stay">Port Stay</option>
+                  <option value="Under Charter">Under Charter</option>
+                </select>
+              ) : (
+                <span className="badge bg-primary text-uppercase">{vessel.status}</span>
+              )}
             </div>
             <div className="text-secondary small mt-1">
               {vessel.classNotation} | {vessel.flagState} Flag | Port: {vessel.portOfRegistry}
@@ -185,10 +250,10 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         <li className="nav-item">
           <button
             type="button"
-            className={`nav-link ${activeTab === 'crew' ? 'active fw-bold text-primary' : 'text-secondary'}`}
-            onClick={() => setActiveTab('crew')}
+            className={`nav-link ${activeTab === 'clients' ? 'active fw-bold text-primary' : 'text-secondary'}`}
+            onClick={() => setActiveTab('clients')}
           >
-            Assigned Crew ({linkedCrew.length})
+            Client History ({vessel.clientHistory?.length ?? 0})
           </button>
         </li>
         <li className="nav-item">
@@ -207,7 +272,8 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         <div className="card map-card-custom">
           <div className="card-header d-flex justify-between align-items-center">
             <span>Complete 11-Category Technical Breakdown</span>
-            {isEditing && <span className="badge bg-warning text-dark">Edit Mode Active</span>}
+            {isEditing && canEditFull && <span className="badge bg-warning text-dark">Edit Mode Active</span>}
+            {isEditing && isSubmitter && <span className="badge bg-warning text-dark">Status Edit Only</span>}
           </div>
           <div className="card-body p-3">
             {/* Category 1 */}
@@ -224,7 +290,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 <div className="p-3 bg-white row g-3 small border-top">
                   <div className="col-md-4">
                     <span className="text-secondary">Vessel Name:</span>
-                    {isEditing ? (
+                    {fieldEditable('name') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1"
@@ -237,7 +303,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">IMO Number:</span>
-                    {isEditing ? (
+                    {fieldEditable('imoNumber') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1 font-mono-code"
@@ -250,7 +316,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Official Reg #:</span>
-                    {isEditing ? (
+                    {fieldEditable('officialRegNumber') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1"
@@ -263,7 +329,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">MMSI:</span>
-                    {isEditing ? (
+                    {fieldEditable('mmsiNumber') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1"
@@ -276,7 +342,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Call Sign:</span>
-                    {isEditing ? (
+                    {fieldEditable('callSign') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1"
@@ -289,7 +355,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Flag / Port:</span>
-                    {isEditing ? (
+                    {fieldEditable('flagState') ? (
                       <div className="d-flex gap-1 mt-1">
                         <input
                           type="text"
@@ -326,7 +392,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 <div className="p-3 bg-white row g-3 small border-top">
                   <div className="col-md-4">
                     <span className="text-secondary">Vessel Type:</span>
-                    {isEditing ? (
+                    {fieldEditable('vesselType') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1"
@@ -345,7 +411,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Class Society:</span>
-                    {isEditing ? (
+                    {fieldEditable('classificationSociety') ? (
                       <select
                         className="form-select form-select-sm mt-1"
                         value={formData.classificationSociety}
@@ -365,7 +431,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Class Notation:</span>
-                    {isEditing ? (
+                    {fieldEditable('classNotation') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1"
@@ -398,7 +464,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 <div className="p-3 bg-white row g-3 small border-top">
                   <div className="col-md-4">
                     <span className="text-secondary">Year Built:</span>
-                    {isEditing ? (
+                    {fieldEditable('yearBuilt') ? (
                       <input
                         type="number"
                         className="form-control form-control-sm mt-1"
@@ -465,7 +531,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 <div className="p-3 bg-white row g-3 small border-top">
                   <div className="col-md-6">
                     <span className="text-secondary">Registered Owner:</span>
-                    {isEditing ? (
+                    {fieldEditable('registeredOwner') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1"
@@ -478,7 +544,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-6">
                     <span className="text-secondary">Technical Manager:</span>
-                    {isEditing ? (
+                    {fieldEditable('technicalManager') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1"
@@ -491,7 +557,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-6">
                     <span className="text-secondary">DOC Number:</span>
-                    {isEditing ? (
+                    {fieldEditable('docNumber') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1 font-mono-code"
@@ -504,7 +570,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   </div>
                   <div className="col-md-6">
                     <span className="text-secondary">24/7 Ops Contact:</span>
-                    {isEditing ? (
+                    {fieldEditable('contact247') ? (
                       <input
                         type="text"
                         className="form-control form-control-sm mt-1"
@@ -554,6 +620,47 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 </div>
               )}
             </div>
+
+            {/* Category 10 — Operating Status (editable by Admin + Submitter per UC-02 / PDF) */}
+            <div className="border rounded mb-2 overflow-hidden">
+              <div
+                className="p-3 bg-light d-flex justify-between align-items-center map-vessel-accordion-header"
+                onClick={() => toggleAccordion(10)}
+              >
+                <span className="fw-bold text-dark">10. Vessel Operating Status</span>
+                <span>{activeAccordion === 10 ? '▲' : '▼'}</span>
+              </div>
+              {activeAccordion === 10 && (
+                <div className="p-3 bg-white row g-3 small border-top">
+                  <div className="col-md-6">
+                    <span className="text-secondary">Current Status:</span>
+                    {fieldEditable('status') ? (
+                      <select
+                        className="form-select form-select-sm mt-1"
+                        value={formData.status}
+                        onChange={(e) =>
+                          handleInputChange('status', e.target.value as VesselRegistrationStatus)
+                        }
+                      >
+                        <option value="In Operations">In Operations</option>
+                        <option value="In Transit">In Transit</option>
+                        <option value="Dry Docking">Dry Docking</option>
+                        <option value="Lay-up">Lay-up</option>
+                        <option value="Port Stay">Port Stay</option>
+                        <option value="Under Charter">Under Charter</option>
+                      </select>
+                    ) : (
+                      <strong className="d-block text-dark">{vessel.status}</strong>
+                    )}
+                  </div>
+                  {!canEditStatus && isReadOnly && (
+                    <div className="col-12 text-muted small">
+                      Read-only view — vessel registration particulars are managed by the Vessel Provider Administrator.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -566,7 +673,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
               <span className="fw-bold">Pre-Assurance Statutory Certificate Vault</span>
               <div className="text-muted small">Upload and verify statutory certificates directly on the asset before assurance audits (BR-5).</div>
             </div>
-            {!isReadOnly && (
+            {canUploadDocs && (
               <button
                 type="button"
                 className="btn btn-sm btn-primary"
@@ -698,80 +805,73 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         </div>
       )}
 
-      {/* Tab: Assigned Crew Directory */}
-      {activeTab === 'crew' && (
+      {/* Tab 4: Client / Charter History */}
+      {activeTab === 'clients' && (
         <div className="card map-card-custom">
-          <div className="card-header p-3 border-bottom d-flex align-items-center justify-between">
-            <div className="fw-bold text-dark fs-6">
-              Registered Crew Members Assigned to {vessel.name} ({linkedCrew.length} Seafarers)
+          <div className="card-header">
+            <div className="fw-bold">Client & Charter History</div>
+            <div className="text-muted small">
+              Previous and current clients who chartered or used this vessel for assurance activities.
             </div>
           </div>
-          <div className="table-responsive">
-            <table className="table map-table-custom align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Seafarer Name</th>
-                  <th>Rank / Position</th>
-                  <th>Nationality</th>
-                  <th>Assignment Status</th>
-                  <th>STCW Score</th>
-                  <th>Compliance Status</th>
-                  <th className="text-end">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {linkedCrew.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-4 text-muted">
-                      No crew members currently registered for this vessel.
-                    </td>
-                  </tr>
-                ) : (
-                  linkedCrew.map((c) => (
-                    <tr key={c.id}>
-                      <td className="fw-semibold text-primary">
-                        <button
-                          type="button"
-                          className="btn btn-link p-0 text-primary text-start fw-semibold text-decoration-underline border-0 bg-transparent align-baseline"
-                          onClick={() => setCurrentHashView('crew', c.id)}
-                          title={`View ${c.fullName} STCW seafarer dossier`}
-                        >
-                          {c.fullName}
-                        </button>
-                      </td>
-                      <td>{c.rank}</td>
-                      <td><span className="badge bg-light text-dark border">{c.nationality}</span></td>
-                      <td>
-                        <span className={`badge ${c.currentVesselId === vessel.id ? 'bg-success text-white' : 'bg-secondary text-white'}`}>
-                          {c.currentVesselId === vessel.id ? 'Current Assignment' : 'Historical Assignment'}
-                        </span>
-                      </td>
-                      <td className="font-mono-code fw-semibold">{c.overallComplianceScore}%</td>
-                      <td>
-                        <span className={`badge ${c.complianceStatus === 'Fully Compliant' ? 'bg-success text-white' : c.complianceStatus === 'Expiring < 60 Days' ? 'bg-warning text-dark' : 'bg-danger text-white'}`}>
-                          {c.complianceStatus}
-                        </span>
-                      </td>
-                      <td className="text-end">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-primary py-1 px-2"
-                          style={{ fontSize: '0.75rem' }}
-                          onClick={() => setCurrentHashView('crew', c.id)}
-                        >
-                          View Seafarer Profile
-                        </button>
-                      </td>
+          <div className="card-body p-0">
+            {(vessel.clientHistory?.length ?? 0) === 0 ? (
+              <div className="p-4 text-center text-muted">No client or charter history recorded for this vessel yet.</div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table map-table-custom align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Client Organization</th>
+                      <th>Charter / Campaign</th>
+                      <th>Charter Period</th>
+                      <th>Assurance Set</th>
+                      <th>Outcome</th>
+                      <th>Notes</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {[...(vessel.clientHistory ?? [])]
+                      .sort(
+                        (a, b) =>
+                          new Date(b.charterStart).getTime() - new Date(a.charterStart).getTime()
+                      )
+                      .map((record) => (
+                        <tr key={record.id}>
+                          <td className="fw-semibold text-dark">{record.clientOrganization}</td>
+                          <td className="small">{record.charterTitle}</td>
+                          <td className="font-mono-code small">
+                            {formatMaritimeDate(record.charterStart)} &rarr;{' '}
+                            {formatMaritimeDate(record.charterEnd)}
+                          </td>
+                          <td className="font-mono-code small">
+                            {record.assuranceSetId ? (
+                              <button
+                                type="button"
+                                className="btn btn-link btn-sm p-0 font-mono-code"
+                                onClick={() =>
+                                  setCurrentHashView('assurance-sets', record.assuranceSetId!)
+                                }
+                              >
+                                {record.assuranceSetId} &rarr;
+                              </button>
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
+                          </td>
+                          <td>{renderClientOutcomeBadge(record.outcome)}</td>
+                          <td className="small text-secondary">{record.notes || '—'}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Tab 4: Audit Trail */}
+      {/* Tab 5: Audit Trail */}
       {activeTab === 'audit' && (
         <div className="card map-card-custom">
           <div className="card-header fw-bold">Tamper-Evident Asset Audit Trail (BR-2)</div>
@@ -798,6 +898,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
           </div>
         </div>
       )}
+
     </div>
   );
 };
