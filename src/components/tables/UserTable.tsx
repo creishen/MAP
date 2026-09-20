@@ -9,6 +9,7 @@ import { useMapStore } from '../../store/useMapStore';
 import { UserProfile } from '../../types/user';
 import { UserRolePersona } from '../../types/audit';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
+import { EditUserModal } from '../drawers/EditUserModal';
 
 interface UserTableProps {
   onAddUser?: () => void;
@@ -26,6 +27,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
 
   const canManageUsers = activePersona === 'Administrator';
 
@@ -239,23 +241,32 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
                   </td>
                   <td className="text-end">
                     {canManageUsers && (
-                      u.status === 'Active' ? (
+                      <div className="d-flex align-items-center justify-content-end gap-2">
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => updateUserStatus(u.id, 'Inactive')}
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={() => setEditingUser(u)}
                         >
-                          Deactivate
+                          Edit
                         </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-success"
-                          onClick={() => updateUserStatus(u.id, 'Active')}
-                        >
-                          Activate
-                        </button>
-                      )
+                        {u.status === 'Active' ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => updateUserStatus(u.id, 'Inactive')}
+                          >
+                            Deactivate
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-success"
+                            onClick={() => updateUserStatus(u.id, 'Active')}
+                          >
+                            Activate
+                          </button>
+                        )}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -264,6 +275,13 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Edit User Modal */}
+      <EditUserModal
+        isOpen={!!editingUser}
+        onClose={() => setEditingUser(null)}
+        user={editingUser}
+      />
     </div>
   );
 };

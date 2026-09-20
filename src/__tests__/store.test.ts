@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useMapStore } from '../store/useMapStore';
+import { isViewAccessibleToPersona } from '../utils/rbacHelpers';
 
 describe('Map Store State Management', () => {
   beforeEach(() => {
@@ -57,6 +58,7 @@ describe('Map Store State Management', () => {
     expect(result.vesselId).toBe('VESSEL-UNIT-TEST');
     expect(useMapStore.getState().vessels.length).toBe(initialCount + 1);
   });
+
   it('should update document verification status', () => {
     const store = useMapStore.getState();
     const targetDocId = store.documents[0].id;
@@ -66,5 +68,84 @@ describe('Map Store State Management', () => {
     const updatedDoc = useMapStore.getState().documents.find((d) => d.id === targetDocId);
     expect(updatedDoc?.verificationStatus).toBe('Verified');
     expect(updatedDoc?.verificationNotes).toBe('Unit test verification check');
+  });
+
+  it('should update user profile details and record audit log event', () => {
+    const store = useMapStore.getState();
+    const targetUser = store.users[0];
+
+    const updatedUser = {
+      ...targetUser,
+      name: 'Captain Updated Name',
+      role: 'Approver' as const,
+    };
+
+    store.updateUser(updatedUser);
+
+    const userInStore = useMapStore.getState().users.find((u) => u.id === targetUser.id);
+    expect(userInStore?.name).toBe('Captain Updated Name');
+    expect(userInStore?.role).toBe('Approver');
+
+    const latestAudit = useMapStore.getState().auditEvents[0];
+    expect(latestAudit.action).toBe('Updated User Profile');
+    expect(latestAudit.targetAsset).toContain('Captain Updated Name');
+  });
+
+  it('should restrict users management view access strictly to Administrator persona', () => {
+    expect(isViewAccessibleToPersona('users', undefined, 'Administrator')).toBe(true);
+    expect(isViewAccessibleToPersona('users', undefined, 'Submitter')).toBe(false);
+    expect(isViewAccessibleToPersona('users', undefined, 'Verifier')).toBe(false);
+    expect(isViewAccessibleToPersona('users', undefined, 'Inspector')).toBe(false);
+    expect(isViewAccessibleToPersona('users', undefined, 'Approver')).toBe(false);
+    expect(isViewAccessibleToPersona('users', undefined, 'C Admin')).toBe(false);
+  });
+
+  it('should add STCW Layer 1 and Layer 2 certificates to crew members and record audit log', () => {
+    const store = useMapStore.getState();
+    const targetCrew = store.crew[0];
+
+    const layer1Doc = {
+      id: 'DOC-CRW-L1-TEST',
+      title: 'ENG1 Medical Certificate',
+      layer: 'Layer 1 - Universal Core' as const,
+      stcwRegulation: 'STCW Reg I/9',
+      certificateNo: 'ENG1-AU-99120',
+      issuingAuthority: 'AMSA Medical Examiner',
+      issueDate: '2026-01-01',
+      expiryDate: '2028-01-01',
+      verificationStatus: 'Verified' as const,
+    };
+
+    store.addCrewDocument(targetCrew.id, layer1Doc);
+
+    let updatedCrew = useMapStore.getState().crew.find((c) => c.id === targetCrew.id);
+    expect(updatedCrew?.layer1CoreDocuments.some((d) => d.id === 'DOC-CRW-L1-TEST')).toBe(true);
+
+    const layer2Doc = {
+      id: 'DOC-CRW-L2-TEST',
+      title: 'Advanced Oil Tanker Endorsement',
+      layer: 'Layer 2 - Vessel Specific & Endorsements' as const,
+      stcwRegulation: 'STCW Reg V/1-1',
+      certificateNo: 'TANK-AU-8871',
+      issuingAuthority: 'AMSA Australia',
+      issueDate: '2026-01-01',
+      expiryDate: '2031-01-01',
+      verificationStatus: 'Verified' as const,
+    };
+
+    store.addCrewDocument(targetCrew.id, layer2Doc);
+
+    updatedCrew = useMapStore.getState().crew.find((c) => c.id === targetCrew.id);
+    expect(updatedCrew?.layer2Endorsements.some((d) => d.id === 'DOC-CRW-L2-TEST')).toBe(true);
+
+    const latestAudit = useMapStore.getState().auditEvents[0];
+    expect(latestAudit.action).toContain('Uploaded Crew STCW Document');
+  });
+
+  it('should allow C Admin (Client Admin) to access create-assurance-set view', () => {
+    expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'C Admin')).toBe(true);
+    expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'Administrator')).toBe(true);
+    expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'Submitter')).toBe(true);
+    expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'Verifier')).toBe(false);
   });
 });

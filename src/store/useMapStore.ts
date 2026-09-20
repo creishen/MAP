@@ -82,6 +82,7 @@ export interface MapStoreState {
   // User Management State
   users: UserProfile[];
   addUser: (user: UserProfile) => void;
+  updateUser: (user: UserProfile) => void;
   updateUserStatus: (userId: string, status: UserProfile['status']) => void;
 
   // Crew Directory State
@@ -478,6 +479,19 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       action: `Provisioned New User Profile (${newUser.userType})`,
       targetAsset: `${newUser.name} (${newUser.email})`,
       justificationNotes: `Added ${newUser.userType} user assigned as ${newUser.role} for ${newUser.organization}.`,
+    });
+  },
+  updateUser: (updatedUser) => {
+    set((state) => ({
+      users: state.users.map((u) => (u.id === updatedUser.id ? updatedUser : u)),
+    }));
+    get().logAuditEvent({
+      userId: 'USR-CURRENT',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Updated User Profile',
+      targetAsset: `${updatedUser.name} (${updatedUser.email})`,
+      justificationNotes: `Updated user profile for ${updatedUser.name} (${updatedUser.role}, ${updatedUser.userType}).`,
     });
   },
   updateUserStatus: (userId, status) => {

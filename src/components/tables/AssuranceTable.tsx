@@ -147,7 +147,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
               className="btn btn-sm btn-primary"
               onClick={onInitiateSet}
             >
-              Initiate New Assurance Set
+              Create Assurance Set
             </button>
           )}
         </div>

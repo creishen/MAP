@@ -206,11 +206,11 @@ export const CreateAssuranceSetView: React.FC = () => {
                 </button>
               </li>
               <li className="breadcrumb-item active text-dark fw-semibold" aria-current="page">
-                Initiate New Assurance Set
+                Create Assurance Set
               </li>
             </ol>
           </nav>
-          <h2 className="fw-bold text-slate-900 m-0 fs-3">Initiate New Assurance Set</h2>
+          <h2 className="fw-bold text-slate-900 m-0 fs-3">Create Assurance Set</h2>
           <p className="text-muted small m-0 mt-1">
             Configure campaign particulars, master vessel/crew document requirements, workflow policies, and assigned role stakeholders.
           </p>

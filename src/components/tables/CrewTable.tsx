@@ -13,6 +13,7 @@ import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 interface CrewTableProps {
   onSelectCrew: (crew: CrewMember) => void;
   onRegisterCrew?: () => void;
+  onAddDocumentCrew?: (crew: CrewMember) => void;
 }
 
 /**
@@ -20,7 +21,11 @@ interface CrewTableProps {
   how: filters crew array by search query, rank position, and STCW compliance status badge, with export to CSV/PDF.
   with what file: src/components/tables/CrewTable.tsx loaded by CrewView.tsx.
 */
-export const CrewTable: React.FC<CrewTableProps> = ({ onSelectCrew, onRegisterCrew }) => {
+export const CrewTable: React.FC<CrewTableProps> = ({
+  onSelectCrew,
+  onRegisterCrew,
+  onAddDocumentCrew,
+}) => {
   const { crew, activePersona } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [rankFilter, setRankFilter] = useState<string>('ALL');
@@ -218,16 +223,31 @@ export const CrewTable: React.FC<CrewTableProps> = ({ onSelectCrew, onRegisterCr
                     {formatMaritimeDate(c.lastAuditedDate)}
                   </td>
                   <td className="text-end">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectCrew(c);
-                      }}
-                    >
-                      View Details
-                    </button>
+                    <div className="d-flex align-items-center justify-content-end gap-2">
+                      {canManageCrew && onAddDocumentCrew && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-success"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddDocumentCrew(c);
+                          }}
+                          title="Upload Layer 1 or Layer 2 STCW Document"
+                        >
+                          + Add Document
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectCrew(c);
+                        }}
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

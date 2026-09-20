@@ -13,25 +13,27 @@ interface CrewDocumentUploadModalProps {
   crewId: string;
   crewName: string;
   existingDocument?: STCWDocumentItem | null;
+  initialLayer?: STCWLayer;
   onClose: () => void;
 }
 
 /**
   what: renders modal for uploading, reuploading, or updating stcw crew certificates.
   how: pre-fills form fields if updating existing document, validates inputs, updates zustand store, and logs audit trail event.
-  with what file: src/components/drawers/CrewDocumentUploadModal.tsx loaded by CrewDetailView.tsx.
+  with what file: src/components/drawers/CrewDocumentUploadModal.tsx loaded by CrewDetailView.tsx and CrewView.tsx.
 */
 export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = ({
   isOpen,
   crewId,
   crewName,
   existingDocument,
+  initialLayer,
   onClose,
 }) => {
   const { addCrewDocument, updateCrewDocument, activePersona } = useMapStore();
 
   const [title, setTitle] = useState('');
-  const [layer, setLayer] = useState<STCWLayer>('Layer 1 - Universal Core');
+  const [layer, setLayer] = useState<STCWLayer>(initialLayer || 'Layer 1 - Universal Core');
   const [stcwRegulation, setStcwRegulation] = useState('STCW Reg VI/1');
   const [certificateNo, setCertificateNo] = useState('');
   const [issuingAuthority, setIssuingAuthority] = useState('Australian Maritime Safety Authority (AMSA)');
@@ -56,7 +58,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
       setFileName(existingDocument.fileName || `${existingDocument.title.toLowerCase().replace(/\s+/g, '_')}_v2.pdf`);
     } else {
       setTitle('');
-      setLayer('Layer 1 - Universal Core');
+      setLayer(initialLayer || 'Layer 1 - Universal Core');
       setStcwRegulation('STCW Reg VI/1');
       setCertificateNo('');
       setIssuingAuthority('Australian Maritime Safety Authority (AMSA)');
@@ -67,7 +69,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
       setFileName('');
     }
     setErrorMessage('');
-  }, [existingDocument, isOpen]);
+  }, [existingDocument, initialLayer, isOpen]);
 
   if (!isOpen) return null;
 

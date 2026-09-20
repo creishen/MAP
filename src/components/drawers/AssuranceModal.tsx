@@ -124,13 +124,13 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
       <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div className="modal-content bg-white text-dark border shadow-lg rounded-3">
           <div className="modal-header border-bottom bg-light px-4 py-3 d-flex align-items-center justify-content-between">
-            <h5 className="modal-title fw-bold text-slate-900 m-0 fs-5">Initiate New Assurance Set</h5>
+            <h5 className="modal-title fw-bold text-slate-900 m-0 fs-5">Create Assurance Set</h5>
             <button type="button" className="btn-close" onClick={onClose} aria-label="Close" />
           </div>
 
           <form onSubmit={handleSubmit} className="d-flex flex-column overflow-hidden flex-grow-1">
             <div className="modal-body px-4 py-3 overflow-y-auto">
-              
+
               {/* section 1: campaign & vessel details */}
               <div className="mb-4">
                 <h6 className="fw-bold text-slate-800 mb-3 border-bottom pb-2 fs-6">1 · Campaign & Vessel Information</h6>

@@ -204,7 +204,7 @@ export function isViewAccessibleToPersona(
   if (view === 'dashboard' || view === 'audit') return true;
 
   if (persona === 'C Admin') {
-    if (['documents', 'verifier', 'inspector', 'inspection', 'create-assurance-set'].includes(view)) {
+    if (['documents', 'verifier', 'inspector', 'inspection'].includes(view)) {
       return false;
     }
     return true;

@@ -4,21 +4,28 @@
   role in system: launched by CrewView.tsx or CrewTable.tsx when admin or submitter clicks register crew member.
 */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../../store/useMapStore';
-import { CrewMember } from '../../types/crew';
+import { CrewMember, STCWLayer } from '../../types/crew';
 
 interface AddCrewModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenUploadDoc?: (crew: CrewMember, initialLayer?: STCWLayer) => void;
+  onViewCrewDetail?: (crewId: string) => void;
 }
 
 /**
   what: renders modal for registering new organization crew members.
-  how: captures crew particulars, assigns initial stcw core document placeholders, updates zustand store, and logs audit event.
+  how: captures crew particulars, assigns initial stcw core documents, provides post-registration layered document upload options, updates zustand store, and logs audit event.
   with what file: src/components/drawers/AddCrewModal.tsx loaded by CrewView.tsx.
 */
-export const AddCrewModal: React.FC<AddCrewModalProps> = ({ isOpen, onClose }) => {
+export const AddCrewModal: React.FC<AddCrewModalProps> = ({
+  isOpen,
+  onClose,
+  onOpenUploadDoc,
+  onViewCrewDetail,
+}) => {
   const { vessels, addCrewMember, activePersona } = useMapStore();
   const [fullName, setFullName] = useState('');
   const [rank, setRank] = useState('Chief Officer');
@@ -29,6 +36,14 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({ isOpen, onClose }) =
   const [emergencyContact, setEmergencyContact] = useState('');
   const [currentVesselId, setCurrentVesselId] = useState(vessels[0]?.id || '');
   const [errorMessage, setErrorMessage] = useState('');
+  const [registeredCrew, setRegisteredCrew] = useState<CrewMember | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setRegisteredCrew(null);
+      setErrorMessage('');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -112,7 +127,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({ isOpen, onClose }) =
 
     addCrewMember(newCrew);
 
-    /* reset state */
+    /* reset input state and present post-registration action panel */
     setFullName('');
     setRank('Chief Officer');
     setNationality('Australian');
@@ -121,8 +136,106 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({ isOpen, onClose }) =
     setDateOfBirth('1988-05-15');
     setEmergencyContact('');
     setErrorMessage('');
-    onClose();
+    setRegisteredCrew(newCrew);
   };
+
+  if (registeredCrew) {
+    return (
+      <div className="map-modal-backdrop d-flex align-items-center justify-content-center p-3">
+        <div className="card map-card-custom shadow-lg" style={{ width: '100%', maxWidth: '620px', zIndex: 1100 }}>
+          <div className="card-header bg-success text-white p-3 d-flex align-items-center justify-content-between">
+            <div className="fw-bold fs-6">
+              Crew Member Registered Successfully
+            </div>
+            <button
+              type="button"
+              className="btn-close btn-close-white"
+              onClick={() => {
+                setRegisteredCrew(null);
+                onClose();
+              }}
+              aria-label="Close"
+            />
+          </div>
+          <div className="card-body p-4 d-flex flex-column gap-3">
+            <div className="alert alert-success py-2 px-3 small mb-0 font-mono-code">
+              Registered <strong>{registeredCrew.fullName}</strong> ({registeredCrew.rank}) — Seaman's Book #: <strong>{registeredCrew.seamansBookNo}</strong>
+            </div>
+
+            <p className="small text-secondary mb-0">
+              The crew profile has been registered in the system. As an Administrator or Submitter, you can now add STCW compliance certificates for this seafarer based on compliance layers below:
+            </p>
+
+            <div className="d-flex flex-column gap-2">
+              <button
+                type="button"
+                className="btn btn-outline-primary text-start p-3 d-flex align-items-center justify-content-between"
+                onClick={() => {
+                  const target = registeredCrew;
+                  setRegisteredCrew(null);
+                  onClose();
+                  if (onOpenUploadDoc) {
+                    onOpenUploadDoc(target, 'Layer 1 - Universal Core');
+                  }
+                }}
+              >
+                <div>
+                  <div className="fw-bold">+ Upload Layer 1 — Universal Core Certificate</div>
+                  <div className="small text-muted">Universal Core (Passport, Seaman's Book, BST, ENG1 Medical, Security Awareness)</div>
+                </div>
+                <span className="btn btn-sm btn-primary ms-2 flex-shrink-0">Add Layer 1</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-outline-info text-dark text-start p-3 d-flex align-items-center justify-content-between"
+                onClick={() => {
+                  const target = registeredCrew;
+                  setRegisteredCrew(null);
+                  onClose();
+                  if (onOpenUploadDoc) {
+                    onOpenUploadDoc(target, 'Layer 2 - Vessel Specific & Endorsements');
+                  }
+                }}
+              >
+                <div>
+                  <div className="fw-bold">+ Upload Layer 2 — Vessel Specific Endorsement</div>
+                  <div className="small text-muted">Vessel & Cargo Specific (CoC, Flag Endorsement, Advanced Tanker, IGF, DP Operator)</div>
+                </div>
+                <span className="btn btn-sm btn-info text-dark ms-2 flex-shrink-0">Add Layer 2</span>
+              </button>
+            </div>
+          </div>
+          <div className="card-footer d-flex align-items-center justify-content-between p-3 border-top bg-light">
+            {onViewCrewDetail && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => {
+                  const targetId = registeredCrew.id;
+                  setRegisteredCrew(null);
+                  onClose();
+                  onViewCrewDetail(targetId);
+                }}
+              >
+                View Full Seafarer Dossier →
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-sm btn-primary ms-auto"
+              onClick={() => {
+                setRegisteredCrew(null);
+                onClose();
+              }}
+            >
+              Done / Return to Directory
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="map-modal-backdrop d-flex align-items-center justify-content-center p-3">
