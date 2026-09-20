@@ -146,7 +146,7 @@ describe('Map Store State Management', () => {
   it('should allow C Admin (Client Admin) to access create-assurance-set view', () => {
     expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'C Admin')).toBe(true);
     expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'Administrator')).toBe(true);
-    expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'Submitter')).toBe(true);
+    expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'Submitter')).toBe(false);
     expect(isViewAccessibleToPersona('create-assurance-set', undefined, 'Verifier')).toBe(false);
   });
 

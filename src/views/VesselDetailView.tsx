@@ -10,6 +10,7 @@ import { VesselParticulars, ClassificationSociety, VesselRegistrationStatus } fr
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
 import { filterAuditTrailForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
+import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 
 interface VesselDetailViewProps {
   vesselId: string;
@@ -29,8 +30,6 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
     auditEvents
   } = useMapStore();
 
-  const backInfo = getBackButtonInfo('vessels', 'Fleet Registry', previousHashView, activePersona, previousEntityId);
-
   const vessel = vessels.find((v) => v.id === vesselId);
 
   const [activeTab, setActiveTab] = useState<'particulars' | 'vault' | 'assurance' | 'clients' | 'crew' | 'audit'>('particulars');
@@ -38,6 +37,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<VesselParticulars | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   useEffect(() => {
     const found = vessels.find((v) => v.id === vesselId);
@@ -47,14 +47,94 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
     }
   }, [vesselId, vessels]);
 
-  // RBAC: UC-02 registration edit = Administrator only; Category 10 status = Admin + Submitter
+  /* rbac: admin and c admin can export vessel data, admin and submitter can edit particulars/status */
   const isAdmin = activePersona === 'Administrator';
   const isSubmitter = activePersona === 'Submitter';
-  const isReadOnly = activePersona === 'C Admin' || activePersona === 'Inspector';
+  const isCAdmin = activePersona === 'C Admin';
+  const isReadOnly = isCAdmin || activePersona === 'Inspector';
   const canEditFull = isAdmin;
   const canEditStatus = isAdmin || isSubmitter;
   const canShowEditButton = canEditFull || canEditStatus;
   const canUploadDocs = isAdmin || isSubmitter;
+  const canExport = isAdmin || isCAdmin;
+
+  /*
+    what: exports vessel 11-category particulars and statutory details to csv format.
+    how: constructs key-value records for all technical particulars and triggers browser csv file download.
+    with what file: src/views/VesselDetailView.tsx using src/utils/exportHelpers.ts.
+  */
+  const handleExportCsv = () => {
+    if (!vessel) return;
+    const vesselDetails = [
+      { Category: 'Vessel Identification', Field: 'Vessel Name', Value: vessel.name },
+      { Category: 'Vessel Identification', Field: 'IMO Number', Value: vessel.imoNumber },
+      { Category: 'Vessel Identification', Field: 'Official Reg Number', Value: vessel.officialRegNumber },
+      { Category: 'Vessel Identification', Field: 'MMSI Number', Value: vessel.mmsiNumber },
+      { Category: 'Vessel Identification', Field: 'Call Sign', Value: vessel.callSign },
+      { Category: 'Vessel Identification', Field: 'Flag State', Value: vessel.flagState },
+      { Category: 'Vessel Identification', Field: 'Port of Registry', Value: vessel.portOfRegistry },
+      { Category: 'Classification', Field: 'Vessel Type', Value: vessel.vesselType },
+      { Category: 'Classification', Field: 'Vessel Subtype', Value: vessel.vesselSubtype },
+      { Category: 'Classification', Field: 'Class Society', Value: vessel.classificationSociety },
+      { Category: 'Classification', Field: 'Class Notation', Value: vessel.classNotation },
+      { Category: 'Classification', Field: 'Hull Type', Value: vessel.hullType },
+      { Category: 'Construction & Dimensions', Field: 'Year Built', Value: vessel.yearBuilt },
+      { Category: 'Construction & Dimensions', Field: 'Shipyard Builder', Value: vessel.shipyardBuilder },
+      { Category: 'Construction & Dimensions', Field: 'LOA (m)', Value: vessel.lengthOverallMeters },
+      { Category: 'Construction & Dimensions', Field: 'Beam (m)', Value: vessel.beamMeters },
+      { Category: 'Construction & Dimensions', Field: 'Draft (m)', Value: vessel.draftMeters },
+      { Category: 'Tonnage & Propulsion', Field: 'Gross Tonnage (GT)', Value: vessel.grossTonnageGT },
+      { Category: 'Tonnage & Propulsion', Field: 'Deadweight (DWT)', Value: vessel.deadweightTonnageDWT },
+      { Category: 'Tonnage & Propulsion', Field: 'DP Class', Value: vessel.dynamicPositioningClass },
+      { Category: 'Ownership & Management', Field: 'Registered Owner', Value: vessel.registeredOwner },
+      { Category: 'Ownership & Management', Field: 'Technical Manager', Value: vessel.technicalManager },
+      { Category: 'Ownership & Management', Field: 'DOC Number', Value: vessel.docNumber },
+      { Category: 'Ownership & Management', Field: '24/7 Ops Contact', Value: vessel.contact247 },
+      { Category: 'Insurance & Crew', Field: 'P&I Club', Value: vessel.piClubName },
+      { Category: 'Insurance & Crew', Field: 'Policy Number', Value: vessel.policyNumber },
+      { Category: 'Insurance & Crew', Field: 'Master Name', Value: vessel.masterName },
+      { Category: 'Insurance & Crew', Field: 'Safe Manning Complement', Value: vessel.safeManningComplement },
+      { Category: 'Insurance & Crew', Field: 'Lifeboat Capacity', Value: vessel.lifeboatCapacity },
+      { Category: 'Status', Field: 'Operating Status', Value: vessel.status },
+      { Category: 'Compliance', Field: 'Readiness Score', Value: `${vessel.complianceReadinessScore}%` },
+    ];
+
+    exportToCsv(`${vessel.name.replace(/\s+/g, '_')}_Particulars`, vesselDetails);
+  };
+
+  /*
+    what: exports vessel 11-category particulars and statutory details to pdf printable report.
+    how: constructs table headers and rows for vessel technical specs and invokes window print pdf generator.
+    with what file: src/views/VesselDetailView.tsx using src/utils/exportHelpers.ts.
+  */
+  const handleExportPdf = () => {
+    if (!vessel) return;
+    const headers = ['Category', 'Specification Field', 'Value'];
+    const rows = [
+      ['Vessel Identification', 'Vessel Name', vessel.name],
+      ['Vessel Identification', 'IMO Number', vessel.imoNumber],
+      ['Vessel Identification', 'Official Reg Number', vessel.officialRegNumber],
+      ['Vessel Identification', 'MMSI Number', vessel.mmsiNumber],
+      ['Vessel Identification', 'Call Sign', vessel.callSign],
+      ['Vessel Identification', 'Flag State / Port', `${vessel.flagState} (${vessel.portOfRegistry})`],
+      ['Classification', 'Vessel Type / Subtype', `${vessel.vesselType} - ${vessel.vesselSubtype}`],
+      ['Classification', 'Class Society & Notation', `${vessel.classificationSociety} - ${vessel.classNotation}`],
+      ['Classification', 'Hull Type', vessel.hullType],
+      ['Construction & Dimensions', 'Year Built & Builder', `${vessel.yearBuilt} by ${vessel.shipyardBuilder}`],
+      ['Construction & Dimensions', 'LOA x Beam x Draft', `${vessel.lengthOverallMeters}m x ${vessel.beamMeters}m x ${vessel.draftMeters}m`],
+      ['Tonnage & Propulsion', 'GT / DWT / DP Class', `${vessel.grossTonnageGT} GT / ${vessel.deadweightTonnageDWT} DWT / ${vessel.dynamicPositioningClass}`],
+      ['Ownership & Management', 'Registered Owner', vessel.registeredOwner],
+      ['Ownership & Management', 'Technical Manager', vessel.technicalManager],
+      ['Ownership & Management', 'DOC Number', vessel.docNumber],
+      ['Ownership & Management', '24/7 Ops Contact', vessel.contact247],
+      ['Insurance & Crew', 'P&I Club & Policy #', `${vessel.piClubName} (#${vessel.policyNumber})`],
+      ['Insurance & Crew', 'Master & Manning', `${vessel.masterName} (${vessel.safeManningComplement} Crew / Cap: ${vessel.lifeboatCapacity})`],
+      ['Operating Status', 'Current Status', vessel.status],
+      ['Compliance', 'Readiness Score', `${vessel.complianceReadinessScore}%`],
+    ];
+
+    exportToPdf(`${vessel.name} Technical Dossier`, headers, rows);
+  };
 
   if (!vessel || !formData) {
     return <div className="p-4 text-center">Vessel not found.</div>;
@@ -125,54 +205,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         </div>
       )}
 
-      {/* Action Row */}
-      <div className="d-flex flex-wrap align-items-center justify-between gap-2">
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-secondary"
-          onClick={() => setCurrentHashView(backInfo.targetView)}
-        >
-          {backInfo.label}
-        </button>
-
-        <div className="d-flex align-items-center gap-2">
-          {canShowEditButton && (
-            <>
-              {isEditing ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-secondary"
-                    onClick={() => {
-                      setFormData(vessel);
-                      setIsEditing(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button type="button" className="btn btn-sm btn-success" onClick={handleSave}>
-                    Save Changes
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-primary"
-                  onClick={() => setIsEditing(true)}
-                >
-                  {canEditFull ? 'Edit Particulars' : 'Update Operating Status'}
-                </button>
-              )}
-            </>
-          )}
-
-          <div className="badge bg-light text-dark border font-mono-code p-2">
-            IMO: {vessel.imoNumber} | Reg: {vessel.officialRegNumber}
-          </div>
-        </div>
-      </div>
-
-      {/* Header KPI Summary Card */}
+      {/* Header KPI Summary Card with Name, Details, Classification, Readiness, Export & Edit Controls */}
       <div className="card map-card-custom p-4">
         <div className="d-flex flex-wrap align-items-center justify-between gap-3">
           <div>
@@ -198,8 +231,10 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 <span className="badge bg-primary text-uppercase">{vessel.status}</span>
               )}
             </div>
-            <div className="text-secondary small mt-1">
-              {vessel.classNotation} | {vessel.flagState} Flag | Port: {vessel.portOfRegistry}
+            <div className="text-secondary small mt-1 font-mono-code">
+              <strong className="text-dark">IMO: {vessel.imoNumber} | Reg: {vessel.officialRegNumber}</strong>
+              <span className="mx-2">•</span>
+              <span>{vessel.classNotation} | {vessel.flagState} Flag | Port: {vessel.portOfRegistry}</span>
             </div>
           </div>
 
@@ -213,6 +248,79 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
               <div className="mt-1">
                 <ReadinessGauge score={vessel.complianceReadinessScore} size="md" />
               </div>
+            </div>
+
+            {/* Export & Edit Action Controls in Header Card Container */}
+            <div className="d-flex align-items-center gap-2 ms-2 border-start ps-3">
+              {canExport && (
+                <div className="position-relative">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                    onClick={() => setIsExportOpen(!isExportOpen)}
+                  >
+                    <span>Export Data</span>
+                    <span style={{ fontSize: '10px' }}>▼</span>
+                  </button>
+                  {isExportOpen && (
+                    <div
+                      className="dropdown-menu show position-absolute end-0 mt-1 shadow border p-1 z-3 bg-white"
+                      style={{ minWidth: '140px' }}
+                    >
+                      <button
+                        type="button"
+                        className="dropdown-item small py-1 px-2 border-0 bg-transparent text-start w-100"
+                        onClick={() => {
+                          handleExportCsv();
+                          setIsExportOpen(false);
+                        }}
+                      >
+                        Export as CSV
+                      </button>
+                      <button
+                        type="button"
+                        className="dropdown-item small py-1 px-2 border-0 bg-transparent text-start w-100"
+                        onClick={() => {
+                          handleExportPdf();
+                          setIsExportOpen(false);
+                        }}
+                      >
+                        Export as PDF
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {canShowEditButton && (
+                <div>
+                  {isEditing ? (
+                    <div className="d-flex gap-1">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => {
+                          setFormData(vessel);
+                          setIsEditing(false);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button type="button" className="btn btn-sm btn-success" onClick={handleSave}>
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      {canEditFull ? 'Edit Particulars' : 'Update Operating Status'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -247,33 +355,39 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             Assurance Sets ({linkedSets.length})
           </button>
         </li>
-        <li className="nav-item">
-          <button
-            type="button"
-            className={`nav-link ${activeTab === 'clients' ? 'active fw-bold text-primary' : 'text-secondary'}`}
-            onClick={() => setActiveTab('clients')}
-          >
-            Client History ({vessel.clientHistory?.length ?? 0})
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            type="button"
-            className={`nav-link ${activeTab === 'crew' ? 'active fw-bold text-primary' : 'text-secondary'}`}
-            onClick={() => setActiveTab('crew')}
-          >
-            Assigned Crew ({linkedCrew.length})
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            type="button"
-            className={`nav-link ${activeTab === 'audit' ? 'active fw-bold text-primary' : 'text-secondary'}`}
-            onClick={() => setActiveTab('audit')}
-          >
-            Audit Trail ({linkedAudits.length})
-          </button>
-        </li>
+        {isAdmin && (
+          <li className="nav-item">
+            <button
+              type="button"
+              className={`nav-link ${activeTab === 'clients' ? 'active fw-bold text-primary' : 'text-secondary'}`}
+              onClick={() => setActiveTab('clients')}
+            >
+              Client History ({vessel.clientHistory?.length ?? 0})
+            </button>
+          </li>
+        )}
+        {isAdmin && (
+          <li className="nav-item">
+            <button
+              type="button"
+              className={`nav-link ${activeTab === 'crew' ? 'active fw-bold text-primary' : 'text-secondary'}`}
+              onClick={() => setActiveTab('crew')}
+            >
+              Assigned Crew ({linkedCrew.length})
+            </button>
+          </li>
+        )}
+        {isAdmin && (
+          <li className="nav-item">
+            <button
+              type="button"
+              className={`nav-link ${activeTab === 'audit' ? 'active fw-bold text-primary' : 'text-secondary'}`}
+              onClick={() => setActiveTab('audit')}
+            >
+              Audit Trail ({linkedAudits.length})
+            </button>
+          </li>
+        )}
       </ul>
 
       {/* Tab 1: 11 Categories Particulars */}
@@ -815,7 +929,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       )}
 
       {/* Tab 4: Client / Charter History */}
-      {activeTab === 'clients' && (
+      {activeTab === 'clients' && isAdmin && (
         <div className="card map-card-custom">
           <div className="card-header">
             <div className="fw-bold">Client & Charter History</div>
@@ -835,7 +949,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                       <th>Charter / Campaign</th>
                       <th>Charter Period</th>
                       <th>Assurance Set</th>
-                      <th>Outcome</th>
+                      <th>Status</th>
                       <th>Notes</th>
                     </tr>
                   </thead>
@@ -881,7 +995,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       )}
 
       {/* Tab 5: Assigned Crew Directory */}
-      {activeTab === 'crew' && (
+      {activeTab === 'crew' && isAdmin && (
         <div className="card map-card-custom">
           <div className="card-header p-3 border-bottom d-flex align-items-center justify-between">
             <div className="fw-bold text-dark fs-6">
@@ -954,7 +1068,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       )}
 
       {/* Tab 6: Audit Trail */}
-      {activeTab === 'audit' && (
+      {activeTab === 'audit' && isAdmin && (
         <div className="card map-card-custom">
           <div className="card-header fw-bold">Tamper-Evident Asset Audit Trail (BR-2)</div>
           <div className="card-body p-3">

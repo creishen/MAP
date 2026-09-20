@@ -233,7 +233,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
                         onSelectVessel(v);
                       }}
                     >
-                      View Details &rarr;
+                      View Details
                     </button>
                   </td>
                 </tr>

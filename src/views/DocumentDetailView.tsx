@@ -180,9 +180,6 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
           {doc.vesselAttributes && (
             <div className="row g-3 small">
               <div className="col-md-4">
-                <span className="text-secondary">Document Title:</span> <div><strong className="text-dark">{doc.vesselAttributes.title}</strong></div>
-              </div>
-              <div className="col-md-4">
                 <span className="text-secondary">Certificate Number:</span> <div className="font-mono-code"><strong className="text-dark">{doc.vesselAttributes.certificateNumber}</strong></div>
               </div>
               <div className="col-md-4">

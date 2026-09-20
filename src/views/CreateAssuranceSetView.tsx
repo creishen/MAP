@@ -38,8 +38,6 @@ const INITIAL_MASTER_DOCS: MasterDocItem[] = [
 export const CreateAssuranceSetView: React.FC = () => {
   const { vessels, assuranceSets, addAssuranceSet, activePersona, setCurrentHashView, previousHashView, previousEntityId, users } = useMapStore();
 
-  const backInfo = getBackButtonInfo('assurance-sets', 'Assurance Sets', previousHashView, activePersona, previousEntityId);
-
   const [title, setTitle] = useState('');
   const [vesselId, setVesselId] = useState(vessels[0]?.id || '');
   const [startDate, setStartDate] = useState('2026-11-01');
@@ -191,25 +189,9 @@ export const CreateAssuranceSetView: React.FC = () => {
   return (
     <div className="container-fluid px-4 py-4" style={{ maxWidth: '1280px' }}>
 
-      {/* page breadcrumb & top header */}
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+      {/* page top header */}
+      <div className="d-flex flex-wrap align-items-center justify-between gap-3 mb-4">
         <div>
-          <nav aria-label="breadcrumb">
-            <ol className="breadcrumb mb-1 small">
-              <li className="breadcrumb-item">
-                <button
-                  type="button"
-                  className="btn btn-link p-0 text-decoration-none text-secondary"
-                  onClick={() => setCurrentHashView(backInfo.targetView, backInfo.targetEntityId)}
-                >
-                  {backInfo.label.replace('← ', '')}
-                </button>
-              </li>
-              <li className="breadcrumb-item active text-dark fw-semibold" aria-current="page">
-                Create Assurance Set
-              </li>
-            </ol>
-          </nav>
           <h2 className="fw-bold text-slate-900 m-0 fs-3">Create Assurance Set</h2>
           <p className="text-muted small m-0 mt-1">
             Configure campaign particulars, master vessel/crew document requirements, workflow policies, and assigned role stakeholders.
