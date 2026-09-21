@@ -128,8 +128,8 @@ export const InspectorWorkspaceView: React.FC = () => {
     <div className="d-flex flex-column gap-4">
       {/* Inspector Role KPI Summary Cards */}
       <div className="row g-3">
-        <div className="col-md-3">
-          <div className="card map-card-custom p-3">
+        <div className="col-md-3 d-flex">
+          <div className="card map-card-custom p-3 w-100">
             <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
               Assigned Fleet Surveys
             </div>
@@ -138,8 +138,8 @@ export const InspectorWorkspaceView: React.FC = () => {
           </div>
         </div>
 
-        <div className="col-md-3">
-          <div className="card map-card-custom p-3">
+        <div className="col-md-3 d-flex">
+          <div className="card map-card-custom p-3 w-100">
             <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
               Pending Visual Audits
             </div>
@@ -148,9 +148,9 @@ export const InspectorWorkspaceView: React.FC = () => {
           </div>
         </div>
 
-        <div className="col-md-3">
+        <div className="col-md-3 d-flex">
           <div
-            className="card map-card-custom p-3"
+            className="card map-card-custom p-3 w-100"
             onClick={() => setCurrentHashView('capa')}
             style={{ cursor: 'pointer' }}
             title="Click to open CAPA Tracker"
@@ -163,8 +163,8 @@ export const InspectorWorkspaceView: React.FC = () => {
           </div>
         </div>
 
-        <div className="col-md-3">
-          <div className="card map-card-custom p-3">
+        <div className="col-md-3 d-flex">
+          <div className="card map-card-custom p-3 w-100">
             <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
               Completed Physical Audits
             </div>
