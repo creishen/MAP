@@ -156,43 +156,7 @@ export const InspectorWorkspaceView: React.FC = () => {
 
       {/* Survey Schedule Table */}
       <div className="card map-card-custom">
-        <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
-          <div className="fw-bold text-dark">
-            Physical Survey Inspection Schedule ({assignedVessels.length} Assigned Vessels)
-          </div>
-          <div className="d-flex align-items-center gap-2 ms-auto">
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-primary fw-bold"
-              onClick={() => setCurrentHashView('capa')}
-            >
-              CAPA Tracker
-            </button>
-            <div className="dropdown position-relative">
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
-                onClick={() => setIsExportOpen(!isExportOpen)}
-              >
-                Export Data
-              </button>
-              {isExportOpen && (
-                <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border">
-                  <li>
-                    <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
-                      Export as CSV (.csv)
-                    </button>
-                  </li>
-                  <li>
-                    <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
-                      Export as PDF (.pdf)
-                    </button>
-                  </li>
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
+
         <div className="table-responsive">
           <table className="table map-table-custom align-middle mb-0">
             <thead>

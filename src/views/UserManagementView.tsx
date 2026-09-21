@@ -32,20 +32,6 @@ export const UserManagementView: React.FC = () => {
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Top Banner Card with Add User Button & Role Category Tab Controls */}
-      <div className="card map-card-custom p-4 bg-white">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-          <div>
-            <h3 className="fw-bold text-primary m-0">User Governance & Team Management</h3>
-            <div className="text-secondary small mt-1">
-              {isCAdmin
-                ? 'Manage your organization personnel, assigned inspectors, and campaign verifiers'
-                : 'Full user directory management across organization accounts and third-party stakeholders'}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Top Summary KPI Metric Cards */}
       <div className="row g-3">
         <div className="col-md-3">

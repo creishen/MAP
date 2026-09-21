@@ -190,20 +190,6 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Top Header & Context Banner */}
-      <div className="card map-card-custom bg-white p-3">
-        <div className="d-flex flex-wrap align-items-center justify-between gap-3">
-          <div>
-            <h5 className="fw-bold text-dark m-0" style={{ fontSize: '1.25rem' }}>
-              Corrective Actions (CAPA) & Re-Inspection Registry
-            </h5>
-            <div className="font-mono-code small text-muted mt-0.5" style={{ fontSize: '0.75rem' }}>
-              Vessel: <span className="fw-bold text-primary">{selectedVesselName}</span> · Active Survey CAPA Audit Queue
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* CAPA Metric KPI Cards */}
       <div className="row g-3">
         <div className="col-md-3">
