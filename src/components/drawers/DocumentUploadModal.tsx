@@ -58,6 +58,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isPendingVerification, setIsPendingVerification] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -93,12 +95,63 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       setIsUploading(false);
       setUploadProgress(0);
       setStatusMessage('');
+      setIsDraggingOver(false);
+      setIsPendingVerification(false);
     }
   }, [isOpen, existingDocument, vessels, requirementTitle, defaultVesselId]);
 
   if (!isOpen) return null;
 
   const canUpload = activePersona === 'Administrator' || activePersona === 'Submitter';
+
+  /*
+    what: handles file attachment selection and stages document for user verification before AI extraction.
+    how: sets fileName state and enables isPendingVerification preview gate.
+    with what file: src/components/drawers/DocumentUploadModal.tsx.
+  */
+  const handleSelectFileForPreview = (selectedName: string) => {
+    setFileName(selectedName);
+    setIsPendingVerification(true);
+    setIsAiExtracted(false);
+    setIsExtractingAi(false);
+  };
+
+  const handleConfirmVerifyAndExtract = () => {
+    setIsPendingVerification(false);
+    triggerAiExtraction(fileName);
+  };
+
+  /*
+    what: handles drag and drop file interactions.
+    how: tracks dragover, dragleave, and drop events to trigger file preview verification.
+    with what file: src/components/drawers/DocumentUploadModal.tsx.
+  */
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isUploading && !isExtractingAi) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    if (isUploading || isExtractingAi) return;
+
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      const droppedFile = droppedFiles[0];
+      handleSelectFileForPreview(droppedFile.name);
+    }
+  };
 
   /*
     what: simulates AI information extraction when a file is uploaded or selected.
@@ -129,12 +182,12 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      triggerAiExtraction(selectedFile.name);
+      handleSelectFileForPreview(selectedFile.name);
     }
   };
 
   const handleSampleFileClick = (sampleName: string) => {
-    triggerAiExtraction(sampleName);
+    handleSelectFileForPreview(sampleName);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -302,26 +355,24 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                 </div>
               )}
 
-              {/* 1. Document Title */}
-              <div className="mb-3">
-                <label className="form-label text-secondary small fw-semibold" htmlFor="doc-title">
-                  Document Title *
-                </label>
-                <input
-                  id="doc-title"
-                  type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
-                  placeholder="e.g. Certificate of Class"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  disabled={isUploading || isExtractingAi || !!existingDocument}
-                  required
-                />
-              </div>
-
-              {/* 2. Target Vessel & Entity Type */}
-              <div className="mb-3">
-                <div className="col-6">
+              {/* 1. Document Title & Entity Type (Same Row) */}
+              <div className="row g-2 mb-3">
+                <div className="col-md-6">
+                  <label className="form-label text-secondary small fw-semibold" htmlFor="doc-title">
+                    Document Title *
+                  </label>
+                  <input
+                    id="doc-title"
+                    type="text"
+                    className="form-control form-control-sm bg-white text-dark border-secondary"
+                    placeholder="e.g. Certificate of Class"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    disabled={isUploading || isExtractingAi || !!existingDocument}
+                    required
+                  />
+                </div>
+                <div className="col-md-6">
                   <label className="form-label text-secondary small fw-semibold" htmlFor="doc-type">
                     Entity Type *
                   </label>
@@ -338,34 +389,53 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                 </div>
               </div>
 
-              {/* 3. Add File Picker & File Name Replacement Section */}
-              <div className="mb-3 p-3 bg-light border rounded">
-                <label className="form-label text-dark fw-bold small mb-1" htmlFor="upload-filename">
-                  Select Document File (Add File) *
+              {/* 2. Drag and Drop / Clickable File Upload Dropzone */}
+              <div className="mb-3">
+                <label className="form-label text-dark fw-bold small mb-1">
+                  Select Document File *
                 </label>
-                <div className="input-group input-group-sm mb-2">
-                  <input
-                    id="upload-filename"
-                    type="text"
-                    className="form-control bg-white text-dark border-secondary font-mono-code"
-                    placeholder="Click 'Add File' to choose file from your system..."
-                    value={fileName}
-                    onChange={(e) => setFileName(e.target.value)}
-                    disabled={isUploading || isExtractingAi}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-primary text-white fw-bold px-3"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || isExtractingAi}
-                  >
-                    Add File
-                  </button>
+                <div
+                  className={`p-4 border border-2 border-dashed rounded text-center transition-all ${isDraggingOver
+                    ? 'border-primary bg-primary-subtle'
+                    : fileName
+                      ? 'border-success bg-light'
+                      : 'border-secondary-subtle bg-light hover-bg-gray'
+                    }`}
+                  style={{ cursor: isUploading || isExtractingAi ? 'not-allowed' : 'pointer' }}
+                  onClick={() => {
+                    if (!isUploading && !isExtractingAi) {
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  <div className="d-flex flex-column align-items-center justify-content-center gap-2">
+                    <div className="rounded-circle bg-white p-2.5 border shadow-2xs">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="fw-bold text-dark mb-0.5">
+                        {fileName ? (
+                          <span className="text-success font-mono-code">{fileName}</span>
+                        ) : (
+                          <span>Drag &amp; drop document file here, or <span className="text-primary text-decoration-underline">browse files from system</span></span>
+                        )}
+                      </div>
+                      <div className="text-secondary small" style={{ fontSize: '0.75rem' }}>
+                        Supports PDF, PNG, JPG, DOCX (Max 25MB) · AI Information Extraction runs automatically
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Quick File Selection Chips */}
-                <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                <div className="d-flex align-items-center gap-1.5 flex-wrap mt-2">
                   <span className="text-secondary small me-1" style={{ fontSize: '0.725rem' }}>
                     Sample file attach:
                   </span>
@@ -397,6 +467,64 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                   </button>
                 </div>
               </div>
+
+              {/* 3. Document Preview & User Verification Gate */}
+              {isPendingVerification && (
+                <div className="p-3 mb-3 bg-light border border-primary rounded shadow-2xs">
+                  <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                    <span className="fw-bold text-dark small d-flex align-items-center gap-2">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                      </svg>
+                      <span>Document Preview &amp; User Verification Required</span>
+                    </span>
+                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-mono-code" style={{ fontSize: '0.7rem' }}>
+                      Verification Gate
+                    </span>
+                  </div>
+
+                  {/* Visual Document Scan Wireframe Preview */}
+                  <div className="bg-white border rounded p-3 mb-3">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="badge bg-danger text-white font-mono-code" style={{ fontSize: '0.7rem' }}>PDF SCAN</span>
+                        <span className="fw-bold text-dark small font-mono-code">{fileName}</span>
+                      </div>
+                      <span className="text-secondary small font-mono-code" style={{ fontSize: '0.75rem' }}>2.4 MB · Page 1 of 1</span>
+                    </div>
+
+                    <div className="bg-light p-3 border rounded text-start" style={{ fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: '1.4' }}>
+                      <div className="text-uppercase fw-bold text-primary border-bottom pb-1 mb-2 d-flex justify-content-between">
+                        <span>STATUTORY CERTIFICATE PREVIEW SCAN</span>
+                        <span className="text-success fw-bold">LEGIBILITY: 100% CLEAR</span>
+                      </div>
+                      <div className="text-dark fw-semibold">DOCUMENT TITLE: {title || 'MARITIME STATUTORY CERTIFICATE'}</div>
+                      <div className="text-secondary mt-1">ENTITY TYPE: {entityType}</div>
+                      <div className="text-secondary">FILE ATTACHED: {fileName}</div>
+                      <div className="text-muted border-top pt-1.5 mt-2 text-center" style={{ fontSize: '0.7rem' }}>
+                        [ Preview Mode: Review document scan for accuracy before authorizing AI OCR extraction ]
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* User Verification Confirmation Controls */}
+                  <div className="d-flex align-items-center justify-content-between bg-white p-2.5 border rounded">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-success fw-bold px-3 d-inline-flex align-items-center gap-1.5"
+                      onClick={handleConfirmVerifyAndExtract}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Verify Document &amp; Run AI Extraction
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* 4. Simulated AI Extraction Progress Indicator */}
               {isExtractingAi && (
@@ -485,15 +613,6 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                         disabled={isUploading}
                       />
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {!isAiExtracted && !isExtractingAi && !existingDocument && (
-                <div className="p-3 bg-light border border-dashed rounded text-center mb-3">
-                  <div className="small fw-semibold text-dark">Upload a document file above to trigger AI Information Extraction</div>
-                  <div className="text-secondary small mt-1" style={{ fontSize: '0.75rem' }}>
-                    The AI system will automatically scan your file, extract the certificate number, issuing authority, and expiry date, and bind them as this document's master data.
                   </div>
                 </div>
               )}
