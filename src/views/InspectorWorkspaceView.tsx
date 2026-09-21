@@ -22,6 +22,8 @@ export const InspectorWorkspaceView: React.FC = () => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [sortField, setSortField] = useState<InspectorSortField>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
 
   const assignedVessels = filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
@@ -46,7 +48,22 @@ export const InspectorWorkspaceView: React.FC = () => {
     return <span className="text-primary ms-1 small fw-bold">{sortDirection === 'asc' ? '▲' : '▼'}</span>;
   };
 
-  const sortedAssignedVessels = [...assignedVessels].sort((a, b) => {
+  /* apply search and status filters before sorting */
+  const filteredAssignedVessels = assignedVessels.filter((v) => {
+    const linkedSet = assuranceSets.find((s) => s.vesselId === v.id || s.vesselName === v.name);
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      !q ||
+      v.name.toLowerCase().includes(q) ||
+      v.imoNumber.toLowerCase().includes(q) ||
+      v.portOfRegistry.toLowerCase().includes(q) ||
+      v.flagState.toLowerCase().includes(q) ||
+      (linkedSet ? linkedSet.title.toLowerCase().includes(q) : false);
+    const matchesStatus = statusFilter === 'All' || v.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const sortedAssignedVessels = [...filteredAssignedVessels].sort((a, b) => {
     let valA: any = '';
     let valB: any = '';
 
@@ -69,6 +86,9 @@ export const InspectorWorkspaceView: React.FC = () => {
     if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
     return 0;
   });
+
+  /* derive unique vessel statuses for the filter dropdown */
+  const vesselStatuses = Array.from(new Set(assignedVessels.map((v) => v.status))).sort();
 
   const handleExportCsv = () => {
     const exportData = sortedAssignedVessels.map((v) => {
@@ -157,6 +177,66 @@ export const InspectorWorkspaceView: React.FC = () => {
       {/* Survey Schedule Table */}
       <div className="card map-card-custom">
 
+        {/* controls header: search input + status filter + export */}
+        <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
+          <div className="d-flex flex-wrap align-items-center gap-2">
+
+            {/* search input */}
+            <input
+              type="text"
+              className="form-control form-control-sm bg-white text-dark border-secondary"
+              placeholder="Search vessel, IMO, campaign..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '240px' }}
+            />
+
+            {/* status filter dropdown */}
+            <select
+              className="form-select form-select-sm bg-white text-dark border-secondary"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ width: '180px' }}
+            >
+              <option value="All">All Statuses</option>
+              {vesselStatuses.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+
+          </div>
+
+          {/* result count + export */}
+          <div className="d-flex align-items-center gap-3 ms-auto">
+            <span className="text-muted small">
+              {sortedAssignedVessels.length} of {assignedVessels.length} vessels
+            </span>
+            <div className="dropdown position-relative">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
+                onClick={() => setIsExportOpen(!isExportOpen)}
+              >
+                Export
+              </button>
+              {isExportOpen && (
+                <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border" style={{ zIndex: 1050 }}>
+                  <li>
+                    <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
+                      Export as CSV (.csv)
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
+                      Export as PDF (.pdf)
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="table-responsive">
           <table className="table map-table-custom align-middle mb-0">
             <thead>
@@ -236,6 +316,14 @@ export const InspectorWorkspaceView: React.FC = () => {
                   </tr>
                 );
               })}
+
+              {sortedAssignedVessels.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-center text-muted py-4 fst-italic">
+                    No vessels match the selected search or status filter.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
