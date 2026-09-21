@@ -66,6 +66,7 @@ export interface MapStoreState {
   // Document Library State
   documents: MasterDocument[];
   addDocument: (doc: MasterDocument) => void;
+  linkDocumentToVessel: (docId: string, vesselId: string, vesselName?: string, imoNumber?: string) => void;
   uploadDocumentForRequirement: (
     setId: string,
     requirementId: string,
@@ -98,6 +99,7 @@ export interface MapStoreState {
   // Crew Directory State
   crew: CrewMember[];
   addCrewMember: (crew: CrewMember) => void;
+  assignCrewToVessel: (crewId: string, vesselId: string | undefined) => void;
   addCrewDocument: (crewId: string, doc: STCWDocumentItem) => void;
   updateCrewDocument: (crewId: string, doc: STCWDocumentItem) => void;
   deleteCrewDocument: (crewId: string, docId: string) => void;
@@ -358,6 +360,24 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       justificationNotes: `Uploaded certificate ${doc.certificateNo}`,
     });
   },
+  linkDocumentToVessel: (docId, vesselId, vesselName, imoNumber) => {
+    set((state) => ({
+      documents: state.documents.map((d) => {
+        if (d.id !== docId) return d;
+        return {
+          ...d,
+          vesselId,
+          vesselAttributes: d.vesselAttributes
+            ? {
+              ...d.vesselAttributes,
+              vesselName: vesselName || d.vesselAttributes.vesselName,
+              imoNumber: imoNumber || d.vesselAttributes.imoNumber,
+            }
+            : undefined,
+        };
+      }),
+    }));
+  },
   uploadDocumentForRequirement: (setId, requirementId, doc) => {
     set((state) => {
       const updatedSets = state.assuranceSets.map((s) => {
@@ -602,6 +622,47 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       action: 'Registered Crew Member',
       targetAsset: `${newCrew.fullName} (${newCrew.rank})`,
       justificationNotes: `Registered crew member with Seaman's Book ${newCrew.seamansBookNo}`,
+    });
+  },
+  assignCrewToVessel: (crewId, vesselId) => {
+    const vessel = get().vessels.find((v) => v.id === vesselId);
+    set((state) => ({
+      crew: state.crew.map((c) => {
+        if (c.id !== crewId) return c;
+        if (!vesselId) {
+          return {
+            ...c,
+            currentVesselId: undefined,
+            currentVesselName: undefined,
+          };
+        }
+        const existingAssignments = c.assignments || [];
+        const newAssignment = {
+          id: `ASG-${Math.floor(600 + Math.random() * 300)}`,
+          vesselId: vessel!.id,
+          vesselName: vessel!.name,
+          imoNumber: vessel!.imoNumber,
+          vesselType: vessel!.classificationSociety ? `${vessel!.classificationSociety} Vessel` : 'Offshore Support Vessel',
+          rankHeld: c.rank,
+          embarkDate: new Date().toISOString().split('T')[0],
+          isCurrent: true,
+        };
+        const updatedAssignments = [newAssignment, ...existingAssignments.map((a) => ({ ...a, isCurrent: false }))];
+        return {
+          ...c,
+          currentVesselId: vessel!.id,
+          currentVesselName: `${vessel!.name} (IMO ${vessel!.imoNumber})`,
+          assignments: updatedAssignments,
+        };
+      }),
+    }));
+    get().logAuditEvent({
+      userId: 'USR-ADMIN-01',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine',
+      action: 'Updated Crew Vessel Assignment',
+      targetAsset: `Crew ${crewId}`,
+      justificationNotes: vesselId ? `Assigned crew ${crewId} to vessel ${vessel?.name}` : `Unassigned crew ${crewId}`,
     });
   },
   addCrewDocument: (crewId, doc) => {

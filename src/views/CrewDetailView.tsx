@@ -241,7 +241,7 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
       <div className="card map-card-custom">
         <div className="card-header p-3 border-bottom d-flex align-items-center justify-between">
           <div className="fw-bold text-dark fs-6">
-            Historical Sea Service & Vessel Assignments Register ({crewMember.assignments.length} Records)
+            Assigned Vessels and Roles History
           </div>
         </div>
         <div className="table-responsive">

@@ -4,9 +4,10 @@
   role in system: invoked from fleet master view (FleetRegistryView.tsx) when clicking "+ Register Vessel".
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { VesselParticulars, ClassificationSociety } from '../../types/vessel';
+import { MasterDocument } from '../../types/document';
 import { isDuplicateVessel, validateImoNumber } from '../../utils/validation';
 
 interface VesselModalProps {
@@ -16,9 +17,16 @@ interface VesselModalProps {
 }
 
 export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onRegistered }) => {
-  const { addVessel, vessels } = useMapStore();
+  const { addVessel, vessels, documents, addDocument } = useMapStore();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const aiFileInputRef = useRef<HTMLInputElement>(null);
+
+  /* AI extraction and Document Library lookup states */
+  const [isExtractingAi, setIsExtractingAi] = useState(false);
+  const [aiNotice, setAiNotice] = useState('');
+  const [selectedDocId, setSelectedDocId] = useState('');
 
   // 1. Vessel Identification
   const [name, setName] = useState('');
@@ -97,7 +105,11 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     setUploadNotice('');
     setRegistrationDocName('');
     setClassCertDocName('');
+    setIsExtractingAi(false);
+    setAiNotice('');
+    setSelectedDocId('');
   }, [isOpen]);
+
 
   if (!isOpen) return null;
 
@@ -251,6 +263,141 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     setUploadNotice(`${file.name} queued for Pre-Assurance Vault (mock upload).`);
   };
 
+  /*
+    what: auto-fills vessel registration fields from an existing document library record.
+    how: extracts vessel attributes from MasterDocument model and sets state values.
+    with what file: src/components/drawers/VesselModal.tsx.
+  */
+  const autoFillFromDocument = (doc: MasterDocument) => {
+    if (doc.vesselAttributes) {
+      if (doc.vesselAttributes.vesselName) setName(doc.vesselAttributes.vesselName);
+      if (doc.vesselAttributes.imoNumber) setImoNumber(doc.vesselAttributes.imoNumber);
+      if (doc.vesselAttributes.flagState) setFlagState(doc.vesselAttributes.flagState);
+      if (doc.vesselAttributes.issuingBody) {
+        const body = doc.vesselAttributes.issuingBody;
+        if (['DNV', 'ABS', "Lloyd's Register", 'Bureau Veritas', 'RINA'].includes(body)) {
+          setClassificationSociety(body as ClassificationSociety);
+        }
+      }
+    } else {
+      if (doc.title) {
+        const cleaned = doc.title.replace(/Certificate of Class|Certificate of Registry/i, '').trim();
+        setName(cleaned || 'MV Pacific Leader');
+      }
+    }
+
+    if (doc.certificateNo) setOfficialRegNumber(doc.certificateNo);
+    if (!registeredOwner) setRegisteredOwner('Pacific Ocean Logistics Pty Ltd');
+    setAiNotice(`Auto-filled vessel identification particulars from Document Library record: "${doc.title}" (${doc.certificateNo || doc.id}).`);
+  };
+
+  /*
+    what: processes file attachment during vessel registration for AI OCR extraction and document library insertion.
+    how: checks if matching document exists in store; if present, auto-fills from it; if missing, extracts details, auto-fills form, and calls addDocument.
+    with what file: src/components/drawers/VesselModal.tsx.
+  */
+  const handleAiFileUpload = (fileOrName: File | string) => {
+    const fileNameStr = typeof fileOrName === 'string' ? fileOrName : fileOrName.name;
+    setIsExtractingAi(true);
+    setAiNotice('');
+
+    setTimeout(() => {
+      const extractedImo = `94${Math.floor(10000 + Math.random() * 90000)}`;
+      const extractedCertNo = `DNV-STAT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      const extractedVesselName = fileNameStr.toLowerCase().includes('coral')
+        ? 'MV Coral Titan'
+        : fileNameStr.toLowerCase().includes('tasman')
+          ? 'MV Tasman Pioneer'
+          : fileNameStr.toLowerCase().includes('leader')
+            ? 'MV Pacific Leader'
+            : 'MV Pacific Pioneer';
+
+      /* check if document already exists in document library */
+      const existingDoc = documents.find(
+        (d) =>
+          d.certificateNo === extractedCertNo ||
+          d.title.toLowerCase().includes(fileNameStr.toLowerCase()) ||
+          (d.vesselAttributes?.vesselName?.toLowerCase() === extractedVesselName.toLowerCase() && d.entityType === 'Vessel Certificate')
+      );
+
+      if (existingDoc) {
+        autoFillFromDocument(existingDoc);
+        setAiNotice(`Found matching document in Document Library ("${existingDoc.title}", Cert: ${existingDoc.certificateNo}). Automatically filled vessel particulars!`);
+      } else {
+        setName(extractedVesselName);
+        setImoNumber(extractedImo);
+        setOfficialRegNumber(`OSV-REG-${Math.floor(100 + Math.random() * 900)}`);
+        setFlagState('Australia');
+        setClassificationSociety('DNV');
+        setYearBuilt(2023);
+        setGt(3800);
+        setDwt(4600);
+        setRegisteredOwner('Pacific Ocean Logistics Pty Ltd');
+
+        const newDocId = `DOC-2026-${Math.floor(100 + Math.random() * 900)}`;
+        const newMasterDoc: MasterDocument = {
+          id: newDocId,
+          title: `Certificate of Class — ${extractedVesselName}`,
+          entityType: 'Vessel Certificate',
+          vesselId: `VESSEL-PENDING-${Math.floor(100 + Math.random() * 900)}`,
+          certificateNo: extractedCertNo,
+          issuingAuthority: 'DNV Classification Society',
+          expiryDate: '2029-06-30',
+          ocrConfidence: 99.1,
+          complianceState: 'Valid',
+          currentVersion: 'v1.0',
+          versions: [
+            {
+              versionLabel: 'v1.0',
+              uploadedAt: new Date().toISOString(),
+              uploadedBy: 'Vessel Registration Admin',
+              fileSizeBytes: 2400000,
+              fileName: fileNameStr,
+              changeSummary: 'Uploaded during Vessel Registration with AI OCR extracted specifications.',
+            },
+          ],
+          vesselAttributes: {
+            title: `Certificate of Class — ${extractedVesselName}`,
+            certificateNumber: extractedCertNo,
+            certType: 'Statutory Certificate',
+            issuingBody: 'DNV',
+            issueDate: '2024-01-15',
+            expiryDate: '2029-06-30',
+            vesselName: extractedVesselName,
+            imoNumber: extractedImo,
+            flagState: 'Australia',
+            assetMatchFlag: true,
+            lastSurveyDate: '2025-06-01',
+            ocrConfidence: 99.1,
+            status: 'Valid',
+          },
+          validationRules: {
+            charterBufferPassed: true,
+            assetMatch100Percent: true,
+            iacsAuthorityValid: true,
+            overallValid: true,
+          },
+          verificationStatus: 'Verified',
+        };
+
+        addDocument(newMasterDoc);
+        setRegistrationDocName(fileNameStr);
+        setAiNotice(`AI Extracted vessel specs from "${fileNameStr}" & added Certificate (${extractedCertNo}) to Document Library!`);
+      }
+
+      setIsExtractingAi(false);
+    }, 1100);
+  };
+
+  const handleSelectExistingDoc = (docId: string) => {
+    setSelectedDocId(docId);
+    if (!docId) return;
+    const found = documents.find((d) => d.id === docId);
+    if (found) {
+      autoFillFromDocument(found);
+    }
+  };
+
   return (
     <div
       className="modal show d-block map-modal-backdrop"
@@ -262,11 +409,23 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     >
       <div className="modal-dialog modal-xl modal-dialog-centered">
         <div className="modal-content bg-white text-dark border shadow-lg">
+          {/* hidden native file input for AI extraction */}
+          <input
+            type="file"
+            ref={aiFileInputRef}
+            className="d-none"
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleAiFileUpload(file);
+            }}
+          />
+
           {/* Header */}
           <div className="modal-header border-bottom bg-light d-flex align-items-center justify-content-between p-3">
             <div>
               <h5 className="modal-title fw-bold text-dark m-0">
-                Register Unique Vessel (UC-02 - UI Screen 2)
+                Register Vessel
               </h5>
               <div className="text-secondary small">
                 Complete all 11 statutory categories for offshore compliance onboarding
@@ -316,9 +475,102 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
               {/* STEP 1: Identification & Classification */}
               {currentStep === 1 && (
                 <div className="d-flex flex-column gap-3">
+                  {/* AI Document Intake & Library Auto-Fill Card */}
+                  <div className="p-3 bg-light border rounded shadow-2xs">
+                    <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                      <span className="fw-bold text-dark small d-flex align-items-center gap-2">
+                        <span>AI Document Intake &amp; Document Library Auto-Fill</span>
+                        <span className="badge bg-primary text-white font-mono-code" style={{ fontSize: '0.7rem' }}>
+                          Automated OCR
+                        </span>
+                      </span>
+                    </div>
+
+                    <div className="row g-2 align-items-end mb-2">
+                      {/* 1. Auto-fill from Existing Document Library */}
+                      <div className="col-md-7">
+                        <label className="form-label text-secondary small fw-semibold mb-1" htmlFor="existing-doc-select">
+                          Auto-Fill from Existing Document Library Record
+                        </label>
+                        <select
+                          id="existing-doc-select"
+                          className="form-select form-select-sm bg-white text-dark border-secondary"
+                          value={selectedDocId}
+                          onChange={(e) => handleSelectExistingDoc(e.target.value)}
+                          disabled={isExtractingAi}
+                        >
+                          <option value="">-- Select matching Document Library record --</option>
+                          {documents
+                            .filter((d) => d.entityType === 'Vessel Certificate')
+                            .map((doc) => (
+                              <option key={doc.id} value={doc.id}>
+                                {doc.title} ({doc.certificateNo || doc.id}) — {doc.vesselAttributes?.vesselName || 'Unassigned'}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      {/* 2. Upload / Attach File for AI Extraction */}
+                      <div className="col-md-5">
+                        <label className="form-label text-secondary small fw-semibold mb-1">
+                          Upload Document &amp; Extract via AI
+                        </label>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary text-white fw-bold w-100 d-flex align-items-center justify-content-center gap-1.5"
+                          onClick={() => aiFileInputRef.current?.click()}
+                          disabled={isExtractingAi}
+                        >
+                          Attach File for AI Extraction
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Quick Sample File Chips */}
+                    <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                      <span className="text-secondary small me-1" style={{ fontSize: '0.725rem' }}>
+                        Sample file attach:
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
+                        style={{ fontSize: '0.7rem' }}
+                        onClick={() => handleAiFileUpload('MV_Pacific_Leader_Certificate_of_Class.pdf')}
+                        disabled={isExtractingAi}
+                      >
+                        + MV_Pacific_Leader_Certificate_of_Class.pdf
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
+                        style={{ fontSize: '0.7rem' }}
+                        onClick={() => handleAiFileUpload('MV_Coral_Titan_Certificate_of_Registry.pdf')}
+                        disabled={isExtractingAi}
+                      >
+                        + MV_Coral_Titan_Certificate_of_Registry.pdf
+                      </button>
+                    </div>
+
+                    {/* Active Extraction Indicator */}
+                    {isExtractingAi && (
+                      <div className="mt-2.5 p-2 bg-primary-subtle border border-primary-subtle rounded small d-flex align-items-center gap-2 text-primary">
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                        <span>AI is reading document OCR bytes, extracting vessel specifications, and syncing with Document Library...</span>
+                      </div>
+                    )}
+
+                    {/* Success / Notice Alert */}
+                    {aiNotice && !isExtractingAi && (
+                      <div className="mt-2.5 alert alert-success py-1.5 px-3 small mb-0 font-mono-code" style={{ fontSize: '0.75rem' }}>
+                        {aiNotice}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="text-uppercase text-primary small fw-bold">
                     Section 1: Vessel Identification
                   </div>
+
                   <div className="row g-2">
                     <div className="col-md-4">
                       <label className="form-label text-secondary small fw-semibold">Vessel Name *</label>

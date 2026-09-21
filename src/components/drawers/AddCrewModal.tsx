@@ -13,6 +13,7 @@ interface AddCrewModalProps {
   onClose: () => void;
   onOpenUploadDoc?: (crew: CrewMember, initialLayer?: STCWLayer) => void;
   onViewCrewDetail?: (crewId: string) => void;
+  initialVesselId?: string;
 }
 
 /**
@@ -25,6 +26,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
   onClose,
   onOpenUploadDoc,
   onViewCrewDetail,
+  initialVesselId,
 }) => {
   const { vessels, addCrewMember, activePersona } = useMapStore();
   const [fullName, setFullName] = useState('');
@@ -39,11 +41,17 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
   const [registeredCrew, setRegisteredCrew] = useState<CrewMember | null>(null);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      if (initialVesselId) {
+        setCurrentVesselId(initialVesselId);
+      } else if (vessels.length > 0) {
+        setCurrentVesselId(vessels[0].id);
+      }
+    } else {
       setRegisteredCrew(null);
       setErrorMessage('');
     }
-  }, [isOpen]);
+  }, [isOpen, initialVesselId, vessels]);
 
   if (!isOpen) return null;
 

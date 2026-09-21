@@ -4,7 +4,7 @@
   role in system: deep-dive view rendered when a vessel row is selected from Fleet Master.
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { VesselParticulars, ClassificationSociety, VesselRegistrationStatus } from '../types/vessel';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
@@ -12,6 +12,7 @@ import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
 import { filterAuditTrailForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
+import { AddCrewModal } from '../components/drawers/AddCrewModal';
 import { CapaItem } from '../types/capa';
 
 interface VesselDetailViewProps {
@@ -22,6 +23,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
   const {
     vessels,
     crew,
+    assignCrewToVessel,
     capaItems,
     updateVessel,
     setCurrentHashView,
@@ -46,6 +48,48 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [selectedCapaForDrawer, setSelectedCapaForDrawer] = useState<CapaItem | null>(null);
+
+  /* vessel crew management modal & assignment states */
+  const [isAddCrewModalOpen, setIsAddCrewModalOpen] = useState(false);
+  const [isAssignExistingOpen, setIsAssignExistingOpen] = useState(false);
+  const [selectedCrewToAssign, setSelectedCrewToAssign] = useState<string>('');
+
+  /* crew table search, filter, and sorting states */
+  const [crewSearch, setCrewSearch] = useState('');
+  const [crewRankFilter, setCrewRankFilter] = useState('All');
+  const [crewComplianceFilter, setCrewComplianceFilter] = useState('All');
+  const [crewSortField, setCrewSortField] = useState<'fullName' | 'rank' | 'overallComplianceScore' | 'complianceStatus'>('fullName');
+  const [crewSortDirection, setCrewSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  /* pre-assurance vault search, filter, and sorting states */
+  const [vaultSearch, setVaultSearch] = useState('');
+  const [vaultStatusFilter, setVaultStatusFilter] = useState('ALL');
+  const [vaultSortField, setVaultSortField] = useState<'name' | 'expiryDate' | 'status'>('name');
+  const [vaultSortDirection, setVaultSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  /* assurance sets search, filter, and sorting states */
+  const [assuranceSearch, setAssuranceSearch] = useState('');
+  const [assuranceStageFilter, setAssuranceStageFilter] = useState('ALL');
+  const [assuranceSortField, setAssuranceSortField] = useState<'id' | 'title' | 'stage' | 'readinessScore'>('id');
+  const [assuranceSortDirection, setAssuranceSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  /* client history search, filter, and sorting states */
+  const [clientSearch, setClientSearch] = useState('');
+  const [clientOutcomeFilter, setClientOutcomeFilter] = useState('ALL');
+  const [clientSortField, setClientSortField] = useState<'clientOrganization' | 'charterStart' | 'outcome'>('charterStart');
+  const [clientSortDirection, setClientSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  /* audit trail search, filter, and sorting states */
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditActionFilter, setAuditActionFilter] = useState('ALL');
+  const [auditSortField, setAuditSortField] = useState<'timestampUtc' | 'action' | 'userId'>('timestampUtc');
+  const [auditSortDirection, setAuditSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  /* CAPA search, filter, and sorting states */
+  const [capaSearch, setCapaSearch] = useState('');
+  const [capaStatusFilter, setCapaStatusFilter] = useState('ALL');
+  const [capaSortField, setCapaSortField] = useState<'id' | 'title' | 'dueDate' | 'status'>('id');
+  const [capaSortDirection, setCapaSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     const found = vessels.find((v) => v.id === vesselId);
@@ -144,6 +188,215 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
     exportToPdf(`${vessel.name} Technical Dossier`, headers, rows);
   };
 
+  const visibleAuditEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
+
+  // Linked assurance sets, documents, crew, and audit items for this vessel
+  const linkedSets = vessel ? assuranceSets.filter((s) => s.vesselId === vessel.id) : [];
+  const linkedDocs = vessel ? documents.filter((d) => d.vesselId === vessel.id) : [];
+  const linkedCrew = useMemo(() => {
+    if (!vessel) return [];
+    return crew.filter((c) => c.currentVesselId === vessel.id || c.assignments.some((a) => a.vesselId === vessel.id));
+  }, [crew, vessel]);
+
+  const crewRanks = useMemo(() => {
+    return Array.from(new Set(linkedCrew.map((c) => c.rank))).sort();
+  }, [linkedCrew]);
+
+  const filteredCrew = useMemo(() => {
+    return linkedCrew
+      .filter((c) => {
+        const matchesSearch =
+          !crewSearch ||
+          c.fullName.toLowerCase().includes(crewSearch.toLowerCase()) ||
+          c.rank.toLowerCase().includes(crewSearch.toLowerCase()) ||
+          c.nationality.toLowerCase().includes(crewSearch.toLowerCase()) ||
+          c.id.toLowerCase().includes(crewSearch.toLowerCase()) ||
+          (c.seamansBookNo && c.seamansBookNo.toLowerCase().includes(crewSearch.toLowerCase()));
+
+        const matchesRank = crewRankFilter === 'All' || c.rank === crewRankFilter;
+        const matchesCompliance = crewComplianceFilter === 'All' || c.complianceStatus === crewComplianceFilter;
+
+        return matchesSearch && matchesRank && matchesCompliance;
+      })
+      .sort((a, b) => {
+        let comp = 0;
+        if (crewSortField === 'fullName') {
+          comp = a.fullName.localeCompare(b.fullName);
+        } else if (crewSortField === 'rank') {
+          comp = a.rank.localeCompare(b.rank);
+        } else if (crewSortField === 'overallComplianceScore') {
+          comp = a.overallComplianceScore - b.overallComplianceScore;
+        } else if (crewSortField === 'complianceStatus') {
+          comp = a.complianceStatus.localeCompare(b.complianceStatus);
+        }
+        return crewSortDirection === 'asc' ? comp : -comp;
+      });
+  }, [linkedCrew, crewSearch, crewRankFilter, crewComplianceFilter, crewSortField, crewSortDirection]);
+
+  const linkedAudits = vessel
+    ? visibleAuditEvents.filter(
+      (a) => a.targetAsset.includes(vessel.imoNumber) || a.targetAsset.includes(vessel.name)
+    )
+    : [];
+
+  const allVaultCerts = useMemo(() => {
+    if (!vessel) return [];
+    const statCerts = vessel.statutoryCertificates.map((cert) => {
+      const daysLeft = getDaysUntilExpiry(cert.expiryDate);
+      let statusLabel = 'Valid';
+      if (daysLeft < 0) statusLabel = 'EXPIRED';
+      else if (daysLeft < 90) statusLabel = `Expiring in ${daysLeft} days`;
+
+      return {
+        id: cert.id,
+        name: cert.name,
+        number: cert.certificateNumber,
+        issuingBody: cert.issuingBody,
+        issueDate: cert.issueDate,
+        expiryDate: cert.expiryDate,
+        ocr: '98% OCR Match',
+        status: statusLabel,
+        rawStatus: daysLeft < 0 ? 'EXPIRED' : daysLeft < 90 ? 'Expiring' : 'Valid',
+      };
+    });
+
+    const userDocs = linkedDocs.map((doc) => ({
+      id: doc.id,
+      name: doc.title,
+      number: doc.certificateNo,
+      issuingBody: doc.issuingAuthority,
+      issueDate: '—',
+      expiryDate: doc.expiryDate,
+      ocr: `${doc.ocrConfidence}% OCR`,
+      status: doc.verificationStatus,
+      rawStatus: doc.verificationStatus,
+    }));
+
+    return [...statCerts, ...userDocs];
+  }, [vessel, linkedDocs]);
+
+  const filteredVaultCerts = useMemo(() => {
+    return allVaultCerts
+      .filter((c) => {
+        const matchesSearch =
+          !vaultSearch ||
+          c.name.toLowerCase().includes(vaultSearch.toLowerCase()) ||
+          c.number.toLowerCase().includes(vaultSearch.toLowerCase()) ||
+          c.issuingBody.toLowerCase().includes(vaultSearch.toLowerCase());
+
+        const matchesStatus =
+          vaultStatusFilter === 'ALL' ||
+          c.rawStatus.toLowerCase() === vaultStatusFilter.toLowerCase() ||
+          c.status.toLowerCase().includes(vaultStatusFilter.toLowerCase());
+
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        let comp = 0;
+        if (vaultSortField === 'name') comp = a.name.localeCompare(b.name);
+        else if (vaultSortField === 'expiryDate') comp = new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+        else if (vaultSortField === 'status') comp = a.status.localeCompare(b.status);
+        return vaultSortDirection === 'asc' ? comp : -comp;
+      });
+  }, [allVaultCerts, vaultSearch, vaultStatusFilter, vaultSortField, vaultSortDirection]);
+
+  const filteredAssuranceSets = useMemo(() => {
+    return linkedSets
+      .filter((s) => {
+        const matchesSearch =
+          !assuranceSearch ||
+          s.id.toLowerCase().includes(assuranceSearch.toLowerCase()) ||
+          s.title.toLowerCase().includes(assuranceSearch.toLowerCase()) ||
+          s.initiatorOrg.toLowerCase().includes(assuranceSearch.toLowerCase());
+
+        const matchesStage = assuranceStageFilter === 'ALL' || s.stage === assuranceStageFilter;
+
+        return matchesSearch && matchesStage;
+      })
+      .sort((a, b) => {
+        let comp = 0;
+        if (assuranceSortField === 'id') comp = a.id.localeCompare(b.id);
+        else if (assuranceSortField === 'title') comp = a.title.localeCompare(b.title);
+        else if (assuranceSortField === 'stage') comp = a.stage.localeCompare(b.stage);
+        else if (assuranceSortField === 'readinessScore') comp = a.readinessScore - b.readinessScore;
+        return assuranceSortDirection === 'asc' ? comp : -comp;
+      });
+  }, [linkedSets, assuranceSearch, assuranceStageFilter, assuranceSortField, assuranceSortDirection]);
+
+  const filteredClientHistory = useMemo(() => {
+    if (!vessel || !vessel.clientHistory) return [];
+    return vessel.clientHistory
+      .filter((r) => {
+        const matchesSearch =
+          !clientSearch ||
+          r.clientOrganization.toLowerCase().includes(clientSearch.toLowerCase()) ||
+          r.charterTitle.toLowerCase().includes(clientSearch.toLowerCase()) ||
+          (r.notes && r.notes.toLowerCase().includes(clientSearch.toLowerCase()));
+
+        const matchesOutcome = clientOutcomeFilter === 'ALL' || r.outcome === clientOutcomeFilter;
+
+        return matchesSearch && matchesOutcome;
+      })
+      .sort((a, b) => {
+        let comp = 0;
+        if (clientSortField === 'clientOrganization') comp = a.clientOrganization.localeCompare(b.clientOrganization);
+        else if (clientSortField === 'charterStart') comp = new Date(a.charterStart).getTime() - new Date(b.charterStart).getTime();
+        else if (clientSortField === 'outcome') comp = a.outcome.localeCompare(b.outcome);
+        return clientSortDirection === 'asc' ? comp : -comp;
+      });
+  }, [vessel, clientSearch, clientOutcomeFilter, clientSortField, clientSortDirection]);
+
+  const auditActions = useMemo(() => {
+    return Array.from(new Set(linkedAudits.map((a) => a.action))).sort();
+  }, [linkedAudits]);
+
+  const filteredAudits = useMemo(() => {
+    return linkedAudits
+      .filter((a) => {
+        const matchesSearch =
+          !auditSearch ||
+          a.action.toLowerCase().includes(auditSearch.toLowerCase()) ||
+          a.userId.toLowerCase().includes(auditSearch.toLowerCase()) ||
+          a.organization.toLowerCase().includes(auditSearch.toLowerCase()) ||
+          (a.justificationNotes && a.justificationNotes.toLowerCase().includes(auditSearch.toLowerCase()));
+
+        const matchesAction = auditActionFilter === 'ALL' || a.action === auditActionFilter;
+
+        return matchesSearch && matchesAction;
+      })
+      .sort((a, b) => {
+        let comp = 0;
+        if (auditSortField === 'timestampUtc') comp = new Date(a.timestampUtc).getTime() - new Date(b.timestampUtc).getTime();
+        else if (auditSortField === 'action') comp = a.action.localeCompare(b.action);
+        else if (auditSortField === 'userId') comp = a.userId.localeCompare(b.userId);
+        return auditSortDirection === 'asc' ? comp : -comp;
+      });
+  }, [linkedAudits, auditSearch, auditActionFilter, auditSortField, auditSortDirection]);
+
+  const filteredCapas = useMemo(() => {
+    return linkedCapas
+      .filter((c) => {
+        const matchesSearch =
+          !capaSearch ||
+          c.id.toLowerCase().includes(capaSearch.toLowerCase()) ||
+          c.title.toLowerCase().includes(capaSearch.toLowerCase()) ||
+          c.findingDescription.toLowerCase().includes(capaSearch.toLowerCase()) ||
+          c.owner.toLowerCase().includes(capaSearch.toLowerCase());
+
+        const matchesStatus = capaStatusFilter === 'ALL' || c.status === capaStatusFilter;
+
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        let comp = 0;
+        if (capaSortField === 'id') comp = a.id.localeCompare(b.id);
+        else if (capaSortField === 'title') comp = a.title.localeCompare(b.title);
+        else if (capaSortField === 'dueDate') comp = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        else if (capaSortField === 'status') comp = a.status.localeCompare(b.status);
+        return capaSortDirection === 'asc' ? comp : -comp;
+      });
+  }, [linkedCapas, capaSearch, capaStatusFilter, capaSortField, capaSortDirection]);
+
   if (!vessel || !formData) {
     return <div className="p-4 text-center">Vessel not found.</div>;
   }
@@ -156,16 +409,6 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
   };
 
   const fieldEditable = (field: keyof VesselParticulars) => isEditing && canEditField(field);
-
-  const visibleAuditEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
-
-  // Linked assurance sets, documents, crew, and audit items for this vessel
-  const linkedSets = assuranceSets.filter((s) => s.vesselId === vessel.id);
-  const linkedDocs = documents.filter((d) => d.vesselId === vessel.id);
-  const linkedCrew = crew.filter((c) => c.currentVesselId === vessel.id || c.assignments.some((a) => a.vesselId === vessel.id));
-  const linkedAudits = visibleAuditEvents.filter(
-    (a) => a.targetAsset.includes(vessel.imoNumber) || a.targetAsset.includes(vessel.name)
-  );
 
   const toggleAccordion = (index: number) => {
     setActiveAccordion(activeAccordion === index ? null : index);
@@ -810,78 +1053,131 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       {/* Tab 2: Pre-Assurance Document Vault (BR-5) */}
       {activeTab === 'vault' && (
         <div className="card map-card-custom">
-          <div className="card-header d-flex justify-between align-items-center">
-            <div>
-              <span className="fw-bold">Pre-Assurance Statutory Certificate Vault</span>
-              <div className="text-muted small">Upload and verify statutory certificates directly on the asset before assurance audits (BR-5).</div>
+          {/* Table Header Controls Row */}
+          <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <input
+                type="text"
+                className="form-control form-control-sm bg-white text-dark border-secondary"
+                placeholder="Search Certificate, Number, Body..."
+                value={vaultSearch}
+                onChange={(e) => setVaultSearch(e.target.value)}
+                style={{ width: '250px' }}
+              />
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={vaultStatusFilter}
+                onChange={(e) => setVaultStatusFilter(e.target.value)}
+                style={{ width: '160px' }}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="Valid">Valid</option>
+                <option value="Expiring">Expiring &lt; 90 Days</option>
+                <option value="EXPIRED">EXPIRED</option>
+                <option value="Verified">Verified</option>
+              </select>
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={vaultSortField}
+                onChange={(e) => setVaultSortField(e.target.value as any)}
+                style={{ width: '150px' }}
+              >
+                <option value="name">Sort: Name</option>
+                <option value="expiryDate">Sort: Expiry Date</option>
+                <option value="status">Sort: Status</option>
+              </select>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary text-dark"
+                onClick={() => setVaultSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'))}
+                title={`Sort direction: ${vaultSortDirection === 'asc' ? 'Ascending' : 'Descending'}`}
+              >
+                {vaultSortDirection === 'asc' ? '↑ Asc' : '↓ Desc'}
+              </button>
             </div>
+
             {canUploadDocs && (
               <button
                 type="button"
-                className="btn btn-sm btn-primary"
+                className="btn btn-sm btn-primary ms-auto"
                 onClick={() => setCurrentHashView('documents')}
               >
                 + Upload Certificate
               </button>
             )}
           </div>
+
           <div className="table-responsive">
             <table className="table map-table-custom align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Certificate Name</th>
+                  <th
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      if (vaultSortField === 'name') setVaultSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setVaultSortField('name'); setVaultSortDirection('asc'); }
+                    }}
+                  >
+                    Certificate Name {vaultSortField === 'name' ? (vaultSortDirection === 'asc' ? '↑' : '↓') : ''}
+                  </th>
                   <th>Certificate Number</th>
                   <th>Issuing Body</th>
-                  <th>Validity Dates</th>
+                  <th
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      if (vaultSortField === 'expiryDate') setVaultSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setVaultSortField('expiryDate'); setVaultSortDirection('asc'); }
+                    }}
+                  >
+                    Validity Dates {vaultSortField === 'expiryDate' ? (vaultSortDirection === 'asc' ? '↑' : '↓') : ''}
+                  </th>
                   <th>OCR Confidence</th>
-                  <th>Status</th>
+                  <th
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      if (vaultSortField === 'status') setVaultSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setVaultSortField('status'); setVaultSortDirection('asc'); }
+                    }}
+                  >
+                    Status {vaultSortField === 'status' ? (vaultSortDirection === 'asc' ? '↑' : '↓') : ''}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {vessel.statutoryCertificates.map((cert) => {
-                  const daysLeft = getDaysUntilExpiry(cert.expiryDate);
-                  let badgeClass = 'bg-success text-white';
-                  let warningLabel = 'Valid';
-                  if (daysLeft < 0) {
-                    badgeClass = 'bg-danger text-white';
-                    warningLabel = 'EXPIRED';
-                  } else if (daysLeft < 90) {
-                    badgeClass = 'bg-warning text-dark';
-                    warningLabel = `Expiring in ${daysLeft} days`;
-                  }
-
-                  return (
-                    <tr key={cert.id}>
-                      <td className="fw-semibold text-dark">{cert.name}</td>
-                      <td className="font-mono-code">{cert.certificateNumber}</td>
-                      <td>{cert.issuingBody}</td>
-                      <td className="font-mono-code small">
-                        {formatMaritimeDate(cert.issueDate)} &rarr; {formatMaritimeDate(cert.expiryDate)}
-                      </td>
-                      <td>
-                        <span className="badge bg-light text-success border">98% OCR Match</span>
-                      </td>
-                      <td>
-                        <span className={`badge ${badgeClass}`}>{warningLabel}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {linkedDocs.map((doc) => (
-                  <tr key={doc.id}>
-                    <td className="fw-semibold text-dark">{doc.title}</td>
-                    <td className="font-mono-code">{doc.certificateNo}</td>
-                    <td>{doc.issuingAuthority}</td>
-                    <td className="font-mono-code small">Expires: {doc.expiryDate}</td>
-                    <td>
-                      <span className="badge bg-light text-primary border">{doc.ocrConfidence}% OCR</span>
-                    </td>
-                    <td>
-                      <span className="badge bg-info text-dark">{doc.verificationStatus}</span>
+                {filteredVaultCerts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-4 text-muted">
+                      No statutory certificates or documents match the search and filter criteria.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredVaultCerts.map((cert) => {
+                    let badgeClass = 'bg-success text-white';
+                    if (cert.status === 'EXPIRED') badgeClass = 'bg-danger text-white';
+                    else if (cert.status.includes('Expiring')) badgeClass = 'bg-warning text-dark';
+                    else if (cert.status === 'Verified') badgeClass = 'bg-info text-dark';
+
+                    return (
+                      <tr key={cert.id}>
+                        <td className="fw-semibold text-dark">{cert.name}</td>
+                        <td className="font-mono-code">{cert.number}</td>
+                        <td>{cert.issuingBody}</td>
+                        <td className="font-mono-code small">
+                          {cert.issueDate !== '—' ? `${formatMaritimeDate(cert.issueDate)} → ` : ''}{formatMaritimeDate(cert.expiryDate)}
+                        </td>
+                        <td>
+                          <span className="badge bg-light text-primary border">{cert.ocr}</span>
+                        </td>
+                        <td>
+                          <span className={`badge ${badgeClass}`}>{cert.status}</span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -891,25 +1187,98 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       {/* Tab 3: Assurance Sets */}
       {activeTab === 'assurance' && (
         <div className="card map-card-custom">
-          <div className="card-header fw-bold">Associated Assurance Workflows</div>
+          {/* Table Controls Header */}
+          <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <input
+                type="text"
+                className="form-control form-control-sm bg-white text-dark border-secondary"
+                placeholder="Search Set ID, Title, Initiator..."
+                value={assuranceSearch}
+                onChange={(e) => setAssuranceSearch(e.target.value)}
+                style={{ width: '250px' }}
+              />
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={assuranceStageFilter}
+                onChange={(e) => setAssuranceStageFilter(e.target.value)}
+                style={{ width: '170px' }}
+              >
+                <option value="ALL">All Stages</option>
+                <option value="Drafting">Drafting</option>
+                <option value="Data Gathering">Data Gathering</option>
+                <option value="Physical Inspection">Physical Inspection</option>
+                <option value="Desktop Assessment">Desktop Assessment</option>
+                <option value="Verification">Verification</option>
+                <option value="Assurance Granted">Assurance Granted</option>
+              </select>
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={assuranceSortField}
+                onChange={(e) => setAssuranceSortField(e.target.value as any)}
+                style={{ width: '150px' }}
+              >
+                <option value="id">Sort: Set ID</option>
+                <option value="title">Sort: Title</option>
+                <option value="stage">Sort: Stage</option>
+                <option value="readinessScore">Sort: Readiness</option>
+              </select>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary text-dark"
+                onClick={() => setAssuranceSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'))}
+                title={`Sort direction: ${assuranceSortDirection === 'asc' ? 'Ascending' : 'Descending'}`}
+              >
+                {assuranceSortDirection === 'asc' ? '↑ Asc' : '↓ Desc'}
+              </button>
+            </div>
+          </div>
+
           <div className="card-body p-0">
-            {linkedSets.length === 0 ? (
-              <div className="p-4 text-center text-muted">No active assurance sets linked to this vessel.</div>
+            {filteredAssuranceSets.length === 0 ? (
+              <div className="p-4 text-center text-muted">No active assurance sets match the search and filter criteria.</div>
             ) : (
               <div className="table-responsive">
                 <table className="table map-table-custom align-middle mb-0">
                   <thead>
                     <tr>
-                      <th>Set ID & Title</th>
+                      <th
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (assuranceSortField === 'id') setAssuranceSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setAssuranceSortField('id'); setAssuranceSortDirection('asc'); }
+                        }}
+                      >
+                        Set ID & Title {assuranceSortField === 'id' ? (assuranceSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      </th>
                       <th>Initiating Organization</th>
                       <th>Charter Window</th>
-                      <th>Stage</th>
-                      <th>Readiness</th>
+                      <th
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (assuranceSortField === 'stage') setAssuranceSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setAssuranceSortField('stage'); setAssuranceSortDirection('asc'); }
+                        }}
+                      >
+                        Stage {assuranceSortField === 'stage' ? (assuranceSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      </th>
+                      <th
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (assuranceSortField === 'readinessScore') setAssuranceSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setAssuranceSortField('readinessScore'); setAssuranceSortDirection('asc'); }
+                        }}
+                      >
+                        Readiness {assuranceSortField === 'readinessScore' ? (assuranceSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      </th>
                       <th className="text-end">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {linkedSets.map((s) => (
+                    {filteredAssuranceSets.map((s) => (
                       <tr key={s.id}>
                         <td>
                           <div className="fw-semibold font-mono-code text-primary">{s.id}</div>
@@ -950,61 +1319,118 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       {/* Tab 4: Client / Charter History */}
       {activeTab === 'clients' && isAdmin && (
         <div className="card map-card-custom">
-          <div className="card-header">
-            <div className="fw-bold">Client & Charter History</div>
-            <div className="text-muted small">
-              Previous and current clients who chartered or used this vessel for assurance activities.
+          {/* Table Controls Header */}
+          <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <input
+                type="text"
+                className="form-control form-control-sm bg-white text-dark border-secondary"
+                placeholder="Search Client Org, Charter..."
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                style={{ width: '250px' }}
+              />
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={clientOutcomeFilter}
+                onChange={(e) => setClientOutcomeFilter(e.target.value)}
+                style={{ width: '160px' }}
+              >
+                <option value="ALL">All Outcomes</option>
+                <option value="Approved">Approved</option>
+                <option value="Completed">Completed</option>
+                <option value="Conditional">Conditional</option>
+                <option value="Pending">Pending</option>
+              </select>
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={clientSortField}
+                onChange={(e) => setClientSortField(e.target.value as any)}
+                style={{ width: '150px' }}
+              >
+                <option value="charterStart">Sort: Start Date</option>
+                <option value="clientOrganization">Sort: Client Org</option>
+                <option value="outcome">Sort: Outcome</option>
+              </select>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary text-dark"
+                onClick={() => setClientSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'))}
+                title={`Sort direction: ${clientSortDirection === 'asc' ? 'Ascending' : 'Descending'}`}
+              >
+                {clientSortDirection === 'asc' ? '↑ Asc' : '↓ Desc'}
+              </button>
             </div>
           </div>
+
           <div className="card-body p-0">
-            {(vessel.clientHistory?.length ?? 0) === 0 ? (
-              <div className="p-4 text-center text-muted">No client or charter history recorded for this vessel yet.</div>
+            {filteredClientHistory.length === 0 ? (
+              <div className="p-4 text-center text-muted">No client or charter history records match the search and filter criteria.</div>
             ) : (
               <div className="table-responsive">
                 <table className="table map-table-custom align-middle mb-0">
                   <thead>
                     <tr>
-                      <th>Client Organization</th>
+                      <th
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (clientSortField === 'clientOrganization') setClientSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setClientSortField('clientOrganization'); setClientSortDirection('asc'); }
+                        }}
+                      >
+                        Client Organization {clientSortField === 'clientOrganization' ? (clientSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      </th>
                       <th>Charter / Campaign</th>
-                      <th>Charter Period</th>
+                      <th
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (clientSortField === 'charterStart') setClientSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setClientSortField('charterStart'); setClientSortDirection('asc'); }
+                        }}
+                      >
+                        Charter Period {clientSortField === 'charterStart' ? (clientSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      </th>
                       <th>Assurance Set</th>
-                      <th>Status</th>
+                      <th
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (clientSortField === 'outcome') setClientSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setClientSortField('outcome'); setClientSortDirection('asc'); }
+                        }}
+                      >
+                        Status {clientSortField === 'outcome' ? (clientSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      </th>
                       <th>Notes</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {[...(vessel.clientHistory ?? [])]
-                      .sort(
-                        (a, b) =>
-                          new Date(b.charterStart).getTime() - new Date(a.charterStart).getTime()
-                      )
-                      .map((record) => (
-                        <tr key={record.id}>
-                          <td className="fw-semibold text-dark">{record.clientOrganization}</td>
-                          <td className="small">{record.charterTitle}</td>
-                          <td className="font-mono-code small">
-                            {formatMaritimeDate(record.charterStart)} &rarr;{' '}
-                            {formatMaritimeDate(record.charterEnd)}
-                          </td>
-                          <td className="font-mono-code small">
-                            {record.assuranceSetId ? (
-                              <button
-                                type="button"
-                                className="btn btn-link btn-sm p-0 font-mono-code"
-                                onClick={() =>
-                                  setCurrentHashView('assurance-sets', record.assuranceSetId!)
-                                }
-                              >
-                                {record.assuranceSetId} &rarr;
-                              </button>
-                            ) : (
-                              <span className="text-muted">—</span>
-                            )}
-                          </td>
-                          <td>{renderClientOutcomeBadge(record.outcome)}</td>
-                          <td className="small text-secondary">{record.notes || '—'}</td>
-                        </tr>
-                      ))}
+                    {filteredClientHistory.map((record) => (
+                      <tr key={record.id}>
+                        <td className="fw-semibold text-dark">{record.clientOrganization}</td>
+                        <td className="small">{record.charterTitle}</td>
+                        <td className="font-mono-code small">
+                          {formatMaritimeDate(record.charterStart)} &rarr; {formatMaritimeDate(record.charterEnd)}
+                        </td>
+                        <td className="font-mono-code small">
+                          {record.assuranceSetId ? (
+                            <button
+                              type="button"
+                              className="btn btn-link btn-sm p-0 font-mono-code"
+                              onClick={() => setCurrentHashView('assurance-sets', record.assuranceSetId!)}
+                            >
+                              {record.assuranceSetId} &rarr;
+                            </button>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                        <td>{renderClientOutcomeBadge(record.outcome)}</td>
+                        <td className="small text-secondary">{record.notes || '—'}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1016,35 +1442,194 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       {/* Tab 5: Assigned Crew Directory */}
       {activeTab === 'crew' && isAdmin && (
         <div className="card map-card-custom">
-          <div className="card-header p-3 border-bottom d-flex align-items-center justify-between">
-            <div className="fw-bold text-dark fs-6">
-              Registered Crew Members Assigned to {vessel.name} ({linkedCrew.length} Seafarers)
+          {/* Table Header Controls Row matching standard CrewTable.tsx layout */}
+          <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
+            {/* Left Side: Search Box & Filter Dropdowns */}
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <input
+                type="text"
+                className="form-control form-control-sm bg-white text-dark border-secondary"
+                placeholder="Search Crew ID, Name, Rank..."
+                value={crewSearch}
+                onChange={(e) => setCrewSearch(e.target.value)}
+                style={{ width: '250px' }}
+              />
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={crewRankFilter}
+                onChange={(e) => setCrewRankFilter(e.target.value)}
+                style={{ width: '150px' }}
+              >
+                <option value="All">All Ranks / Officers</option>
+                {crewRanks.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={crewComplianceFilter}
+                onChange={(e) => setCrewComplianceFilter(e.target.value)}
+                style={{ width: '170px' }}
+              >
+                <option value="All">All STCW Statuses</option>
+                <option value="Fully Compliant">Fully Compliant</option>
+                <option value="Expiring < 60 Days">Expiring &lt; 60 Days</option>
+                <option value="Document Deficient">Document Deficient</option>
+              </select>
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={crewSortField}
+                onChange={(e) => setCrewSortField(e.target.value as any)}
+                style={{ width: '150px' }}
+              >
+                <option value="fullName">Sort: Name</option>
+                <option value="rank">Sort: Rank</option>
+                <option value="overallComplianceScore">Sort: STCW Score</option>
+                <option value="complianceStatus">Sort: Compliance</option>
+              </select>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary text-dark"
+                onClick={() => setCrewSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                title={`Sort direction: ${crewSortDirection === 'asc' ? 'Ascending' : 'Descending'}`}
+              >
+                {crewSortDirection === 'asc' ? '↑ Asc' : '↓ Desc'}
+              </button>
+            </div>
+
+            {/* Right Side: Action Triggers */}
+            <div className="d-flex align-items-center gap-2 ms-auto">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary fw-semibold"
+                onClick={() => setIsAssignExistingOpen(!isAssignExistingOpen)}
+              >
+                + Assign Existing Seafarer
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-primary fw-semibold"
+                onClick={() => setIsAddCrewModalOpen(true)}
+              >
+                + Register New Seafarer
+              </button>
             </div>
           </div>
+
+          {/* Inline Assign Existing Seafarer Toolbar */}
+          {isAssignExistingOpen && (
+            <div className="p-3 bg-light border-bottom d-flex flex-wrap align-items-center gap-3">
+              <div className="fw-semibold text-dark small">Assign Unassigned Seafarer:</div>
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                style={{ width: '320px' }}
+                value={selectedCrewToAssign}
+                onChange={(e) => setSelectedCrewToAssign(e.target.value)}
+              >
+                <option value="">-- Select Seafarer from Directory --</option>
+                {crew
+                  .filter((c) => c.currentVesselId !== vessel.id)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.fullName} ({c.rank} · {c.nationality}) {c.currentVesselName ? `[Currently: ${c.currentVesselName}]` : '[Unassigned]'}
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                className="btn btn-sm btn-success fw-semibold"
+                disabled={!selectedCrewToAssign}
+                onClick={() => {
+                  if (selectedCrewToAssign) {
+                    assignCrewToVessel(selectedCrewToAssign, vessel.id);
+                    setToastMessage(`Successfully assigned seafarer to ${vessel.name}`);
+                    setSelectedCrewToAssign('');
+                    setIsAssignExistingOpen(false);
+                  }
+                }}
+              >
+                Assign to Vessel
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => setIsAssignExistingOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* Master Assigned Crew Data Table */}
           <div className="table-responsive">
             <table className="table map-table-custom align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Seafarer Name</th>
-                  <th>Rank / Position</th>
-                  <th>Nationality</th>
+                  <th>Crew ID</th>
+                  <th
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      if (crewSortField === 'fullName') {
+                        setCrewSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      } else {
+                        setCrewSortField('fullName');
+                        setCrewSortDirection('asc');
+                      }
+                    }}
+                  >
+                    Full Name & Rank {crewSortField === 'fullName' ? (crewSortDirection === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th>Nationality & Seaman Book</th>
                   <th>Assignment Status</th>
-                  <th>STCW Score</th>
-                  <th>Compliance Status</th>
+                  <th
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      if (crewSortField === 'overallComplianceScore') {
+                        setCrewSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      } else {
+                        setCrewSortField('overallComplianceScore');
+                        setCrewSortDirection('asc');
+                      }
+                    }}
+                  >
+                    STCW Score {crewSortField === 'overallComplianceScore' ? (crewSortDirection === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      if (crewSortField === 'complianceStatus') {
+                        setCrewSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      } else {
+                        setCrewSortField('complianceStatus');
+                        setCrewSortDirection('asc');
+                      }
+                    }}
+                  >
+                    Compliance Status {crewSortField === 'complianceStatus' ? (crewSortDirection === 'asc' ? '↑' : '↓') : ''}
+                  </th>
                   <th className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {linkedCrew.length === 0 ? (
+                {filteredCrew.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-4 text-muted">
-                      No crew members currently registered for this vessel.
+                      {linkedCrew.length === 0
+                        ? 'No crew members currently registered for this vessel.'
+                        : 'No crew members match the search and filter criteria.'}
                     </td>
                   </tr>
                 ) : (
-                  linkedCrew.map((c) => (
+                  filteredCrew.map((c) => (
                     <tr key={c.id}>
-                      <td className="fw-semibold text-primary">
+                      <td className="font-mono-code small text-dark fw-semibold">{c.id}</td>
+                      <td>
                         <button
                           type="button"
                           className="btn btn-link p-0 text-primary text-start fw-semibold text-decoration-underline border-0 bg-transparent align-baseline"
@@ -1053,9 +1638,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                         >
                           {c.fullName}
                         </button>
+                        <div className="small text-secondary">{c.rank}</div>
                       </td>
-                      <td>{c.rank}</td>
-                      <td><span className="badge bg-light text-dark border">{c.nationality}</span></td>
+                      <td>
+                        <div className="small fw-semibold">{c.nationality}</div>
+                        <div className="font-mono-code text-muted" style={{ fontSize: '0.75rem' }}>{c.seamansBookNo}</div>
+                      </td>
                       <td>
                         <span className={`badge ${c.currentVesselId === vessel.id ? 'bg-success text-white' : 'bg-secondary text-white'}`}>
                           {c.currentVesselId === vessel.id ? 'Current Assignment' : 'Historical Assignment'}
@@ -1068,14 +1656,41 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                         </span>
                       </td>
                       <td className="text-end">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-primary py-1 px-2"
-                          style={{ fontSize: '0.75rem' }}
-                          onClick={() => setCurrentHashView('crew', c.id)}
-                        >
-                          View Details
-                        </button>
+                        <div className="d-flex align-items-center justify-content-end gap-2">
+                          {c.currentVesselId === vessel.id ? (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger py-1 px-2"
+                              style={{ fontSize: '0.75rem' }}
+                              onClick={() => {
+                                assignCrewToVessel(c.id, undefined);
+                                setToastMessage(`Unassigned ${c.fullName} from ${vessel.name}`);
+                              }}
+                            >
+                              Unassign
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-success py-1 px-2"
+                              style={{ fontSize: '0.75rem' }}
+                              onClick={() => {
+                                assignCrewToVessel(c.id, vessel.id);
+                                setToastMessage(`Reassigned ${c.fullName} to ${vessel.name}`);
+                              }}
+                            >
+                              Make Current
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary py-1 px-2"
+                            style={{ fontSize: '0.75rem' }}
+                            onClick={() => setCurrentHashView('crew', c.id)}
+                          >
+                            View Details
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1089,27 +1704,120 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       {/* Tab 6: Audit Trail */}
       {activeTab === 'audit' && isAdmin && (
         <div className="card map-card-custom">
-          <div className="card-header fw-bold">Tamper-Evident Asset Audit Trail (BR-2)</div>
-          <div className="card-body p-3">
-            {linkedAudits.length === 0 ? (
-              <div className="text-muted text-center py-3">No specific audit entries logged for this asset.</div>
-            ) : (
-              <div className="d-flex flex-column gap-2">
-                {linkedAudits.map((event) => (
-                  <div key={event.id} className="p-2 border rounded bg-light small font-mono-code d-flex justify-between">
-                    <div>
-                      <strong className="text-primary">[{event.action}]</strong> {event.justificationNotes}
-                      <div className="text-muted mt-1" style={{ fontSize: '11px' }}>
-                        User: {event.userId} | Role: {event.userRole} | Org: {event.organization}
-                      </div>
-                    </div>
-                    <span className="text-muted" style={{ fontSize: '11px' }}>
-                      {new Date(event.timestampUtc).toLocaleTimeString()}
-                    </span>
-                  </div>
+          {/* Table Controls Header */}
+          <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <input
+                type="text"
+                className="form-control form-control-sm bg-white text-dark border-secondary"
+                placeholder="Search Action, User, Org, Notes..."
+                value={auditSearch}
+                onChange={(e) => setAuditSearch(e.target.value)}
+                style={{ width: '250px' }}
+              />
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={auditActionFilter}
+                onChange={(e) => setAuditActionFilter(e.target.value)}
+                style={{ width: '180px' }}
+              >
+                <option value="ALL">All Action Types</option>
+                {auditActions.map((act) => (
+                  <option key={act} value={act}>
+                    {act}
+                  </option>
                 ))}
-              </div>
-            )}
+              </select>
+
+              <select
+                className="form-select form-select-sm bg-white text-dark border-secondary"
+                value={auditSortField}
+                onChange={(e) => setAuditSortField(e.target.value as any)}
+                style={{ width: '150px' }}
+              >
+                <option value="timestampUtc">Sort: Timestamp</option>
+                <option value="action">Sort: Action</option>
+                <option value="userId">Sort: User ID</option>
+              </select>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary text-dark"
+                onClick={() => setAuditSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'))}
+                title={`Sort direction: ${auditSortDirection === 'asc' ? 'Ascending' : 'Descending'}`}
+              >
+                {auditSortDirection === 'asc' ? '↑ Asc' : '↓ Desc'}
+              </button>
+            </div>
+          </div>
+
+          <div className="table-responsive">
+            <table className="table map-table-custom align-middle mb-0">
+              <thead>
+                <tr>
+                  <th
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      if (auditSortField === 'timestampUtc') setAuditSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setAuditSortField('timestampUtc'); setAuditSortDirection('desc'); }
+                    }}
+                  >
+                    Timestamp (UTC) {auditSortField === 'timestampUtc' ? (auditSortDirection === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      if (auditSortField === 'action') setAuditSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setAuditSortField('action'); setAuditSortDirection('asc'); }
+                    }}
+                  >
+                    Action {auditSortField === 'action' ? (auditSortDirection === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      if (auditSortField === 'userId') setAuditSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setAuditSortField('userId'); setAuditSortDirection('asc'); }
+                    }}
+                  >
+                    User & Role {auditSortField === 'userId' ? (auditSortDirection === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th>Organization</th>
+                  <th>Justification & Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAudits.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-4 text-muted">
+                      No tamper-evident audit entries match the search and filter criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAudits.map((event) => (
+                    <tr key={event.id}>
+                      <td className="font-mono-code small text-muted" style={{ fontSize: '0.75rem' }}>
+                        {new Date(event.timestampUtc).toLocaleString()}
+                      </td>
+                      <td>
+                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle font-mono-code">
+                          {event.action}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="fw-semibold text-dark small">{event.userId}</div>
+                        <span className="badge bg-light text-secondary border" style={{ fontSize: '0.7rem' }}>
+                          {event.userRole}
+                        </span>
+                      </td>
+                      <td className="small text-secondary">{event.organization}</td>
+                      <td className="small text-dark font-mono-code">{event.justificationNotes}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -1117,9 +1825,9 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       {/* Tab: Physical Inspections & CAPA Tracker */}
       {activeTab === 'inspections' && (
         <div className="d-flex flex-column gap-4">
-          {/* Section 1: Physical Inspection Reports */}
+          {/* Section 1: Physical Inspection Reports Table */}
           <div className="card map-card-custom">
-            <div className="card-header d-flex flex-wrap align-items-center justify-between p-3 gap-2">
+            <div className="card-header d-flex flex-wrap align-items-center justify-between p-3 gap-2 border-bottom">
               <div>
                 <span className="fw-bold text-primary m-0" style={{ fontSize: '0.95rem' }}>
                   Physical Vessel Inspections & Audit Logs
@@ -1188,57 +1896,145 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             </div>
           </div>
 
-          {/* Section 2: Vessel Corrective Actions (CAPA) Queue */}
+          {/* Section 2: Vessel Corrective Actions (CAPA) Master Table */}
           <div className="card map-card-custom">
-            <div className="card-header d-flex align-items-center justify-between p-3">
-              <div>
-                <span className="fw-bold text-primary m-0" style={{ fontSize: '0.95rem' }}>
-                  Corrective Action Plans (CAPA) for {vessel.name} ({linkedCapas.length})
-                </span>
-                <div className="text-secondary small">
-                  Action items and re-inspection records logged for findings on this vessel
-                </div>
+            <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
+              <div className="d-flex flex-wrap align-items-center gap-2">
+                <input
+                  type="text"
+                  className="form-control form-control-sm bg-white text-dark border-secondary"
+                  placeholder="Search CAPA ID, Finding, Owner..."
+                  value={capaSearch}
+                  onChange={(e) => setCapaSearch(e.target.value)}
+                  style={{ width: '250px' }}
+                />
+
+                <select
+                  className="form-select form-select-sm bg-white text-dark border-secondary"
+                  value={capaStatusFilter}
+                  onChange={(e) => setCapaStatusFilter(e.target.value)}
+                  style={{ width: '180px' }}
+                >
+                  <option value="ALL">All CAPA Statuses</option>
+                  <option value="Open">Open</option>
+                  <option value="Under Re-Inspection">Under Re-Inspection</option>
+                  <option value="Rectification Required">Rectification Required</option>
+                  <option value="Verified & Closed">Verified &amp; Closed</option>
+                </select>
+
+                <select
+                  className="form-select form-select-sm bg-white text-dark border-secondary"
+                  value={capaSortField}
+                  onChange={(e) => setCapaSortField(e.target.value as any)}
+                  style={{ width: '150px' }}
+                >
+                  <option value="id">Sort: CAPA ID</option>
+                  <option value="title">Sort: Title</option>
+                  <option value="dueDate">Sort: Due Date</option>
+                  <option value="status">Sort: Status</option>
+                </select>
+
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary text-dark"
+                  onClick={() => setCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'))}
+                  title={`Sort direction: ${capaSortDirection === 'asc' ? 'Ascending' : 'Descending'}`}
+                >
+                  {capaSortDirection === 'asc' ? '↑ Asc' : '↓ Desc'}
+                </button>
               </div>
             </div>
-            <div className="card-body p-3">
-              {linkedCapas.length === 0 ? (
-                <div className="text-muted text-center py-4">No open or recorded CAPA items for this vessel.</div>
-              ) : (
-                <div className="d-flex flex-column gap-3">
-                  {linkedCapas.map((c) => (
-                    <div key={c.id} className="p-3 border rounded-3 bg-white shadow-2xs">
-                      <div className="d-flex flex-wrap align-items-center justify-between gap-2 mb-2">
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="badge bg-warning text-dark font-mono-code">{c.id}</span>
-                          <span className="fw-bold text-dark" style={{ fontSize: '0.9rem' }}>{c.title}</span>
+
+            <div className="table-responsive">
+              <table className="table map-table-custom align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        if (capaSortField === 'id') setCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                        else { setCapaSortField('id'); setCapaSortDirection('asc'); }
+                      }}
+                    >
+                      CAPA ID {capaSortField === 'id' ? (capaSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        if (capaSortField === 'title') setCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                        else { setCapaSortField('title'); setCapaSortDirection('asc'); }
+                      }}
+                    >
+                      Title & Finding {capaSortField === 'title' ? (capaSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th>Owner / Dept</th>
+                    <th
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        if (capaSortField === 'dueDate') setCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                        else { setCapaSortField('dueDate'); setCapaSortDirection('asc'); }
+                      }}
+                    >
+                      Due Date {capaSortField === 'dueDate' ? (capaSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        if (capaSortField === 'status') setCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                        else { setCapaSortField('status'); setCapaSortDirection('asc'); }
+                      }}
+                    >
+                      Status {capaSortField === 'status' ? (capaSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th className="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCapas.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-4 text-muted">
+                        No CAPA items match the search and filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCapas.map((c) => (
+                      <tr key={c.id}>
+                        <td className="font-mono-code fw-semibold text-warning-emphasis">
+                          {c.id}
+                        </td>
+                        <td>
+                          <div className="fw-semibold text-dark">{c.title}</div>
+                          <div className="small text-secondary" style={{ fontSize: '0.775rem' }}>
+                            {c.findingDescription}
+                          </div>
                           {c.flaggedForReinspection && (
-                            <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle font-mono-code" style={{ fontSize: '0.7rem' }}>
+                            <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle font-mono-code mt-1" style={{ fontSize: '0.675rem' }}>
                               Flagged for Re-Inspection
                             </span>
                           )}
-                        </div>
-                        <span className={`badge ${c.status === 'Verified & Closed' ? 'bg-success text-white' : c.status === 'Under Re-Inspection' ? 'bg-warning text-dark' : 'bg-danger text-white'} font-mono-code`}>
-                          {c.status}
-                        </span>
-                      </div>
-                      <div className="small text-secondary mb-2" style={{ fontSize: '0.775rem' }}>
-                        Finding: {c.findingDescription}
-                      </div>
-                      <div className="d-flex flex-wrap align-items-center justify-between gap-2 pt-2 border-top small font-mono-code">
-                        <div>Owner: <strong className="text-dark">{c.owner}</strong> | Due: <strong className="text-dark">{c.dueDate}</strong></div>
-                        <button
-                          type="button"
-                          className="btn btn-xs btn-outline-secondary font-mono-code"
-                          style={{ fontSize: '0.725rem' }}
-                          onClick={() => setSelectedCapaForDrawer(c)}
-                        >
-                          View Details
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                        </td>
+                        <td className="small">{c.owner}</td>
+                        <td className="font-mono-code small">{c.dueDate}</td>
+                        <td>
+                          <span className={`badge ${c.status === 'Verified & Closed' ? 'bg-success text-white' : c.status === 'Under Re-Inspection' ? 'bg-warning text-dark' : 'bg-danger text-white'} font-mono-code`}>
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="text-end">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary py-1 px-2"
+                            style={{ fontSize: '0.75rem' }}
+                            onClick={() => setSelectedCapaForDrawer(c)}
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1249,6 +2045,16 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         <CapaReinspectionDrawer
           capa={selectedCapaForDrawer}
           onClose={() => setSelectedCapaForDrawer(null)}
+        />
+      )}
+
+      {/* Register New Crew Member Modal for vessel admin */}
+      {isAddCrewModalOpen && vessel && (
+        <AddCrewModal
+          isOpen={isAddCrewModalOpen}
+          onClose={() => setIsAddCrewModalOpen(false)}
+          initialVesselId={vessel.id}
+          onViewCrewDetail={(crewId) => setCurrentHashView('crew', crewId)}
         />
       )}
     </div>
