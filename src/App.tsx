@@ -39,10 +39,16 @@ export const App: React.FC = () => {
   const { currentHashView, currentEntityId, setCurrentHashView, isAuthenticated, activePersona } = useMapStore();
 
   useEffect(() => {
-    /* parse initial hash route on mount */
+    /* parse initial hash route on mount or enforce login view on reload */
     const parseHash = () => {
+      if (!isAuthenticated) {
+        window.location.hash = '#/login';
+        setCurrentHashView('login');
+        return;
+      }
+
       const hash = window.location.hash.replace('#/', '');
-      if (hash) {
+      if (hash && hash !== 'login') {
         const parts = hash.split('/');
         setCurrentHashView(parts[0], parts[1]);
       } else {
@@ -55,17 +61,17 @@ export const App: React.FC = () => {
     const handleHashChange = () => parseHash();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [isAuthenticated, setCurrentHashView]);
 
   /* enforce RBAC route restriction across all active user personas */
   useEffect(() => {
-    if (!isViewAccessibleToPersona(currentHashView, currentEntityId, activePersona)) {
+    if (isAuthenticated && !isViewAccessibleToPersona(currentHashView, currentEntityId, activePersona)) {
       setCurrentHashView('dashboard');
     }
-  }, [activePersona, currentHashView, currentEntityId, setCurrentHashView]);
+  }, [activePersona, currentHashView, currentEntityId, isAuthenticated, setCurrentHashView]);
 
-  /* render login view if user is unauthenticated */
-  if (!isAuthenticated) {
+  /* render login view if user is unauthenticated or on login view */
+  if (!isAuthenticated || currentHashView === 'login') {
     return <LoginView />;
   }
 
