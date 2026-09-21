@@ -29,7 +29,7 @@ interface AssuranceDetailViewProps {
   with what file: src/views/AssuranceDetailView.tsx loaded by App.tsx.
 */
 export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId }) => {
-  const { assuranceSets, updateRequirementStatus, updateAssuranceInspector, documents, activePersona, users, setCurrentHashView } = useMapStore();
+  const { assuranceSets, vessels, updateRequirementStatus, updateAssuranceInspector, documents, activePersona, users, setCurrentHashView } = useMapStore();
   const [selectedDocForReview, setSelectedDocForReview] = useState<{ doc: MasterDocument; notes?: string } | null>(null);
   const [selectedDocForVersionHistory, setSelectedDocForVersionHistory] = useState<MasterDocument | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -178,7 +178,20 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   </div>
                   <div className="border-bottom pb-1.5">
                     <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Vessel:</div>
-                    <div className="fw-bold text-dark">{assuranceSet.vesselName} (IMO {assuranceSet.imoNumber})</div>
+                    <div
+                      className="fw-bold text-primary text-decoration-underline-hover"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        const targetVessel = vessels.find(
+                          (v) => v.id === assuranceSet.vesselId || v.name.toLowerCase() === assuranceSet.vesselName.toLowerCase()
+                        );
+                        const targetId = targetVessel ? targetVessel.id : assuranceSet.vesselId || assuranceSet.vesselName;
+                        setCurrentHashView('vessels', targetId);
+                      }}
+                      title={`Click to open vessel detail page for ${assuranceSet.vesselName}`}
+                    >
+                      {assuranceSet.vesselName} (IMO {assuranceSet.imoNumber})
+                    </div>
                   </div>
                   <div>
                     <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Charter Window:</div>

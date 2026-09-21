@@ -26,6 +26,7 @@ export const HeaderBanner: React.FC = () => {
     vessels,
     assuranceSets,
     documents,
+    crew,
   } = useMapStore();
 
   /* compute dynamic back button info based on active detail view */
@@ -71,16 +72,17 @@ export const HeaderBanner: React.FC = () => {
             title: v ? v.name : 'Vessel Detail',
           };
         }
-        return { breadcrumb: 'FLEET MASTER · ASSET REGISTRY', title: 'Fleet registry' };
+        return { breadcrumb: 'FLEET MASTER · ASSET REGISTRY', title: 'Vessels' };
       }
       case 'assurance-sets': {
         if (currentEntityId) {
+          const s = assuranceSets.find((item) => item.id === currentEntityId);
           return {
-            breadcrumb: '',
-            title: 'Assurance Set Detail Page',
+            breadcrumb: `${s?.id || 'CAMPAIGN'} · ASSURANCE SET`,
+            title: s ? s.title : 'Assurance Set Detail Page',
           };
         }
-        return { breadcrumb: 'AS-2041 · Fleet overview', title: 'Assurance dashboard' };
+        return { breadcrumb: 'ASSURANCE CAMPAIGN REGISTRY · FLEET OVERVIEW', title: 'Assurance Sets' };
       }
       case 'documents': {
         if (currentEntityId) {
@@ -92,17 +94,41 @@ export const HeaderBanner: React.FC = () => {
         }
         return { breadcrumb: 'STATUTORY VAULT · COMPLIANCE EVIDENCE', title: 'Document Library' };
       }
+      case 'crew': {
+        if (currentEntityId) {
+          const c = crew ? crew.find((item) => item.id === currentEntityId) : null;
+          return {
+            breadcrumb: `CREW ID ${c?.id || 'DIRECTORY'} · SEAFARER PROFILE`,
+            title: c ? c.fullName : 'Crew Detail',
+          };
+        }
+        return { breadcrumb: 'SEAFARER DIRECTORY · CREW MANNING', title: 'Crew Directory' };
+      }
+      case 'users':
+        return { breadcrumb: 'USER DIRECTORY · ACCESS GOVERNANCE', title: 'User Management' };
       case 'verifier':
-        return { breadcrumb: 'SURVEYOR WORKSPACE · COMPLIANCE REVIEW', title: 'Verification queue' };
+        return { breadcrumb: 'SURVEYOR WORKSPACE · COMPLIANCE REVIEW', title: 'Verification Queue' };
+      case 'inspection':
       case 'inspector':
-        return { breadcrumb: 'PHYSICAL AUDIT · VISUAL SURVEY', title: 'Physical inspections' };
+        if (currentEntityId) {
+          return {
+            breadcrumb: 'PHYSICAL AUDIT · VISUAL SURVEY',
+            title: `${currentEntityId} Physical Inspection`,
+          };
+        }
+        return { breadcrumb: 'PHYSICAL AUDIT · VISUAL SURVEY', title: 'Physical Inspections' };
       case 'approver':
-        return { breadcrumb: 'CHARTER AUTHORITY · READINESS SIGN-OFF', title: 'Approvals & readiness' };
+        return { breadcrumb: 'CHARTER AUTHORITY · READINESS SIGN-OFF', title: 'Approval Gate' };
+      case 'capa':
+      case 'capas':
+        return { breadcrumb: 'CORRECTIVE ACTION TRACKER · FLEET OVERVIEW', title: 'CAPA Tracker' };
       case 'audit':
-        return { breadcrumb: 'IMMUTABLE LOGS · CRYPTOGRAPHIC AUDIT', title: 'Audit trail' };
+        return { breadcrumb: 'IMMUTABLE LOGS · CRYPTOGRAPHIC AUDIT', title: 'Immutable Audit Trail' };
+      case 'create-assurance-set':
+        return { breadcrumb: 'NEW ASSURANCE CAMPAIGN · INITIATION', title: 'Create Assurance Set' };
       case 'dashboard':
       default:
-        return { breadcrumb: 'AS-2041 · Fleet overview', title: 'Assurance dashboard' };
+        return { breadcrumb: 'MARINE ASSURANCE PLATFORM · FLEET OVERVIEW', title: 'Dashboard' };
     }
   };
 
