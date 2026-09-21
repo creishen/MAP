@@ -11,7 +11,7 @@ import { MasterDocument } from '../types/document';
 import { ConfidenceBadge } from '../components/common/ConfidenceBadge';
 import { formatMaritimeDate } from '../utils/formatters';
 
-import { isAssuranceSetAssignedToPersona } from '../utils/rbacHelpers';
+import { isAssuranceSetAssignedToPersona, filterDocumentsForVerifierQueue } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 
 /**
@@ -25,11 +25,10 @@ export const VerifierWorkspaceView: React.FC = () => {
   const [isPendingExportOpen, setIsPendingExportOpen] = useState(false);
   const [isVerifiedExportOpen, setIsVerifiedExportOpen] = useState(false);
 
-  const isCAdmin = activePersona === 'C Admin';
-
   const assignedSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, activePersona));
-  const pendingDocs = documents.filter((d) => d.verificationStatus === 'Pending' || d.verificationStatus === 'Correction Requested');
-  const verifiedDocs = documents.filter((d) => d.verificationStatus === 'Verified');
+  const scopedDocs = filterDocumentsForVerifierQueue(documents, assuranceSets, activePersona);
+  const pendingDocs = scopedDocs.filter((d) => d.verificationStatus === 'Pending' || d.verificationStatus === 'Correction Requested');
+  const verifiedDocs = scopedDocs.filter((d) => d.verificationStatus === 'Verified');
 
   const handleExportPendingCsv = () => {
     const exportData = pendingDocs.map((d) => ({

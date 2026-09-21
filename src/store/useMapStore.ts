@@ -72,7 +72,8 @@ export interface MapStoreState {
   verifyDocument: (
     docId: string,
     status: 'Pending' | 'Verified' | 'Correction Requested' | 'Rejected',
-    notes?: string
+    notes?: string,
+    routeTarget?: 'Inspector' | 'Approver',
   ) => void;
 
   // Audit Trail State
@@ -388,7 +389,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       justificationNotes: changeSummary,
     });
   },
-  verifyDocument: (docId, status, notes) => {
+  verifyDocument: (docId, status, notes, routeTarget) => {
     set((state) => {
       const updatedDocs = state.documents.map((d) =>
         d.id === docId ? { ...d, verificationStatus: status, verificationNotes: notes } : d
@@ -415,6 +416,8 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
               isFulfilled: status === 'Verified',
               ocrConfidence: targetDoc?.ocrConfidence || 98,
               notes: notes || r.notes,
+              verificationRoute:
+                status === 'Verified' && routeTarget ? routeTarget : r.verificationRoute,
             };
           }
           return r;
@@ -428,7 +431,10 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
 
         let nextStage = s.stage;
         if (allVerified) {
-          nextStage = 'Approval';
+          const routesToInspector =
+            updatedReqs.some((r) => r.verificationRoute === 'Inspector') ||
+            (s.mandatoryInspectionRequired && !s.inspectionCompleted);
+          nextStage = routesToInspector ? 'Inspection' : 'Approval';
         } else if (status === 'Correction Requested' || status === 'Rejected') {
           nextStage = 'Verification';
         }
@@ -448,13 +454,14 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       };
     });
 
+    const routeNote = routeTarget ? ` | Routed to ${routeTarget}` : '';
     get().logAuditEvent({
       userId: 'USR-VERIFY-01',
       userRole: get().activePersona,
       organization: 'Verifier Inspectorate',
       action: `Document Verification Action: ${status}`,
       targetAsset: `Document ${docId}`,
-      justificationNotes: notes || `Verification status updated to ${status}`,
+      justificationNotes: `${notes || `Verification status updated to ${status}`}${routeNote}`,
     });
   },
 

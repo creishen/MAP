@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useMapStore } from '../store/useMapStore';
-import { isViewAccessibleToPersona } from '../utils/rbacHelpers';
+import { isViewAccessibleToPersona, filterDocumentsForVerifierQueue } from '../utils/rbacHelpers';
 
 describe('Map Store State Management', () => {
   beforeEach(() => {
@@ -64,11 +64,48 @@ describe('Map Store State Management', () => {
     const store = useMapStore.getState();
     const targetDocId = store.documents[0].id;
 
-    store.verifyDocument(targetDocId, 'Verified', 'Unit test verification check');
+    store.verifyDocument(targetDocId, 'Verified', 'Unit test verification check', 'Approver');
 
     const updatedDoc = useMapStore.getState().documents.find((d) => d.id === targetDocId);
     expect(updatedDoc?.verificationStatus).toBe('Verified');
     expect(updatedDoc?.verificationNotes).toBe('Unit test verification check');
+  });
+
+  it('should route assurance set to Inspection when all requirements verified with Inspector route', () => {
+    const store = useMapStore.getState();
+    const targetSet = store.assuranceSets.find((s) => s.mandatoryInspectionRequired);
+    expect(targetSet).toBeDefined();
+    if (!targetSet) return;
+
+    targetSet.requirements.forEach((req) => {
+      if (req.documentId) {
+        store.verifyDocument(req.documentId, 'Verified', 'Verified for inspection routing test', 'Inspector');
+      }
+    });
+
+    const updatedSet = useMapStore.getState().assuranceSets.find((s) => s.id === targetSet.id);
+    expect(updatedSet?.stage).toBe('Inspection');
+  });
+
+  it('should scope verifier queue documents to assigned assurance set requirements', () => {
+    const store = useMapStore.getState();
+    store.setActivePersona('Verifier');
+
+    const scoped = filterDocumentsForVerifierQueue(
+      useMapStore.getState().documents,
+      useMapStore.getState().assuranceSets,
+      'Verifier',
+    );
+
+    expect(scoped.length).toBeGreaterThan(0);
+    scoped.forEach((doc) => {
+      const inAssignedQueue = useMapStore.getState().assuranceSets.some(
+        (set) =>
+          set.assignedVerifier &&
+          set.requirements.some((req) => req.documentId === doc.id),
+      );
+      expect(inAssignedQueue).toBe(true);
+    });
   });
 
   it('should update user profile details and record audit log event', () => {

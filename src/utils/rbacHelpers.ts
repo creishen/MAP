@@ -6,6 +6,7 @@
 
 import { AssuranceSet } from "../types/assurance";
 import { AuditTrailEvent, UserRolePersona } from "../types/audit";
+import { MasterDocument } from "../types/document";
 import { VesselParticulars } from "../types/vessel";
 
 /**
@@ -40,6 +41,41 @@ export function isAssuranceSetAssignedToPersona(
     );
   }
   return true;
+}
+
+/**
+  what: collects document IDs linked to assurance requirements on sets assigned to the persona.
+  how: filters assurance sets by stakeholder assignment and gathers requirement documentId values.
+  with what file: src/utils/rbacHelpers.ts used by VerifierWorkspaceView.tsx.
+*/
+export function getVerifierQueueDocumentIds(
+  assuranceSets: AssuranceSet[],
+  persona: UserRolePersona,
+): Set<string> {
+  const assignedSets = assuranceSets.filter((set) =>
+    isAssuranceSetAssignedToPersona(set, persona),
+  );
+  const ids = new Set<string>();
+  assignedSets.forEach((set) => {
+    set.requirements.forEach((req) => {
+      if (req.documentId) ids.add(req.documentId);
+    });
+  });
+  return ids;
+}
+
+/**
+  what: filters master documents to those in the verifier's assigned assurance-set work queue.
+  how: keeps only documents whose IDs appear on requirements for persona-assigned assurance sets.
+  with what file: src/utils/rbacHelpers.ts used by VerifierWorkspaceView.tsx.
+*/
+export function filterDocumentsForVerifierQueue(
+  documents: MasterDocument[],
+  assuranceSets: AssuranceSet[],
+  persona: UserRolePersona,
+): MasterDocument[] {
+  const allowedIds = getVerifierQueueDocumentIds(assuranceSets, persona);
+  return documents.filter((d) => allowedIds.has(d.id));
 }
 
 /**

@@ -18,6 +18,7 @@ export interface AssuranceRequirement {
   documentId?: string;
   documentVersion?: string;
   verifierStatus: 'Pending' | 'Verified' | 'Correction Requested' | 'Rejected';
+  verificationRoute?: 'Inspector' | 'Approver';
   notes?: string;
 }
 

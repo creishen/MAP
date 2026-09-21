@@ -4,7 +4,7 @@
   role in system: invoked from verifier workspace, document detail view, or requirements register.
 */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { MasterDocument } from '../../types/document';
 import { DocumentUploadModal } from './DocumentUploadModal';
@@ -29,16 +29,38 @@ interface ExtractedAttribute {
   with what file: src/components/drawers/DocumentReviewDrawer.tsx loaded by VerifierWorkspaceView.tsx and AssuranceDetailView.tsx.
 */
 export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ document, requirementNotes, onClose }) => {
-  const { verifyDocument, activePersona } = useMapStore();
+  const { verifyDocument, activePersona, assuranceSets } = useMapStore();
   const [comment, setComment] = useState('');
+  const [commentError, setCommentError] = useState('');
   const [showManualEdit, setShowManualEdit] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [routeTarget, setRouteTarget] = useState<'Inspector' | 'Approver'>('Approver');
+
+  const linkedSet = document
+    ? assuranceSets.find((set) => set.requirements.some((req) => req.documentId === document.id))
+    : undefined;
+
+  useEffect(() => {
+    if (!document) return;
+    setComment('');
+    setCommentError('');
+    setRouteTarget(linkedSet?.mandatoryInspectionRequired ? 'Inspector' : 'Approver');
+  }, [document?.id, linkedSet?.mandatoryInspectionRequired]);
 
   if (!document) return null;
 
   const isVerified = document.verificationStatus === 'Verified';
   const canSubmit = activePersona === 'Submitter' || activePersona === 'Administrator';
-  const canVerify = activePersona === 'Verifier' || activePersona === 'Administrator' || activePersona === 'Approver';
+  const canVerify = activePersona === 'Verifier' || activePersona === 'Administrator';
+
+  const requireComment = () => {
+    if (!comment.trim()) {
+      setCommentError('Defect comments are required when returning or rejecting a document.');
+      return false;
+    }
+    setCommentError('');
+    return true;
+  };
 
   const isReuploaded = document.versions.length > 1 || document.currentVersion !== 'v1.0' || (document.ocrConfidence && document.ocrConfidence >= 90);
   const activeNotes = requirementNotes || document.verificationNotes || (document.versions.length > 0 ? document.versions[0].changeSummary : undefined);
@@ -68,12 +90,24 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
   const overallConfidence = isReuploaded ? 98 : (document.ocrConfidence || 74);
 
   const handleVerify = () => {
-    verifyDocument(document.id, 'Verified', comment || 'Verified extracted document attributes.');
+    verifyDocument(
+      document.id,
+      'Verified',
+      comment.trim() || 'Verified extracted document attributes.',
+      routeTarget,
+    );
     onClose();
   };
 
   const handleCorrection = () => {
-    verifyDocument(document.id, 'Correction Requested', comment || 'Issuing authority illegible, crew ID partially legible. Replace with clearer scan.');
+    if (!requireComment()) return;
+    verifyDocument(document.id, 'Correction Requested', comment.trim());
+    onClose();
+  };
+
+  const handleReject = () => {
+    if (!requireComment()) return;
+    verifyDocument(document.id, 'Rejected', comment.trim());
     onClose();
   };
 
@@ -290,19 +324,47 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
               {/* Justification & Feedback Notes Field */}
               <div className="mb-3.5">
                 <label className="form-label text-dark small fw-semibold mb-1.5" style={{ fontSize: '0.8rem' }}>
-                  Approver / Verifier Justification Notes
+                  Verifier Defect / Justification Notes
                 </label>
                 <textarea
-                  className="form-control bg-white text-dark border p-3"
+                  className={`form-control bg-white text-dark border p-3 ${commentError ? 'border-danger' : ''}`}
                   rows={2}
-                  placeholder="Enter approval justification notes or return for correction feedback..."
+                  placeholder="Required when returning for correction or rejecting. Optional for verification approval."
                   value={comment}
-                  onChange={(e) => setComment(e.target.value)}
+                  onChange={(e) => {
+                    setComment(e.target.value);
+                    if (commentError && e.target.value.trim()) setCommentError('');
+                  }}
                   style={{ fontSize: '0.825rem', borderRadius: '6px' }}
                 />
+                {commentError && (
+                  <div className="text-danger small mt-1">{commentError}</div>
+                )}
               </div>
 
-              <div className="d-flex align-items-center justify-content-end gap-2.5 pt-3 border-top">
+              {canVerify && (
+                <div className="mb-3.5">
+                  <label className="form-label text-dark small fw-semibold mb-1.5" style={{ fontSize: '0.8rem' }}>
+                    Next Stage Routing
+                  </label>
+                  <select
+                    className="form-select bg-white text-dark border"
+                    value={routeTarget}
+                    onChange={(e) => setRouteTarget(e.target.value as 'Inspector' | 'Approver')}
+                    style={{ fontSize: '0.825rem', borderRadius: '6px', maxWidth: '420px' }}
+                  >
+                    <option value="Inspector">Forward to Inspector for Visual Survey</option>
+                    <option value="Approver">Forward to Approver Gate</option>
+                  </select>
+                  {linkedSet?.mandatoryInspectionRequired && (
+                    <div className="text-secondary small mt-1">
+                      Visual inspection is mandated for this assurance set.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="d-flex align-items-center justify-content-end gap-2 pt-3 border-top flex-wrap">
                 {canSubmit && (
                   <button
                     type="button"
@@ -317,6 +379,14 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                   <>
                     <button
                       type="button"
+                      className="btn btn-outline-danger px-3.5 py-2 fw-bold shadow-sm"
+                      style={{ fontSize: '0.8rem' }}
+                      onClick={handleReject}
+                    >
+                      Reject Document
+                    </button>
+                    <button
+                      type="button"
                       className="btn text-dark px-3.5 py-2 fw-bold shadow-sm"
                       style={{ fontSize: '0.8rem', backgroundColor: '#fef3c7', borderColor: '#fde68a' }}
                       onClick={handleCorrection}
@@ -329,7 +399,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                       style={{ fontSize: '0.8rem', backgroundColor: '#059669', borderColor: '#059669' }}
                       onClick={handleVerify}
                     >
-                      Approve & Certify Document
+                      Verify & Route Forward
                     </button>
                   </>
                 )}
