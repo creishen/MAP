@@ -496,7 +496,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
               <div className="position-relative">
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                  className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
                   onClick={() => setIsExportOpen(!isExportOpen)}
                 >
                   <span>Export Data</span>
@@ -538,7 +538,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   <div className="d-flex gap-1">
                     <button
                       type="button"
-                      className="btn btn-sm btn-secondary"
+                      className="btn btn-sm btn-outline-primary"
                       onClick={() => {
                         setFormData(vessel);
                         setIsEditing(false);
@@ -546,14 +546,14 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     >
                       Cancel
                     </button>
-                    <button type="button" className="btn btn-sm btn-success" onClick={handleSave}>
+                    <button type="button" className="btn btn-sm btn-warning text-dark fw-bold" onClick={handleSave}>
                       Save
                     </button>
                   </div>
                 ) : (
                   <button
                     type="button"
-                    className="btn btn-sm btn-outline-primary"
+                    className="btn btn-sm btn-outline-warning text-dark fw-bold"
                     onClick={() => setIsEditing(true)}
                   >
                     {canEditFull ? 'Edit Particulars' : 'Update Operating Status'}
@@ -1102,7 +1102,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             {canUploadDocs && (
               <button
                 type="button"
-                className="btn btn-sm btn-primary ms-auto"
+                className="btn btn-sm btn-success ms-auto"
                 onClick={() => setCurrentHashView('documents')}
               >
                 + Upload Certificate
@@ -1507,14 +1507,14 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             <div className="d-flex align-items-center gap-2 ms-auto">
               <button
                 type="button"
-                className="btn btn-sm btn-outline-primary fw-semibold"
+                className="btn btn-sm btn-outline-success fw-semibold"
                 onClick={() => setIsAssignExistingOpen(!isAssignExistingOpen)}
               >
                 + Assign Existing Seafarer
               </button>
               <button
                 type="button"
-                className="btn btn-sm btn-primary fw-semibold"
+                className="btn btn-sm btn-success fw-semibold"
                 onClick={() => setIsAddCrewModalOpen(true)}
               >
                 + Register New Seafarer
@@ -1558,7 +1558,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
               </button>
               <button
                 type="button"
-                className="btn btn-sm btn-outline-secondary"
+                className="btn btn-sm btn-outline-primary"
                 onClick={() => setIsAssignExistingOpen(false)}
               >
                 Cancel
@@ -1672,7 +1672,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                           ) : (
                             <button
                               type="button"
-                              className="btn btn-sm btn-outline-success py-1 px-2"
+                              className="btn btn-sm btn-outline-warning text-dark py-1 px-2"
                               style={{ fontSize: '0.75rem' }}
                               onClick={() => {
                                 assignCrewToVessel(c.id, vessel.id);

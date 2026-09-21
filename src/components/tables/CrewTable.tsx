@@ -136,7 +136,7 @@ export const CrewTable: React.FC<CrewTableProps> = ({
           <div className="dropdown position-relative">
             <button
               type="button"
-              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
+              className="btn btn-sm btn-outline-primary text-light dropdown-toggle"
               onClick={() => setIsExportOpen(!isExportOpen)}
             >
               Export Data
@@ -161,7 +161,7 @@ export const CrewTable: React.FC<CrewTableProps> = ({
           {canManageCrew && onRegisterCrew && (
             <button
               type="button"
-              className="btn btn-sm btn-primary"
+              className="btn btn-sm btn-success"
               onClick={onRegisterCrew}
             >
               + Register Crew Member

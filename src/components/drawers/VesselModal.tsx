@@ -567,7 +567,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                         </label>
                         <button
                           type="button"
-                          className="btn btn-sm btn-primary text-white fw-bold w-100 d-flex align-items-center justify-content-center gap-1.5"
+                          className="btn btn-sm btn-success text-white fw-bold w-100 d-flex align-items-center justify-content-center gap-1.5"
                           onClick={() => aiFileInputRef.current?.click()}
                           disabled={isExtractingAi}
                         >
@@ -583,7 +583,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       </span>
                       <button
                         type="button"
-                        className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
+                        className="btn btn-xs btn-outline-success font-mono-code py-0 px-2"
                         style={{ fontSize: '0.7rem' }}
                         onClick={() => handleStageVesselFileForVerification('MV_Pacific_Leader_Certificate_of_Class.pdf')}
                         disabled={isExtractingAi}
@@ -592,7 +592,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       </button>
                       <button
                         type="button"
-                        className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
+                        className="btn btn-xs btn-outline-success font-mono-code py-0 px-2"
                         style={{ fontSize: '0.7rem' }}
                         onClick={() => handleStageVesselFileForVerification('MV_Coral_Titan_Certificate_of_Registry.pdf')}
                         disabled={isExtractingAi}
@@ -1189,14 +1189,14 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
             {/* Modal Actions */}
             <div className="modal-footer border-top bg-light d-flex justify-between">
               <div>
-                <button type="button" className="btn btn-sm btn-secondary" onClick={onClose}>
+                <button type="button" className="btn btn-sm btn-outline-primary" onClick={onClose}>
                   Cancel
                 </button>
               </div>
 
               <div className="d-flex gap-2">
                 {currentStep > 1 && (
-                  <button type="button" className="btn btn-sm btn-outline-secondary" onClick={handlePrevious}>
+                  <button type="button" className="btn btn-sm btn-outline-primary" onClick={handlePrevious}>
                     &larr; Back
                   </button>
                 )}

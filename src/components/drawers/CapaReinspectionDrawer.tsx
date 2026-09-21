@@ -352,7 +352,7 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
                   <div className="d-flex align-items-center gap-2">
                     <button
                       type="button"
-                      className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5"
+                      className="btn btn-sm btn-outline-success d-flex align-items-center gap-1.5"
                       onClick={openLiveCameraModal}
                       style={{ fontSize: '0.775rem' }}
                     >
@@ -365,9 +365,9 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
 
                     <button
                       type="button"
-                      className="btn btn-sm btn-light border text-secondary d-flex align-items-center gap-1.5"
+                      className="btn btn-sm btn-outline-success d-flex align-items-center gap-1.5"
                       onClick={handleTriggerFileInput}
-                      style={{ fontSize: '0.775rem', backgroundColor: '#f8fafc' }}
+                      style={{ fontSize: '0.775rem' }}
                     >
                       + Attach File
                     </button>
@@ -483,8 +483,8 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
                 />
                 <button
                   type="button"
-                  className="btn btn-primary w-100 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2"
-                  style={{ backgroundColor: '#0284c7', borderColor: '#0284c7', fontSize: '0.875rem' }}
+                  className="btn btn-warning text-dark w-100 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2"
+                  style={{ fontSize: '0.875rem' }}
                   onClick={handleFlagForReinspection}
                 >
                   {capa.flaggedForReinspection ? 'Update Re-Inspection Flag Notes' : 'Flag for Re-Inspection'}
@@ -511,7 +511,7 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
                   <video ref={videoRef} autoPlay playsInline className="map-camera-video-preview" />
                   <canvas ref={canvasRef} className="d-none" />
                   <div className="d-flex justify-content-center flex-wrap gap-2 w-100">
-                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={closeCameraModal}>
+                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={closeCameraModal}>
                       Cancel
                     </button>
                     <button
@@ -524,7 +524,7 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
                     >
                       Use Device Camera
                     </button>
-                    <button type="button" className="btn btn-primary btn-sm px-4" onClick={takeCameraSnapshot}>
+                    <button type="button" className="btn btn-success btn-sm px-4" onClick={takeCameraSnapshot}>
                       Snap Photo
                     </button>
                   </div>
@@ -533,7 +533,7 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
                 <>
                   <img src={capturedPhotoDataUrl} alt="Captured preview" className="map-camera-video-preview" />
                   <div className="d-flex justify-content-center gap-2 w-100">
-                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setCapturedPhotoDataUrl(null)}>
+                    <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setCapturedPhotoDataUrl(null)}>
                       Retake
                     </button>
                     <button type="button" className="btn btn-success btn-sm px-4" onClick={attachLiveSnapshot}>
