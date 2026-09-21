@@ -337,7 +337,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
     e.target.value = '';
   };
 
-  /* remove evidence item */
+  /* Remove item */
   const handleRemoveEvidence = (itemId: string, evidenceId: string) => {
     setItems((prev) =>
       prev.map((item) =>
@@ -727,7 +727,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                                 type="button"
                                 className="btn-close ms-auto flex-shrink-0 align-self-start"
                                 style={{ fontSize: '0.6rem' }}
-                                aria-label="Remove evidence"
+                                aria-label="Remove"
                                 onClick={() => handleRemoveEvidence(item.id, ev.id)}
                               />
                             </div>

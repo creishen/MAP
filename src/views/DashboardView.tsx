@@ -217,7 +217,7 @@ export const DashboardView: React.FC = () => {
                     className="btn btn-sm btn-outline-primary"
                     onClick={() => setCurrentHashView('vessels')}
                   >
-                    View Master Fleet
+                    View Details
                   </button>
                 </div>
                 <div className="card-body p-0">

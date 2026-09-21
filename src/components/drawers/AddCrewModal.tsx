@@ -218,7 +218,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
                   onViewCrewDetail(targetId);
                 }}
               >
-                View Full Seafarer Dossier →
+                View Details
               </button>
             )}
             <button

@@ -1072,7 +1072,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                           style={{ fontSize: '0.75rem' }}
                           onClick={() => setCurrentHashView('crew', c.id)}
                         >
-                          View Seafarer Profile
+                          View Details
                         </button>
                       </td>
                     </tr>
@@ -1126,11 +1126,6 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   Inspection records, finding notes, supporting evidence, and CAPAs logged for {vessel.name}
                 </div>
               </div>
-              {isCAdmin && (
-                <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle font-mono-code">
-                  Charterer Inspection Monitoring (Read-Only)
-                </span>
-              )}
             </div>
             <div className="card-body p-3">
               {linkedSets.length === 0 ? (
@@ -1181,11 +1176,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                           style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
                           onClick={() => setCurrentHashView('inspection', vessel.name)}
                         >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                            <circle cx="12" cy="12" r="3" />
-                          </svg>
-                          View Inspection Checklist & Evidence
+                          View Details
                         </button>
                       </div>
                     </div>
@@ -1239,7 +1230,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                           style={{ fontSize: '0.725rem' }}
                           onClick={() => setSelectedCapaForDrawer(c)}
                         >
-                          View Re-Inspection Details ({c.evidences.length} Evidences)
+                          View Details
                         </button>
                       </div>
                     </div>
