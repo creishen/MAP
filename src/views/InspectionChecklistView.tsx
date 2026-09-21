@@ -8,6 +8,7 @@ import React, { useState, useRef } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
+import { CapaItem } from '../types/capa';
 
 interface EvidenceItem {
   id: string;
@@ -15,6 +16,7 @@ interface EvidenceItem {
   type: 'Photo' | 'Document';
   fileName?: string;
   fileSize?: string;
+  previewUrl?: string;
 }
 
 interface InspectionItem {
@@ -41,11 +43,11 @@ interface InspectionChecklistViewProps {
 
 /**
   what: renders visual vessel inspection full-page view with zero-friction workflow.
-  how: manages state for 5 checklist items with direct file evidence uploads, inline finding comments, CAPA creation, and smart inspection outcome submission.
+  how: manages state for 5 checklist items with direct file evidence uploads, real-time photo capture, inline finding comments, CAPA creation, and smart inspection outcome submission.
   with what file: src/views/InspectionChecklistView.tsx loaded by App.tsx when hash is /inspector/:vesselName or /inspection/:vesselName.
 */
 export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = ({ vesselName = 'MV Pacific Endeavour' }) => {
-  const { logAuditEvent, activePersona, setCurrentHashView, previousHashView, previousEntityId } = useMapStore();
+  const { capaItems, addCapaItem, logAuditEvent, activePersona, setCurrentHashView, previousHashView, previousEntityId } = useMapStore();
 
   const backInfo = getBackButtonInfo('inspector', 'Physical Survey Schedule', previousHashView, activePersona, previousEntityId);
 
@@ -117,6 +119,16 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
 
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /* photo capture state & refs for native mobile camera and live stream modal */
+  const [activePhotoItemId, setActivePhotoItemId] = useState<string | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [capturedPhotoDataUrl, setCapturedPhotoDataUrl] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [raisingCapaItemId, setRaisingCapaItemId] = useState<string | null>(null);
   const [itemCapaTitle, setItemCapaTitle] = useState('');
@@ -213,6 +225,137 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
     }
   };
 
+  /* trigger native mobile device camera capture input */
+  const handleTriggerCameraCapture = (itemId: string) => {
+    setActivePhotoItemId(itemId);
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+      cameraInputRef.current.click();
+    }
+  };
+
+  /* process camera photo file input from mobile camera */
+  const handleCameraFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activePhotoItemId) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const timeStamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const newEvidence: EvidenceItem = {
+        id: `EV-${Date.now().toString().slice(-4)}`,
+        title: `Real-time Photo (${timeStamp})`,
+        type: 'Photo',
+        fileName: file.name || `photo_${Date.now()}.jpg`,
+        fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        previewUrl: dataUrl,
+      };
+
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== activePhotoItemId) return item;
+          return {
+            ...item,
+            evidences: [...item.evidences, newEvidence],
+          };
+        })
+      );
+
+      logAuditEvent({
+        userId: 'USR-INSPEC-01',
+        userRole: activePersona,
+        organization: 'Meridian Marine Surveyors',
+        action: 'Captured Real-Life Inspection Photo',
+        targetAsset: `${vesselName} · ${file.name || 'Camera Photo'}`,
+        justificationNotes: `Attached live camera photo evidence for checklist item ${activePhotoItemId}`,
+      });
+
+      setActivePhotoItemId(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  /* open interactive live webcam stream modal */
+  const openLiveCameraModal = async (itemId: string) => {
+    setActivePhotoItemId(itemId);
+    setCapturedPhotoDataUrl(null);
+    setIsCameraModalOpen(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      /* camera stream unavailable or blocked by browser permission */
+      console.warn('live camera video stream unaccessible, falling back to direct input');
+    }
+  };
+
+  /* capture snapshot from live video stream */
+  const takeCameraSnapshot = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      setCapturedPhotoDataUrl(dataUrl);
+    }
+  };
+
+  /* attach captured live webcam photo */
+  const attachLiveSnapshot = () => {
+    if (!capturedPhotoDataUrl || !activePhotoItemId) return;
+    const timeStamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newEvidence: EvidenceItem = {
+      id: `EV-${Date.now().toString().slice(-4)}`,
+      title: `On-Site Photo (${timeStamp})`,
+      type: 'Photo',
+      fileName: `realtime_photo_${Date.now().toString().slice(-4)}.jpg`,
+      fileSize: '1.4 MB',
+      previewUrl: capturedPhotoDataUrl,
+    };
+
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== activePhotoItemId) return item;
+        return {
+          ...item,
+          evidences: [...item.evidences, newEvidence],
+        };
+      })
+    );
+
+    logAuditEvent({
+      userId: 'USR-INSPEC-01',
+      userRole: activePersona,
+      organization: 'Meridian Marine Surveyors',
+      action: 'Captured Live Camera Photo Evidence',
+      targetAsset: `${vesselName} · Checklist Item ${activePhotoItemId}`,
+      justificationNotes: `Attached live webcam photo for item ${activePhotoItemId}`,
+    });
+
+    closeCameraModal();
+  };
+
+  /* stop video stream and close camera modal */
+  const closeCameraModal = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+    }
+    setCameraStream(null);
+    setCapturedPhotoDataUrl(null);
+    setIsCameraModalOpen(false);
+    setActivePhotoItemId(null);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !uploadingItemId) return;
@@ -247,6 +390,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
 
     setUploadingItemId(null);
   };
+
 
   const handleRemoveEvidence = (itemId: string, evId: string) => {
     setItems((prev) =>
@@ -287,6 +431,21 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
       status: 'Open',
     };
 
+    const newCapaStoreItem: CapaItem = {
+      id: capaId,
+      vesselName: vesselName,
+      checklistId: item.id,
+      checklistItemTitle: item.title,
+      title: itemCapaTitle,
+      findingDescription: item.findingNotes || `Finding observation logged during visual inspection of ${item.title}`,
+      owner: itemCapaOwner || 'Northwind Marine Technical',
+      dueDate: '30 Sep 2026',
+      status: 'Open',
+      evidences: [],
+      createdDate: '18 Sep 2026',
+    };
+
+    addCapaItem(newCapaStoreItem);
     setCapas((prev) => [...prev, newCapa]);
     setItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, capaCode: capaId } : i))
@@ -318,6 +477,20 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
       status: 'Open',
     };
 
+    const newCapaStoreItem: CapaItem = {
+      id: capaId,
+      vesselName: vesselName,
+      checklistItemTitle: 'General Inspection Finding',
+      title: newCapaTitle,
+      findingDescription: 'General survey corrective action logged during physical inspection.',
+      owner: newCapaOwner || 'Northwind Marine Technical',
+      dueDate: newCapaDueDate || '30 Sep 2026',
+      status: 'Open',
+      evidences: [],
+      createdDate: '18 Sep 2026',
+    };
+
+    addCapaItem(newCapaStoreItem);
     setCapas((prev) => [...prev, newCapa]);
     setNewCapaTitle('');
     setShowAddCapa(false);
@@ -338,7 +511,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* hidden file input for direct evidence uploads */}
+      {/* hidden inputs for direct file attachments and native mobile camera capture */}
       <input
         type="file"
         ref={fileInputRef}
@@ -346,9 +519,17 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
         onChange={handleFileChange}
         accept="image/*,.pdf,.doc,.docx"
       />
+      <input
+        type="file"
+        ref={cameraInputRef}
+        className="d-none"
+        accept="image/*"
+        capture="environment"
+        onChange={handleCameraFileChange}
+      />
 
       {/* Top Navigation & Context Header Banner */}
-      <div className="card map-card-custom p-3 bg-white">
+      <div className="card map-card-custom map-checklist-card bg-white">
         <div className="d-flex flex-wrap align-items-center justify-between gap-3">
           <div className="d-flex align-items-center gap-3">
             <div>
@@ -361,11 +542,19 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
             </div>
           </div>
 
-          {/* Opposite Corner Controls: Status Badge + Export Data Button */}
+          {/* Opposite Corner Controls: Status Badge + CAPA link + Export Data Button */}
           <div className="d-flex align-items-center gap-3 ms-auto">
             <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-mono-code px-3 py-2" style={{ fontSize: '0.8rem' }}>
               Status: Audit In Progress
             </span>
+
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-primary fw-bold"
+              onClick={() => setCurrentHashView('capa', vesselName)}
+            >
+              Manage & Re-Inspect CAPAs
+            </button>
 
             {/* Export Data Button in opposite corner */}
             <div className="dropdown position-relative">
@@ -399,15 +588,15 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
       <div className="row g-4">
         {/* Left Column: Statutory Checklist Items */}
         <div className="col-lg-7 d-flex flex-column gap-3">
-          <div className="card map-card-custom p-4">
+          <div className="card map-card-custom map-checklist-card">
             <div className="d-flex align-items-center justify-between mb-3 border-bottom pb-2">
               <h6 className="fw-bold text-primary m-0">Physical Inspection Checklist</h6>
               <span className="text-secondary small">5 SOLAS / ISM Verification Points</span>
             </div>
 
-            <div className="d-flex flex-column gap-4">
+            <div className="d-flex flex-column gap-3.5">
               {items.map((item) => (
-                <div key={item.id} className="p-3.5 border rounded-3 bg-white shadow-2xs">
+                <div key={item.id} className="map-checklist-item-container">
                   {/* Item Title Header */}
                   <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
                     <div>
@@ -422,7 +611,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                   </div>
 
                   {/* Rating Status Pill Buttons */}
-                  <div className="d-flex align-items-center gap-1.5 mb-3">
+                  <div className="d-flex align-items-center gap-1.5 mb-3 flex-wrap">
                     <button
                       type="button"
                       className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Satisfactory'
@@ -584,35 +773,35 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
 
                     <div className="d-flex flex-wrap gap-2.5">
                       {item.evidences.map((ev) => (
-                        <div
-                          key={ev.id}
-                          className="p-3 border rounded-3 d-flex align-items-center gap-3 bg-white shadow-2xs position-relative"
-                          style={{ borderColor: '#e2e8f0', minWidth: '220px', flex: '1 1 220px', maxWidth: '320px' }}
-                        >
-                          <div
-                            className="d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
-                            style={{
-                              width: '52px',
-                              height: '52px',
-                              backgroundColor: ev.type === 'Photo' ? '#e0f2fe' : '#f1f5f9',
-                              border: '1px solid',
-                              borderColor: ev.type === 'Photo' ? '#bae6fd' : '#cbd5e1',
-                            }}
-                          >
-                            {ev.type === 'Photo' ? (
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                <circle cx="12" cy="13" r="4" />
-                              </svg>
-                            ) : (
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                <polyline points="14 2 14 8 20 8" />
-                                <line x1="16" y1="13" x2="8" y2="13" />
-                                <line x1="16" y1="17" x2="8" y2="17" />
-                              </svg>
-                            )}
-                          </div>
+                        <div key={ev.id} className="map-checklist-evidence-item shadow-2xs position-relative">
+                          {ev.previewUrl ? (
+                            <img src={ev.previewUrl} alt={ev.title} className="map-checklist-evidence-thumb" />
+                          ) : (
+                            <div
+                              className="d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
+                              style={{
+                                width: '48px',
+                                height: '48px',
+                                backgroundColor: ev.type === 'Photo' ? '#e0f2fe' : '#f1f5f9',
+                                border: '1px solid',
+                                borderColor: ev.type === 'Photo' ? '#bae6fd' : '#cbd5e1',
+                              }}
+                            >
+                              {ev.type === 'Photo' ? (
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                  <circle cx="12" cy="13" r="4" />
+                                </svg>
+                              ) : (
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                  <polyline points="14 2 14 8 20 8" />
+                                  <line x1="16" y1="13" x2="8" y2="13" />
+                                  <line x1="16" y1="17" x2="8" y2="17" />
+                                </svg>
+                              )}
+                            </div>
+                          )}
 
                           <div className="d-flex flex-column flex-grow-1 overflow-hidden">
                             <span
@@ -653,19 +842,31 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                   </div>
 
                   {/* Frictionless Action Toolbar */}
-                  <div className="pt-2 border-top d-flex align-items-center gap-2">
+                  <div className="map-checklist-action-toolbar">
                     <button
                       type="button"
-                      className="btn btn-sm btn-light border text-secondary px-2.5 py-1"
-                      style={{ fontSize: '0.75rem', backgroundColor: '#f8fafc' }}
-                      onClick={() => handleTriggerUpload(item.id)}
+                      className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5"
+                      onClick={() => openLiveCameraModal(item.id)}
                     >
-                      + Attach Evidence
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                      Take Photo
                     </button>
                     <button
                       type="button"
-                      className="btn btn-sm btn-light border text-secondary px-2.5 py-1"
-                      style={{ fontSize: '0.75rem', backgroundColor: '#f8fafc' }}
+                      className="btn btn-sm btn-light border text-secondary d-flex align-items-center gap-1.5"
+                      style={{ backgroundColor: '#f8fafc' }}
+                      onClick={() => handleTriggerUpload(item.id)}
+                    >
+                      + Attach File
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-light border text-secondary"
+                      style={{ backgroundColor: '#f8fafc' }}
                       onClick={() => {
                         setEditingCommentItemId(item.id);
                         setCommentText(item.findingNotes || '');
@@ -676,8 +877,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                     {!item.capaCode && (
                       <button
                         type="button"
-                        className="btn btn-sm btn-outline-warning text-dark px-2.5 py-1"
-                        style={{ fontSize: '0.75rem' }}
+                        className="btn btn-sm btn-outline-warning text-dark"
                         onClick={() => {
                           setRaisingCapaItemId(item.id);
                           setItemCapaTitle(`Corrective action for ${item.title}`);
@@ -696,7 +896,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
         {/* Right Column: Inspection Outcome & CAPA Action Plan */}
         <div className="col-lg-5 d-flex flex-column gap-3">
           {/* Executive Summary Card */}
-          <div className="card map-card-custom p-4">
+          <div className="card map-card-custom map-checklist-card">
             <div className="d-flex align-items-center justify-between mb-3 border-bottom pb-2">
               <h6 className="fw-bold text-primary m-0">Survey Outcome Summary</h6>
 
@@ -750,7 +950,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
           </div>
 
           {/* CAPA Action Plan Logger */}
-          <div className="card map-card-custom p-4">
+          <div className="card map-card-custom map-checklist-card">
             <div className="d-flex align-items-center justify-between mb-3 border-bottom pb-2">
               <h6 className="fw-bold text-primary m-0">Corrective Action Plan (CAPA)</h6>
               <button
@@ -804,31 +1004,153 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
 
             {/* List of active CAPAs */}
             <div className="d-flex flex-column gap-2.5">
-              {capas.map((c) => (
-                <div key={c.id} className="p-3 border rounded-3 bg-white shadow-2xs">
-                  <div className="d-flex align-items-center justify-between mb-1">
-                    <span className="font-mono-code fw-bold text-primary small">{c.id}</span>
-                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style={{ fontSize: '0.675rem' }}>
-                      {c.status}
-                    </span>
-                  </div>
-                  <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>{c.title}</div>
-                  <div className="d-flex align-items-center justify-between small text-secondary" style={{ fontSize: '0.725rem' }}>
-                    <span>Owner: {c.owner}</span>
-                    <span className="font-mono-code">Due: {c.dueDate}</span>
-                  </div>
-                </div>
-              ))}
+              {(() => {
+                const storeCapas = capaItems.filter(
+                  (c) => c.vesselName.toLowerCase() === vesselName.toLowerCase()
+                );
+                const displayList = storeCapas.length > 0
+                  ? storeCapas
+                  : capas.map((c) => ({
+                      id: c.id,
+                      vesselName,
+                      checklistItemTitle: 'Inspection Finding',
+                      title: c.title,
+                      findingDescription: 'Corrective action item logged during visual survey.',
+                      owner: c.owner,
+                      dueDate: c.dueDate,
+                      status: (c.status === 'Closed' ? 'Verified & Closed' : 'Open') as any,
+                      evidences: [],
+                      createdDate: '18 Sep 2026',
+                    }));
 
-              {capas.length === 0 && (
-                <div className="text-muted small text-center py-3 fst-italic">
-                  No open corrective actions logged for this survey.
-                </div>
-              )}
+                if (displayList.length === 0) {
+                  return (
+                    <div className="text-muted small text-center py-3 fst-italic">
+                      No open corrective actions logged for this survey.
+                    </div>
+                  );
+                }
+
+                return displayList.map((c) => (
+                  <div
+                    key={c.id}
+                    className="p-3 border rounded-3 bg-white shadow-2xs cursor-pointer"
+                    onClick={() => setCurrentHashView('capa', `${vesselName}:${c.id}`)}
+                    style={{ cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}
+                    title="Click to view details, upload evidence, and re-inspect this CAPA"
+                  >
+                    <div className="d-flex align-items-center justify-between mb-1.5 gap-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="font-mono-code fw-bold text-primary small">{c.id}</span>
+                        {c.checklistItemTitle && (
+                          <span className="text-secondary small font-mono-code" style={{ fontSize: '0.675rem' }}>
+                            {c.checklistItemTitle}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className="badge border font-mono-code"
+                        style={{
+                          fontSize: '0.675rem',
+                          backgroundColor:
+                            c.status === 'Verified & Closed'
+                              ? '#f0fdf4'
+                              : c.status === 'Under Re-Inspection'
+                                ? '#e0f2fe'
+                                : c.status === 'Rectification Required'
+                                  ? '#fef2f2'
+                                  : '#fffbe6',
+                          color:
+                            c.status === 'Verified & Closed'
+                              ? '#166534'
+                              : c.status === 'Under Re-Inspection'
+                                ? '#0369a1'
+                                : c.status === 'Rectification Required'
+                                  ? '#991b1b'
+                                  : '#854d0e',
+                        }}
+                      >
+                        {c.status}
+                      </span>
+                    </div>
+
+                    <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>
+                      {c.title}
+                    </div>
+
+                    <div className="d-flex align-items-center justify-between small text-secondary mb-2" style={{ fontSize: '0.725rem' }}>
+                      <span>Owner: {c.owner}</span>
+                      <span className="font-mono-code">Due: {c.dueDate}</span>
+                    </div>
+
+                    <div className="d-flex align-items-center justify-between pt-2 border-top mt-1" style={{ fontSize: '0.725rem' }}>
+                      <span className="text-muted font-mono-code">
+                        📷 {c.evidences?.length || 0} Evidence File(s)
+                      </span>
+                      <span className="fw-bold text-primary">
+                        View & Re-Inspect →
+                      </span>
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
           </div>
         </div>
       </div>
+
+      {/* interactive live camera snapshot modal dialog */}
+      {isCameraModalOpen && (
+        <div className="map-modal-backdrop d-flex align-items-center justify-content-center p-3">
+          <div className="map-camera-modal-dialog card p-3">
+            <div className="d-flex align-items-center justify-content-between pb-2 border-bottom mb-3">
+              <h6 className="fw-bold text-dark m-0">Live Camera Photo Capture</h6>
+              <button type="button" className="btn-close" onClick={closeCameraModal} aria-label="Close modal" />
+            </div>
+
+            <div className="d-flex flex-column align-items-center gap-3">
+              {!capturedPhotoDataUrl ? (
+                <>
+                  <video ref={videoRef} autoPlay playsInline className="map-camera-video-preview" />
+                  <canvas ref={canvasRef} className="d-none" />
+                  <div className="d-flex justify-content-center flex-wrap gap-2 w-100">
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={closeCameraModal}>
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm"
+                      onClick={() => {
+                        const targetId = activePhotoItemId;
+                        closeCameraModal();
+                        if (targetId) handleTriggerCameraCapture(targetId);
+                      }}
+                    >
+                      Use Device Camera
+                    </button>
+                    <button type="button" className="btn btn-primary btn-sm px-4" onClick={takeCameraSnapshot}>
+                      Snap Photo
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <img src={capturedPhotoDataUrl} alt="Captured preview" className="map-camera-video-preview" />
+                  <div className="d-flex justify-content-center gap-2 w-100">
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setCapturedPhotoDataUrl(null)}>
+                      Retake
+                    </button>
+                    <button type="button" className="btn btn-success btn-sm px-4" onClick={attachLiveSnapshot}>
+                      Attach Photo
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

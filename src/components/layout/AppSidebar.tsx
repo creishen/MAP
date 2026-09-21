@@ -85,6 +85,12 @@ export const AppSidebar: React.FC = () => {
       badgeText: '1',
     },
     {
+      key: 'capa',
+      label: 'CAPA Tracker',
+      allowedRoles: ['Administrator', 'Inspector', 'Verifier', 'Approver'],
+      badgeText: 'CAPA',
+    },
+    {
       key: 'audit',
       label: 'Immutable Audit Trail',
       allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],

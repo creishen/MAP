@@ -13,6 +13,7 @@ interface EvidenceItem {
   type: 'Photo' | 'Document';
   fileName?: string;
   fileSize?: string;
+  previewUrl?: string;
 }
 
 interface InspectionItem {
@@ -40,7 +41,7 @@ interface InspectionDrawerProps {
 
 /**
   what: renders visual vessel inspection split-screen modal drawer with frictionless workflow.
-  how: manages local state for 5 inspection items with one-click direct evidence uploads, automatic status-finding triggers, and smart inspection outcome recommendations.
+  how: manages local state for 5 inspection items with direct evidence uploads, real-time camera photo capture, automatic status-finding triggers, and smart inspection outcome recommendations.
   with what file: src/components/drawers/InspectionDrawer.tsx loaded by InspectorWorkspaceView.tsx.
 */
 export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, onClose }) => {
@@ -130,6 +131,16 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
   const [activeUploadItemId, setActiveUploadItemId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  /* photo capture refs & state */
+  const [activePhotoItemId, setActivePhotoItemId] = useState<string | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [capturedPhotoDataUrl, setCapturedPhotoDataUrl] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
   /* state for general new capa form */
   const [showAddCapa, setShowAddCapa] = useState(false);
   const [newCapaTitle, setNewCapaTitle] = useState('');
@@ -160,6 +171,134 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
       fileInputRef.current.click();
     }
   };
+
+  /* trigger native camera input on mobile */
+  const handleTriggerCameraCapture = (itemId: string) => {
+    setActivePhotoItemId(itemId);
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+      cameraInputRef.current.click();
+    }
+  };
+
+  /* handle file captured from camera input */
+  const handleCameraFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activePhotoItemId) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const timeStamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const newEv: EvidenceItem = {
+        id: `EV-${Date.now().toString().slice(-4)}`,
+        title: `Real-time Photo (${timeStamp})`,
+        type: 'Photo',
+        fileName: file.name || `photo_${Date.now()}.jpg`,
+        fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        previewUrl: dataUrl,
+      };
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === activePhotoItemId
+            ? { ...item, evidences: [...item.evidences, newEv] }
+            : item
+        )
+      );
+
+      logAuditEvent({
+        userId: 'USR-INSPEC-01',
+        userRole: activePersona,
+        organization: 'Meridian Marine Surveyors',
+        action: `Captured Real-Life Photo Evidence for ${activePhotoItemId}`,
+        targetAsset: vesselName,
+        justificationNotes: `Attached camera photo: ${newEv.fileName}`,
+      });
+
+      setActivePhotoItemId(null);
+      e.target.value = '';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  /* open live camera video stream modal */
+  const openLiveCameraModal = async (itemId: string) => {
+    setActivePhotoItemId(itemId);
+    setCapturedPhotoDataUrl(null);
+    setIsCameraModalOpen(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.warn('live camera video stream unavailable, falling back to direct input');
+    }
+  };
+
+  /* snap photo from video stream */
+  const takeCameraSnapshot = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      setCapturedPhotoDataUrl(dataUrl);
+    }
+  };
+
+  /* attach live webcam photo snapshot */
+  const attachLiveSnapshot = () => {
+    if (!capturedPhotoDataUrl || !activePhotoItemId) return;
+    const timeStamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newEv: EvidenceItem = {
+      id: `EV-${Date.now().toString().slice(-4)}`,
+      title: `On-Site Photo (${timeStamp})`,
+      type: 'Photo',
+      fileName: `realtime_photo_${Date.now().toString().slice(-4)}.jpg`,
+      fileSize: '1.4 MB',
+      previewUrl: capturedPhotoDataUrl,
+    };
+
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === activePhotoItemId
+          ? { ...item, evidences: [...item.evidences, newEv] }
+          : item
+      )
+    );
+
+    logAuditEvent({
+      userId: 'USR-INSPEC-01',
+      userRole: activePersona,
+      organization: 'Meridian Marine Surveyors',
+      action: `Captured Live Camera Photo Evidence for ${activePhotoItemId}`,
+      targetAsset: vesselName,
+      justificationNotes: `Attached live camera photo for item ${activePhotoItemId}`,
+    });
+
+    closeCameraModal();
+  };
+
+  /* stop stream and close modal */
+  const closeCameraModal = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+    }
+    setCameraStream(null);
+    setCapturedPhotoDataUrl(null);
+    setIsCameraModalOpen(false);
+    setActivePhotoItemId(null);
+  };
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -308,14 +447,23 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
   };
 
   return (
+
     <>
-      {/* hidden global file input for one-click direct uploads */}
+      {/* hidden global file inputs for direct uploads and native mobile camera capture */}
       <input
         type="file"
         ref={fileInputRef}
         className="d-none"
         onChange={handleFileChange}
         accept="image/*,.pdf,.doc,.docx"
+      />
+      <input
+        type="file"
+        ref={cameraInputRef}
+        className="d-none"
+        accept="image/*"
+        capture="environment"
+        onChange={handleCameraFileChange}
       />
 
       <div className="map-modal-backdrop" onClick={onClose} style={{ zIndex: 1040 }} />
@@ -340,14 +488,14 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
           <button type="button" className="btn-close ms-auto" onClick={onClose} aria-label="Close" />
         </div>
 
-        <div className="offcanvas-body p-4" style={{ backgroundColor: '#f1f5f9' }}>
+        <div className="offcanvas-body p-3 p-md-4" style={{ backgroundColor: '#f1f5f9' }}>
           <div className="row g-4">
             {/* left column: checklist items */}
             <div className="col-lg-7 d-flex flex-column gap-3">
-              <div className="card border-0 shadow-sm p-4" style={{ borderRadius: '10px', backgroundColor: '#ffffff' }}>
-                <div className="d-flex flex-column gap-4">
+              <div className="card map-card-custom map-checklist-card">
+                <div className="d-flex flex-column gap-3.5">
                   {items.map((item) => (
-                    <div key={item.id} className="p-3.5 border rounded-3 bg-white shadow-2xs">
+                    <div key={item.id} className="map-checklist-item-container">
                       {/* item header */}
                       <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
                         <div>
@@ -362,7 +510,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                       </div>
 
                       {/* rating status pill buttons */}
-                      <div className="d-flex align-items-center gap-1.5 mb-3">
+                      <div className="d-flex align-items-center gap-1.5 mb-3 flex-wrap">
                         <button
                           type="button"
                           className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Satisfactory'
@@ -516,7 +664,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                         </div>
                       )}
 
-                      {/* item evidence list with generous padding and 52x52px thumbnails */}
+                      {/* item evidence list with generous padding and thumbnail rendering */}
                       <div className="mb-3">
                         <div className="font-mono-code text-uppercase small mb-2" style={{ fontSize: '0.65rem', color: '#64748b', letterSpacing: '0.05em' }}>
                           Supporting Evidence ({item.evidences.length})
@@ -524,36 +672,35 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
 
                         <div className="d-flex flex-wrap gap-2.5">
                           {item.evidences.map((ev) => (
-                            <div
-                              key={ev.id}
-                              className="p-3 border rounded-3 d-flex align-items-center gap-3 bg-white shadow-2xs position-relative"
-                              style={{ borderColor: '#e2e8f0', minWidth: '220px', flex: '1 1 220px', maxWidth: '320px' }}
-                            >
-                              {/* 52x52px thumbnail preview container */}
-                              <div
-                                className="d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
-                                style={{
-                                  width: '52px',
-                                  height: '52px',
-                                  backgroundColor: ev.type === 'Photo' ? '#e0f2fe' : '#f1f5f9',
-                                  border: '1px solid',
-                                  borderColor: ev.type === 'Photo' ? '#bae6fd' : '#cbd5e1',
-                                }}
-                              >
-                                {ev.type === 'Photo' ? (
-                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                    <circle cx="12" cy="13" r="4" />
-                                  </svg>
-                                ) : (
-                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                    <polyline points="14 2 14 8 20 8" />
-                                    <line x1="16" y1="13" x2="8" y2="13" />
-                                    <line x1="16" y1="17" x2="8" y2="17" />
-                                  </svg>
-                                )}
-                              </div>
+                            <div key={ev.id} className="map-checklist-evidence-item shadow-2xs position-relative">
+                              {ev.previewUrl ? (
+                                <img src={ev.previewUrl} alt={ev.title} className="map-checklist-evidence-thumb" />
+                              ) : (
+                                <div
+                                  className="d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
+                                  style={{
+                                    width: '48px',
+                                    height: '48px',
+                                    backgroundColor: ev.type === 'Photo' ? '#e0f2fe' : '#f1f5f9',
+                                    border: '1px solid',
+                                    borderColor: ev.type === 'Photo' ? '#bae6fd' : '#cbd5e1',
+                                  }}
+                                >
+                                  {ev.type === 'Photo' ? (
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                      <circle cx="12" cy="13" r="4" />
+                                    </svg>
+                                  ) : (
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                      <polyline points="14 2 14 8 20 8" />
+                                      <line x1="16" y1="13" x2="8" y2="13" />
+                                      <line x1="16" y1="17" x2="8" y2="17" />
+                                    </svg>
+                                  )}
+                                </div>
+                              )}
 
                               <div className="d-flex flex-column flex-grow-1 overflow-hidden">
                                 <span
@@ -594,7 +741,18 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                       </div>
 
                       {/* frictionless item action toolbar */}
-                      <div className="pt-2 border-top d-flex align-items-center gap-2">
+                      <div className="map-checklist-action-toolbar">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5"
+                          onClick={() => openLiveCameraModal(item.id)}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                          </svg>
+                          Take Photo
+                        </button>
                         <button
                           type="button"
                           className="btn btn-sm btn-light border text-secondary px-2.5 py-1"
@@ -619,8 +777,8 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
                         </button>
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline-primary px-2.5 py-1 fw-semibold ms-auto"
-                          style={{ fontSize: '0.725rem', borderColor: '#0284c7', color: '#0284c7' }}
+                          className="btn btn-sm btn-outline-secondary px-2.5 py-1 ms-auto"
+                          style={{ fontSize: '0.725rem' }}
                           onClick={() => triggerDirectUpload(item.id)}
                         >
                           + Attach File
@@ -636,9 +794,8 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
             <div className="col-lg-5 d-flex flex-column gap-3">
               {/* inspection result card */}
               <div
-                className="card border-0 shadow-sm p-4 text-white"
+                className="card map-card-custom map-checklist-card text-white"
                 style={{
-                  borderRadius: '10px',
                   backgroundColor: 'rgb(11, 27, 43)',
                 }}
               >
@@ -719,8 +876,8 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
               </div>
 
               {/* corrective actions list card */}
-              <div className="card border-0 shadow-sm p-4" style={{ borderRadius: '10px', backgroundColor: '#ffffff' }}>
-                <div className="d-flex align-items-center justify-content-between mb-3">
+              <div className="card map-card-custom map-checklist-card">
+                <div className="d-flex align-items-center justify-between mb-3">
                   <h6 className="fw-bold text-dark m-0" style={{ fontSize: '1rem' }}>
                     Corrective actions ({capaActions.length})
                   </h6>
@@ -821,6 +978,59 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
           </div>
         </div>
       </div>
+
+      {/* live camera modal snapshot dialog */}
+      {isCameraModalOpen && (
+        <div className="map-modal-backdrop d-flex align-items-center justify-content-center p-3" style={{ zIndex: 1060 }}>
+          <div className="map-camera-modal-dialog card p-3">
+            <div className="d-flex align-items-center justify-content-between pb-2 border-bottom mb-3">
+              <h6 className="fw-bold text-dark m-0">Live Camera Photo Capture</h6>
+              <button type="button" className="btn-close" onClick={closeCameraModal} aria-label="Close modal" />
+            </div>
+
+            <div className="d-flex flex-column align-items-center gap-3">
+              {!capturedPhotoDataUrl ? (
+                <>
+                  <video ref={videoRef} autoPlay playsInline className="map-camera-video-preview" />
+                  <canvas ref={canvasRef} className="d-none" />
+                  <div className="d-flex justify-content-center flex-wrap gap-2 w-100">
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={closeCameraModal}>
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm"
+                      onClick={() => {
+                        const targetId = activePhotoItemId;
+                        closeCameraModal();
+                        if (targetId) handleTriggerCameraCapture(targetId);
+                      }}
+                    >
+                      Use Device Camera
+                    </button>
+                    <button type="button" className="btn btn-primary btn-sm px-4" onClick={takeCameraSnapshot}>
+                      Snap Photo
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <img src={capturedPhotoDataUrl} alt="Captured preview" className="map-camera-video-preview" />
+                  <div className="d-flex justify-content-center gap-2 w-100">
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setCapturedPhotoDataUrl(null)}>
+                      Retake
+                    </button>
+                    <button type="button" className="btn btn-success btn-sm px-4" onClick={attachLiveSnapshot}>
+                      Attach Photo
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
+

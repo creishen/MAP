@@ -173,7 +173,7 @@ export function filterAuditTrailForPersona(
   with what file: src/utils/rbacHelpers.ts consumed by HeaderBanner, VesselDetailView, DocumentDetailView, InspectionChecklistView, and CreateAssuranceSetView.
 */
 export function getBackButtonInfo(
-  parentView: "assurance-sets" | "vessels" | "documents" | "inspector" | "crew",
+  parentView: "assurance-sets" | "vessels" | "documents" | "inspector" | "crew" | "capa",
   parentLabel: string,
   previousHashView: string | undefined,
   activePersona: UserRolePersona,
@@ -203,6 +203,13 @@ export function getBackButtonInfo(
     isParentAllowedInSidepanel = ["Administrator", "Submitter"].includes(
       activePersona,
     );
+  } else if (parentView === "capa") {
+    isParentAllowedInSidepanel = [
+      "Administrator",
+      "Inspector",
+      "Verifier",
+      "Approver",
+    ].includes(activePersona);
   }
 
   if (previousHashView === "dashboard" || !isParentAllowedInSidepanel) {
@@ -252,6 +259,14 @@ export function getBackButtonInfo(
     };
   }
 
+  if (previousHashView === "capa") {
+    return {
+      label: "← Back to CAPA Management",
+      targetView: "capa",
+      targetEntityId: previousEntityId,
+    };
+  }
+
   return {
     label: `← Back to ${parentLabel}`,
     targetView: parentView,
@@ -273,7 +288,7 @@ export function isViewAccessibleToPersona(
   if (view === "users") return false;
   if (view === "crew" && !["Administrator", "Submitter"].includes(persona))
     return false;
-  if (view === "dashboard" || view === "audit") return true;
+  if (view === "dashboard" || view === "audit" || view === "capa" || view === "capas") return true;
 
   if (persona === "C Admin") {
     if (["documents", "verifier", "inspector", "inspection"].includes(view)) {

@@ -16,7 +16,7 @@ import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
   with what file: src/views/InspectorWorkspaceView.tsx loaded by App.tsx.
 */
 export const InspectorWorkspaceView: React.FC = () => {
-  const { vessels, assuranceSets, activePersona, setCurrentHashView } = useMapStore();
+  const { vessels, assuranceSets, capaItems, activePersona, setCurrentHashView } = useMapStore();
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   const assignedVessels = filterVesselsForPersona(vessels, assuranceSets, activePersona);
@@ -25,7 +25,7 @@ export const InspectorWorkspaceView: React.FC = () => {
   const pendingCount = assuranceSets.filter(
     (s) => s.mandatoryInspectionRequired && s.stage !== 'Certified'
   ).length || 1;
-  const openCapaCount = 1;
+  const openCapaCount = capaItems ? capaItems.filter((c) => c.status !== 'Verified & Closed').length : 1;
   const completedCount = assuranceSets.filter((s) => s.stage === 'Certified').length || 2;
 
   const handleExportCsv = () => {
@@ -87,12 +87,17 @@ export const InspectorWorkspaceView: React.FC = () => {
         </div>
 
         <div className="col-md-3">
-          <div className="card map-card-custom p-3">
+          <div
+            className="card map-card-custom p-3"
+            onClick={() => setCurrentHashView('capa')}
+            style={{ cursor: 'pointer' }}
+            title="Click to open CAPA Tracker"
+          >
             <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
               Open Corrective Actions
             </div>
             <div className="display-6 fw-bold text-danger font-mono-code mt-1">{openCapaCount}</div>
-            <div className="text-muted small mt-1">Active CAPA Items Tracked</div>
+            <div className="text-muted small mt-1">Active CAPA Items Tracked (Click to View)</div>
           </div>
         </div>
 
@@ -113,28 +118,37 @@ export const InspectorWorkspaceView: React.FC = () => {
           <div className="fw-bold text-dark">
             Physical Survey Inspection Schedule ({assignedVessels.length} Assigned Vessels)
           </div>
-          <div className="dropdown position-relative ms-auto">
+          <div className="d-flex align-items-center gap-2 ms-auto">
             <button
               type="button"
-              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
-              onClick={() => setIsExportOpen(!isExportOpen)}
+              className="btn btn-sm btn-outline-primary fw-bold"
+              onClick={() => setCurrentHashView('capa')}
             >
-              Export Data
+              CAPA Tracker
             </button>
-            {isExportOpen && (
-              <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border">
-                <li>
-                  <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
-                    Export as CSV (.csv)
-                  </button>
-                </li>
-                <li>
-                  <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
-                    Export as PDF (.pdf)
-                  </button>
-                </li>
-              </ul>
-            )}
+            <div className="dropdown position-relative">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
+                onClick={() => setIsExportOpen(!isExportOpen)}
+              >
+                Export Data
+              </button>
+              {isExportOpen && (
+                <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border">
+                  <li>
+                    <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
+                      Export as CSV (.csv)
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
+                      Export as PDF (.pdf)
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
           </div>
         </div>
         <div className="table-responsive">
@@ -178,16 +192,28 @@ export const InspectorWorkspaceView: React.FC = () => {
                       <span className="badge bg-light text-dark border">{v.status}</span>
                     </td>
                     <td className="text-end">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-warning text-dark font-weight-500"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCurrentHashView('inspector', v.name);
-                        }}
-                      >
-                        View Details
-                      </button>
+                      <div className="d-flex align-items-center justify-content-end gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentHashView('capa', v.name);
+                          }}
+                        >
+                          CAPAs
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-warning text-dark font-weight-500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentHashView('inspector', v.name);
+                          }}
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

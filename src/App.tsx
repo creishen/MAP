@@ -25,6 +25,7 @@ import { AuditTrailView } from './views/AuditTrailView';
 import { UserManagementView } from './views/UserManagementView';
 import { CrewView } from './views/CrewView';
 import { CrewDetailView } from './views/CrewDetailView';
+import { CapaManagementView } from './views/CapaManagementView';
 import './App.css';
 
 import { isViewAccessibleToPersona } from './utils/rbacHelpers';
@@ -84,6 +85,9 @@ export const App: React.FC = () => {
       case 'inspection':
       case 'inspector':
         return currentEntityId ? <InspectionChecklistView vesselName={currentEntityId} /> : <InspectorWorkspaceView />;
+      case 'capa':
+      case 'capas':
+        return <CapaManagementView vesselName={currentEntityId} />;
       case 'audit':
         return <AuditTrailView />;
       case 'users':

@@ -15,8 +15,11 @@ import { isDuplicateVessel } from '../utils/validation';
 import { isViewAccessibleToPersona } from '../utils/rbacHelpers';
 import { UserProfile } from '../types/user';
 import { CrewMember, STCWDocumentItem } from '../types/crew';
+import { CapaItem, CapaStatus, CapaEvidenceItem } from '../types/capa';
+import { MOCK_CAPA_ITEMS } from './capaMockData';
 
 export interface MapStoreState {
+
   // Authentication State
   isAuthenticated: boolean;
   login: (role: UserRolePersona) => void;
@@ -101,7 +104,15 @@ export interface MapStoreState {
   // Global Drawers State
   isAuditDrawerOpen: boolean;
   setAuditDrawerOpen: (open: boolean) => void;
+
+  // CAPA Management State
+  capaItems: CapaItem[];
+  addCapaItem: (capa: CapaItem) => void;
+  updateCapaStatus: (capaId: string, status: CapaStatus, inspectorNotes?: string) => void;
+  addCapaEvidence: (capaId: string, evidence: CapaEvidenceItem) => void;
+  removeCapaEvidence: (capaId: string, evidenceId: string) => void;
 }
+
 
 export const useMapStore = create<MapStoreState>((set, get) => ({
   isAuthenticated: true,
@@ -648,4 +659,38 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
 
   isAuditDrawerOpen: false,
   setAuditDrawerOpen: (open) => set({ isAuditDrawerOpen: open }),
+
+  // CAPA Management Store Implementation
+  capaItems: MOCK_CAPA_ITEMS,
+  addCapaItem: (capa) => set((state) => ({ capaItems: [capa, ...state.capaItems] })),
+  updateCapaStatus: (capaId, status, inspectorNotes) => {
+    set((state) => ({
+      capaItems: state.capaItems.map((item) =>
+        item.id === capaId
+          ? {
+            ...item,
+            status,
+            inspectorNotes: inspectorNotes !== undefined ? inspectorNotes : item.inspectorNotes,
+            lastInspectedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          }
+          : item
+      ),
+    }));
+  },
+  addCapaEvidence: (capaId, evidence) => {
+    set((state) => ({
+      capaItems: state.capaItems.map((item) =>
+        item.id === capaId ? { ...item, evidences: [...item.evidences, evidence] } : item
+      ),
+    }));
+  },
+  removeCapaEvidence: (capaId, evidenceId) => {
+    set((state) => ({
+      capaItems: state.capaItems.map((item) =>
+        item.id === capaId
+          ? { ...item, evidences: item.evidences.filter((ev) => ev.id !== evidenceId) }
+          : item
+      ),
+    }));
+  },
 }));
