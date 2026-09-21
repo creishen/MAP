@@ -43,42 +43,6 @@ export const UserManagementView: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* Role Separation Sub-Tabs */}
-        <div className="nav nav-pills bg-light p-1 rounded-3 border mt-3.5 align-self-start">
-          <button
-            type="button"
-            className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeRoleTab === 'ALL' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
-            style={{ fontSize: '0.8rem' }}
-            onClick={() => setActiveRoleTab('ALL')}
-          >
-            All Assigned Personnel ({visibleUsers.length})
-          </button>
-          <button
-            type="button"
-            className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeRoleTab === 'Inspector' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
-            style={{ fontSize: '0.8rem' }}
-            onClick={() => setActiveRoleTab('Inspector')}
-          >
-            Inspectors ({inspectorsCount})
-          </button>
-          <button
-            type="button"
-            className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeRoleTab === 'Verifier' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
-            style={{ fontSize: '0.8rem' }}
-            onClick={() => setActiveRoleTab('Verifier')}
-          >
-            Verifiers ({verifiersCount})
-          </button>
-          <button
-            type="button"
-            className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeRoleTab === 'AdminApprover' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
-            style={{ fontSize: '0.8rem' }}
-            onClick={() => setActiveRoleTab('AdminApprover')}
-          >
-            Admins & Approvers
-          </button>
-        </div>
       </div>
 
       {/* Top Summary KPI Metric Cards */}

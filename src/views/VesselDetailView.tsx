@@ -215,7 +215,8 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
 
       {/* Header KPI Summary Card with Name, Details, Classification, Readiness, Export & Edit Controls */}
       <div className="card map-card-custom p-4">
-        <div className="d-flex flex-wrap align-items-center justify-between gap-3">
+        {/* Top Header Row: Vessel Name & Subtitle Left, Export & Edit Action Buttons Top Right */}
+        <div className="d-flex flex-wrap align-items-start justify-between gap-3 mb-3">
           <div>
             <div className="d-flex align-items-center gap-2">
               <h2 className="fw-bold mb-1 text-primary m-0">{vessel.name}</h2>
@@ -246,89 +247,90 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             </div>
           </div>
 
-          <div className="d-flex align-items-center gap-4">
-            <div>
-              <div className="text-secondary small text-uppercase fw-bold">Classification</div>
-              <span className="badge bg-light text-dark border mt-1">{vessel.classificationSociety}</span>
-            </div>
-            <div>
-              <div className="text-secondary small text-uppercase fw-bold">Readiness Score</div>
-              <div className="mt-1">
-                <ReadinessGauge score={vessel.complianceReadinessScore} size="md" />
-              </div>
-            </div>
-
-            {/* Export & Edit Action Controls in Header Card Container */}
-            <div className="d-flex align-items-center gap-2 ms-2 border-start ps-3">
-              {canExport && (
-                <div className="position-relative">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
-                    onClick={() => setIsExportOpen(!isExportOpen)}
+          {/* Top Right Action Controls */}
+          <div className="d-flex align-items-center gap-2">
+            {canExport && (
+              <div className="position-relative">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                  onClick={() => setIsExportOpen(!isExportOpen)}
+                >
+                  <span>Export Data</span>
+                  <span style={{ fontSize: '10px' }}>▼</span>
+                </button>
+                {isExportOpen && (
+                  <div
+                    className="dropdown-menu show position-absolute end-0 mt-1 shadow border p-1 z-3 bg-white"
+                    style={{ minWidth: '140px' }}
                   >
-                    <span>Export Data</span>
-                    <span style={{ fontSize: '10px' }}>▼</span>
-                  </button>
-                  {isExportOpen && (
-                    <div
-                      className="dropdown-menu show position-absolute end-0 mt-1 shadow border p-1 z-3 bg-white"
-                      style={{ minWidth: '140px' }}
-                    >
-                      <button
-                        type="button"
-                        className="dropdown-item small py-1 px-2 border-0 bg-transparent text-start w-100"
-                        onClick={() => {
-                          handleExportCsv();
-                          setIsExportOpen(false);
-                        }}
-                      >
-                        Export as CSV
-                      </button>
-                      <button
-                        type="button"
-                        className="dropdown-item small py-1 px-2 border-0 bg-transparent text-start w-100"
-                        onClick={() => {
-                          handleExportPdf();
-                          setIsExportOpen(false);
-                        }}
-                      >
-                        Export as PDF
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {canShowEditButton && (
-                <div>
-                  {isEditing ? (
-                    <div className="d-flex gap-1">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-secondary"
-                        onClick={() => {
-                          setFormData(vessel);
-                          setIsEditing(false);
-                        }}
-                      >
-                        Cancel
-                      </button>
-                      <button type="button" className="btn btn-sm btn-success" onClick={handleSave}>
-                        Save
-                      </button>
-                    </div>
-                  ) : (
                     <button
                       type="button"
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={() => setIsEditing(true)}
+                      className="dropdown-item small py-1 px-2 border-0 bg-transparent text-start w-100"
+                      onClick={() => {
+                        handleExportCsv();
+                        setIsExportOpen(false);
+                      }}
                     >
-                      {canEditFull ? 'Edit Particulars' : 'Update Operating Status'}
+                      Export as CSV
                     </button>
-                  )}
-                </div>
-              )}
+                    <button
+                      type="button"
+                      className="dropdown-item small py-1 px-2 border-0 bg-transparent text-start w-100"
+                      onClick={() => {
+                        handleExportPdf();
+                        setIsExportOpen(false);
+                      }}
+                    >
+                      Export as PDF
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {canShowEditButton && (
+              <div>
+                {isEditing ? (
+                  <div className="d-flex gap-1">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => {
+                        setFormData(vessel);
+                        setIsEditing(false);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button type="button" className="btn btn-sm btn-success" onClick={handleSave}>
+                      Save
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    {canEditFull ? 'Edit Particulars' : 'Update Operating Status'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Metrics Row: Classification & Readiness Score */}
+        <div className="d-flex align-items-center gap-4 pt-3 border-top">
+          <div>
+            <div className="text-secondary small text-uppercase fw-bold">Classification</div>
+            <span className="badge bg-light text-dark border mt-1">{vessel.classificationSociety}</span>
+          </div>
+          <div>
+            <div className="text-secondary small text-uppercase fw-bold">Readiness Score</div>
+            <div className="mt-1">
+              <ReadinessGauge score={vessel.complianceReadinessScore} size="md" />
             </div>
           </div>
         </div>
@@ -1072,7 +1074,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                           style={{ fontSize: '0.75rem' }}
                           onClick={() => setCurrentHashView('crew', c.id)}
                         >
-                          View Seafarer Profile
+                          View Details
                         </button>
                       </td>
                     </tr>
@@ -1126,11 +1128,6 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   Inspection records, finding notes, supporting evidence, and CAPAs logged for {vessel.name}
                 </div>
               </div>
-              {isCAdmin && (
-                <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle font-mono-code">
-                  Charterer Inspection Monitoring (Read-Only)
-                </span>
-              )}
             </div>
             <div className="card-body p-3">
               {linkedSets.length === 0 ? (
@@ -1181,11 +1178,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                           style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
                           onClick={() => setCurrentHashView('inspection', vessel.name)}
                         >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                            <circle cx="12" cy="12" r="3" />
-                          </svg>
-                          View Inspection Checklist & Evidence
+                          View Details
                         </button>
                       </div>
                     </div>
@@ -1239,7 +1232,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                           style={{ fontSize: '0.725rem' }}
                           onClick={() => setSelectedCapaForDrawer(c)}
                         >
-                          View Re-Inspection Details ({c.evidences.length} Evidences)
+                          View Details
                         </button>
                       </div>
                     </div>

@@ -90,7 +90,7 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'capa',
       label: 'CAPA Tracker',
-      allowedRoles: ['Administrator', 'Inspector', 'Verifier', 'Approver'],
+      allowedRoles: ['Administrator', 'Inspector'],
 
     },
     {
@@ -257,7 +257,7 @@ export const AppSidebar: React.FC = () => {
           >
             <div className="p-2 border-bottom mb-1" style={{ borderColor: 'rgba(255, 255, 255, 0.08)' }}>
               <div className="fw-bold text-white small">{userInfo.name}</div>
-              <div className="text-muted small" style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{activePersona}</div>
+              <div className="text-white small" style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{activePersona}</div>
             </div>
             <button
               type="button"
@@ -268,7 +268,7 @@ export const AppSidebar: React.FC = () => {
                 logout();
               }}
             >
-              <span>Sign Out / Logout</span>
+              <span>Sign Out</span>
             </button>
           </div>
         )}

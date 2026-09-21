@@ -231,7 +231,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
                   </td>
                   <td className="small">
                     <div className="fw-semibold text-dark">{v.registeredOwner}</div>
-                    <div className="text-muted">Tech Mgr: {v.technicalManager}</div>
+
                   </td>
                   <td>
                     <span className="badge bg-primary text-uppercase">{v.status}</span>

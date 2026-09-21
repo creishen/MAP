@@ -1,6 +1,6 @@
 /* 
-  file summary: verifier workspace page displaying queue of pending statutory evidence and split-screen review drawer in light theme.
-  responsibilities: presents pending verification queue and launches DocumentReviewDrawer split-screen pdf viewer.
+  file summary: single unified verifier workspace table view displaying all statutory evidence (pending & verified) with assurance set context, sortable headers, and filter controls in light theme.
+  responsibilities: combines assurance set details and verification queue into a single sortable, filterable master table and launches DocumentReviewDrawer split-screen viewer.
   role in system: primary operational workspace for Verifiers (/verifier).
 */
 
@@ -11,136 +11,228 @@ import { MasterDocument } from '../types/document';
 import { ConfidenceBadge } from '../components/common/ConfidenceBadge';
 import { formatMaritimeDate } from '../utils/formatters';
 
-import { isAssuranceSetAssignedToPersona, filterDocumentsForVerifierQueue } from '../utils/rbacHelpers';
+import { filterDocumentsForVerifierQueue } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 
+type SortField =
+  | 'assuranceSet'
+  | 'vesselName'
+  | 'title'
+  | 'entityType'
+  | 'certificateNo'
+  | 'issuingAuthority'
+  | 'expiryDate'
+  | 'ocrConfidence'
+  | 'verificationStatus';
+
 /**
-  what: renders verifier operational workspace view in light theme with table export capabilities.
-  how: lists assigned assurance sets and documents requiring verifier sign-off with export options for pending/verified queues.
+  what: renders single master verification table for verifiers in light theme with search, filters, sorting, and export capabilities.
+  how: aggregates scoped documents (pending and verified) with assurance set context into one unified sortable table.
   with what file: src/views/VerifierWorkspaceView.tsx loaded by App.tsx.
 */
 export const VerifierWorkspaceView: React.FC = () => {
-  const { documents, assuranceSets, activePersona, setCurrentHashView } = useMapStore();
+  const { documents, assuranceSets, activePersona } = useMapStore();
   const [selectedDoc, setSelectedDoc] = useState<MasterDocument | null>(null);
-  const [isPendingExportOpen, setIsPendingExportOpen] = useState(false);
-  const [isVerifiedExportOpen, setIsVerifiedExportOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
-  const assignedSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, activePersona));
+  /* Search, Filter & Sort State for Single Master Table */
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sortField, setSortField] = useState<SortField>('title');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  /* All documents in Verifier's queue (Pending, Correction Requested, Verified) */
   const scopedDocs = filterDocumentsForVerifierQueue(documents, assuranceSets, activePersona);
-  const pendingDocs = scopedDocs.filter((d) => d.verificationStatus === 'Pending' || d.verificationStatus === 'Correction Requested');
-  const verifiedDocs = scopedDocs.filter((d) => d.verificationStatus === 'Verified');
 
-  const handleExportPendingCsv = () => {
-    const exportData = pendingDocs.map((d) => ({
-      Title: d.title,
-      EntityType: d.entityType,
-      CertificateNo: d.certificateNo,
-      IssuingAuthority: d.issuingAuthority,
-      ExpiryDate: d.expiryDate,
-      OcrConfidence: `${d.ocrConfidence}%`,
-      Status: d.verificationStatus,
-    }));
-    exportToCsv('Pending_Verification_Queue', exportData);
-    setIsPendingExportOpen(false);
+  /* Map each document to its associated Assurance Set & Vessel */
+  const getAssuranceSetInfo = (docId: string) => {
+    for (const set of assuranceSets) {
+      const hasDoc = set.requirements?.some((r) => r.documentId === docId || r.linkedDocumentId === docId);
+      if (hasDoc) {
+        return {
+          setId: set.id,
+          setTitle: set.title,
+          vesselName: set.vesselName,
+          stage: set.stage,
+        };
+      }
+    }
+    return null;
   };
 
-  const handleExportPendingPdf = () => {
-    const headers = ['Title', 'Type', 'Cert No', 'Authority', 'Expiry Date', 'OCR Conf', 'Status'];
-    const rows = pendingDocs.map((d) => [
-      d.title,
-      d.entityType,
-      d.certificateNo,
-      d.issuingAuthority,
-      d.expiryDate,
-      `${d.ocrConfidence}%`,
-      d.verificationStatus,
-    ]);
-    exportToPdf('Pending Verification Queue', headers, rows);
-    setIsPendingExportOpen(false);
+  /* Filter Logic */
+  const filteredDocs = scopedDocs.filter((d) => {
+    const setInfo = getAssuranceSetInfo(d.id);
+    const setContext = setInfo ? `${setInfo.setId} ${setInfo.setTitle} ${setInfo.vesselName}` : '';
+    const searchTarget = `${d.title} ${d.certificateNo} ${d.issuingAuthority} ${d.entityType} ${setContext}`.toLowerCase();
+
+    const matchesSearch = searchTarget.includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === 'ALL' || d.entityType === typeFilter;
+    const matchesStatus = statusFilter === 'ALL' || d.verificationStatus === statusFilter;
+    return matchesSearch && matchesType && matchesStatus;
+  });
+
+  /* Sort Logic */
+  const sortedDocs = [...filteredDocs].sort((a, b) => {
+    let valA: any = '';
+    let valB: any = '';
+
+    if (sortField === 'assuranceSet') {
+      const infoA = getAssuranceSetInfo(a.id);
+      const infoB = getAssuranceSetInfo(b.id);
+      valA = infoA ? infoA.setId : '';
+      valB = infoB ? infoB.setId : '';
+    } else if (sortField === 'vesselName') {
+      const infoA = getAssuranceSetInfo(a.id);
+      const infoB = getAssuranceSetInfo(b.id);
+      valA = infoA ? infoA.vesselName : '';
+      valB = infoB ? infoB.vesselName : '';
+    } else if (sortField === 'ocrConfidence') {
+      valA = Number(a.ocrConfidence) || 0;
+      valB = Number(b.ocrConfidence) || 0;
+    } else {
+      valA = a[sortField as keyof MasterDocument] ?? '';
+      valB = b[sortField as keyof MasterDocument] ?? '';
+    }
+
+    if (typeof valA === 'string') {
+      valA = valA.toLowerCase();
+      valB = (valB as string).toLowerCase();
+    }
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
   };
 
-  const handleExportVerifiedCsv = () => {
-    const exportData = verifiedDocs.map((d) => ({
-      Title: d.title,
-      CertificateNo: d.certificateNo,
-      IssuingAuthority: d.issuingAuthority,
-      Notes: d.verificationNotes || 'Verified',
-      Status: 'Verified',
-    }));
-    exportToCsv('Verified_Documents_Log', exportData);
-    setIsVerifiedExportOpen(false);
+  const renderSortHeader = (label: string, field: SortField) => (
+    <th
+      className="cursor-pointer user-select-none"
+      onClick={() => handleSort(field)}
+      style={{ cursor: 'pointer' }}
+    >
+      <div className="d-flex align-items-center justify-between gap-1">
+        <span>{label}</span>
+        <span className="text-muted small" style={{ fontSize: '0.7rem' }}>
+          {sortField === field ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </div>
+    </th>
+  );
+
+  const handleExportCsv = () => {
+    const exportData = sortedDocs.map((d) => {
+      const info = getAssuranceSetInfo(d.id);
+      return {
+        AssuranceSet: info ? info.setId : 'N/A',
+        VesselName: info ? info.vesselName : 'N/A',
+        Title: d.title,
+        IssuingAuthority: d.issuingAuthority,
+        ExpiryDate: d.expiryDate,
+        OcrConfidence: `${d.ocrConfidence}%`,
+        Status: d.verificationStatus,
+      };
+    });
+    exportToCsv('Master_Verification_Queue', exportData);
+    setIsExportOpen(false);
   };
 
-  const handleExportVerifiedPdf = () => {
-    const headers = ['Title', 'Cert No', 'Issuing Authority', 'Notes', 'Status'];
-    const rows = verifiedDocs.map((d) => [
-      d.title,
-      d.certificateNo,
-      d.issuingAuthority,
-      d.verificationNotes || 'Verified',
-      'Verified',
-    ]);
-    exportToPdf('Recently Verified Documents', headers, rows);
-    setIsVerifiedExportOpen(false);
+  const handleExportPdf = () => {
+    const headers = ['Assurance Set', 'Vessel Name', 'Title', 'Authority', 'Expiry Date', 'OCR Conf', 'Status'];
+    const rows = sortedDocs.map((d) => {
+      const info = getAssuranceSetInfo(d.id);
+      return [
+        info ? info.setId : 'N/A',
+        info ? info.vesselName : 'N/A',
+        d.title,
+        d.issuingAuthority,
+        d.expiryDate,
+        `${d.ocrConfidence}%`,
+        d.verificationStatus,
+      ];
+    });
+    exportToPdf('Master Verification Queue', headers, rows);
+    setIsExportOpen(false);
+  };
+
+  const getStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'Verified':
+        return 'bg-success text-white';
+      case 'Correction Requested':
+        return 'bg-danger text-white';
+      case 'Pending':
+      default:
+        return 'bg-warning text-dark';
+    }
   };
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* Assurance Sets Overview Cards */}
-      <div className="row g-3">
-        {assignedSets.map((set) => (
-          <div key={set.id} className="col-lg-4 col-md-6">
-            <div className="p-4 border rounded-3 bg-white shadow-sm h-100 d-flex flex-column justify-between position-relative">
-              <div>
-                <span
-                  className="badge bg-light text-dark border font-mono-code position-absolute top-0 end-0 mt-3.5 me-3.5"
-                  style={{ fontSize: '0.725rem' }}
-                >
-                  {set.stage}
-                </span>
-                <div className="font-mono-code fw-bold text-primary small mb-2">{set.id}</div>
-                <h6 className="fw-bold text-dark mb-2 pe-5" style={{ fontSize: '1rem', lineHeight: '1.3' }}>
-                  {set.title}
-                </h6>
-                <div className="text-secondary small font-mono-code">Vessel: {set.vesselName}</div>
-              </div>
-
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-primary w-100 mt-4 py-2 fw-semibold"
-                onClick={() => setCurrentHashView('assurance-sets', set.id)}
-              >
-                View Details
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-
-      {/* Pending Items Queue */}
+      {/* Single Master Verification Table */}
       <div className="card map-card-custom">
+        {/* Table Header Controls: Search & Filters Left, Export Button Right */}
         <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
-          <div className="fw-bold text-dark">
-            Pending Verification Queue ({pendingDocs.length} Items)
+          <div className="d-flex flex-wrap align-items-center gap-2">
+
+            <input
+              type="text"
+              className="form-control form-control-sm bg-white text-dark border-secondary"
+              placeholder="Search Cert #, Title, Set, Vessel..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: '250px' }}
+            />
+            <select
+              className="form-select form-select-sm bg-white text-dark border-secondary"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              style={{ width: '160px' }}
+            >
+              <option value="ALL">All Entity Types</option>
+              <option value="Vessel Certificate">Vessel Certificate</option>
+              <option value="Crew Certificate">Crew Certificate</option>
+            </select>
+            <select
+              className="form-select form-select-sm bg-white text-dark border-secondary"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ width: '170px' }}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="Correction Requested">Correction Requested</option>
+              <option value="Verified">Verified</option>
+            </select>
           </div>
+
           <div className="dropdown position-relative ms-auto">
             <button
               type="button"
-              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
-              onClick={() => setIsPendingExportOpen(!isPendingExportOpen)}
+              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle ms-2"
+              onClick={() => setIsExportOpen(!isExportOpen)}
             >
               Export Data
             </button>
-            {isPendingExportOpen && (
-              <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border">
+            {isExportOpen && (
+              <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border" style={{ zIndex: 1050 }}>
                 <li>
-                  <button type="button" className="dropdown-item small" onClick={handleExportPendingCsv}>
+                  <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
                     Export as CSV (.csv)
                   </button>
                 </li>
                 <li>
-                  <button type="button" className="dropdown-item small" onClick={handleExportPendingPdf}>
+                  <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
                     Export as PDF (.pdf)
                   </button>
                 </li>
@@ -148,110 +240,76 @@ export const VerifierWorkspaceView: React.FC = () => {
             )}
           </div>
         </div>
+
         <div className="table-responsive">
           <table className="table map-table-custom align-middle mb-0">
             <thead>
               <tr>
-                <th>Certificate Title</th>
-                <th>Type</th>
-                <th>Certificate No</th>
-                <th>Issuing Authority</th>
-                <th>Expiry Date</th>
-                <th>OCR Confidence</th>
-                <th>Status</th>
+                {renderSortHeader('Assurance Set', 'assuranceSet')}
+                {renderSortHeader('Vessel Name', 'vesselName')}
+                {renderSortHeader('Certificate Title', 'title')}
+                {renderSortHeader('Issuing Authority', 'issuingAuthority')}
+                {renderSortHeader('Expiry Date', 'expiryDate')}
+                {renderSortHeader('OCR Confidence', 'ocrConfidence')}
+                {renderSortHeader('Status', 'verificationStatus')}
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {pendingDocs.map((doc) => (
-                <tr key={doc.id} onClick={() => setSelectedDoc(doc)} style={{ cursor: 'pointer' }}>
-                  <td className="fw-semibold text-primary">{doc.title}</td>
-                  <td>
-                    <span className="badge bg-light text-dark border" style={{ fontSize: '0.75rem' }}>
-                      {doc.entityType}
-                    </span>
-                  </td>
-                  <td className="font-mono-code">{doc.certificateNo}</td>
-                  <td>{doc.issuingAuthority}</td>
-                  <td className="font-mono-code small">{formatMaritimeDate(doc.expiryDate)}</td>
-                  <td>
-                    <ConfidenceBadge score={doc.ocrConfidence} />
-                  </td>
-                  <td>
-                    <span className="badge bg-warning text-dark">{doc.verificationStatus}</span>
-                  </td>
-                  <td className="text-end">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedDoc(doc);
-                      }}
-                    >
-                      Review Document
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              {sortedDocs.map((doc) => {
+                const info = getAssuranceSetInfo(doc.id);
+                return (
+                  <tr key={doc.id} onClick={() => setSelectedDoc(doc)} style={{ cursor: 'pointer' }}>
+                    <td>
+                      {info ? (
+                        <span className="badge bg-light text-primary border font-mono-code fw-bold" style={{ fontSize: '0.725rem' }}>
+                          {info.setId}
+                        </span>
+                      ) : (
+                        <span className="text-muted small">Unlinked</span>
+                      )}
+                    </td>
+                    <td>
+                      {info ? (
+                        <span className="fw-semibold text-dark font-mono-code small">{info.vesselName}</span>
+                      ) : (
+                        <span className="text-muted small">-</span>
+                      )}
+                    </td>
+                    <td className="fw-semibold text-primary">{doc.title}</td>
+                    <td>{doc.issuingAuthority}</td>
+                    <td className="font-mono-code small">{formatMaritimeDate(doc.expiryDate)}</td>
+                    <td>
+                      <ConfidenceBadge score={doc.ocrConfidence} />
+                    </td>
+                    <td>
+                      <span className={`badge ${getStatusBadgeClass(doc.verificationStatus)}`}>
+                        {doc.verificationStatus}
+                      </span>
+                    </td>
+                    <td className="text-end">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary ms-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDoc(doc);
+                        }}
+                      >
+                        Review Document
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
 
-      {/* Verified Items Log */}
-      <div className="card map-card-custom">
-        <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
-          <div className="fw-bold text-dark">
-            Recently Verified Documents ({verifiedDocs.length})
-          </div>
-          <div className="dropdown position-relative ms-auto">
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
-              onClick={() => setIsVerifiedExportOpen(!isVerifiedExportOpen)}
-            >
-              Export Data
-            </button>
-            {isVerifiedExportOpen && (
-              <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border">
-                <li>
-                  <button type="button" className="dropdown-item small" onClick={handleExportVerifiedCsv}>
-                    Export as CSV (.csv)
-                  </button>
-                </li>
-                <li>
-                  <button type="button" className="dropdown-item small" onClick={handleExportVerifiedPdf}>
-                    Export as PDF (.pdf)
-                  </button>
-                </li>
-              </ul>
-            )}
-          </div>
-        </div>
-        <div className="table-responsive">
-          <table className="table map-table-custom align-middle mb-0">
-            <thead>
-              <tr>
-                <th>Certificate Title</th>
-                <th>Certificate No</th>
-                <th>Issuing Authority</th>
-                <th>Verification Notes</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {verifiedDocs.map((doc) => (
-                <tr key={doc.id}>
-                  <td className="fw-semibold text-dark">{doc.title}</td>
-                  <td className="font-mono-code">{doc.certificateNo}</td>
-                  <td>{doc.issuingAuthority}</td>
-                  <td className="small text-secondary">{doc.verificationNotes || 'Verified'}</td>
-                  <td>
-                    <span className="badge bg-success text-white">Verified</span>
+              {sortedDocs.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="text-center text-muted py-4 fst-italic">
+                    No documents match the selected search terms or filters.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

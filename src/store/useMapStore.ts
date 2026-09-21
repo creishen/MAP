@@ -117,7 +117,7 @@ export interface MapStoreState {
 
 
 export const useMapStore = create<MapStoreState>((set, get) => ({
-  isAuthenticated: true,
+  isAuthenticated: false,
   login: (role) => {
     get().logAuditEvent({
       userId: 'USR-LOGIN',
@@ -127,7 +127,9 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       targetAsset: 'Authentication Gateway',
       justificationNotes: `Logged in as ${role}`,
     });
-    set({ isAuthenticated: true, activePersona: role });
+    const targetView = role === 'Verifier' ? 'verifier' : role === 'Inspector' ? 'inspector' : 'dashboard';
+    window.location.hash = `#/${targetView}`;
+    set({ isAuthenticated: true, activePersona: role, currentHashView: targetView });
   },
   logout: () => {
     get().logAuditEvent({
@@ -138,15 +140,16 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       targetAsset: 'Authentication Gateway',
       justificationNotes: 'User signed out.',
     });
-    set({ isAuthenticated: false });
+    window.location.hash = '#/login';
+    set({ isAuthenticated: false, currentHashView: 'login' });
   },
 
   activePersona: 'Administrator',
   setActivePersona: (persona) => {
     get().logAuditEvent({
-      userId: 'USR-CURRENT',
+      userId: 'USR-PERSONA-SWITCH',
       userRole: persona,
-      organization: persona === 'C Admin' ? 'Chevron Australia' : 'Pacific Ocean Logistics',
+      organization: persona === 'C Admin' ? 'Southern Basin Energy' : 'Northwind Marine',
       action: 'Switched Active User Persona',
       targetAsset: 'Global System Context',
       justificationNotes: `Persona set to ${persona}`,
@@ -163,7 +166,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set({ activePersona: persona });
   },
 
-  currentHashView: 'dashboard',
+  currentHashView: 'login',
   previousHashView: undefined,
   currentEntityId: undefined,
   previousEntityId: undefined,
@@ -716,12 +719,12 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       capaItems: state.capaItems.map((item) =>
         item.id === capaId
           ? {
-              ...item,
-              status: 'Under Re-Inspection',
-              flaggedForReinspection: true,
-              cadminFlagReason: reason?.trim() || 'Re-inspection requested by C Admin charterer',
-              flaggedByCAdminDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-            }
+            ...item,
+            status: 'Under Re-Inspection',
+            flaggedForReinspection: true,
+            cadminFlagReason: reason?.trim() || 'Re-inspection requested by C Admin charterer',
+            flaggedByCAdminDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          }
           : item
       ),
     }));

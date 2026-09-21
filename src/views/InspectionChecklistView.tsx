@@ -9,6 +9,7 @@ import { useMapStore } from '../store/useMapStore';
 import { getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { CapaItem } from '../types/capa';
+import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
 
 interface EvidenceItem {
   id: string;
@@ -123,6 +124,9 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
   /* photo capture state & refs for native mobile camera and live stream modal */
   const [activePhotoItemId, setActivePhotoItemId] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  /* drawer state for inspecting capa details directly inside physical inspection view */
+  const [selectedCapaForDrawer, setSelectedCapaForDrawer] = useState<CapaItem | null>(null);
 
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -850,7 +854,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                               type="button"
                               className="btn-close ms-auto flex-shrink-0 align-self-start"
                               style={{ fontSize: '0.6rem' }}
-                              aria-label="Remove evidence"
+                              aria-label="Remove"
                               onClick={() => handleRemoveEvidence(item.id, ev.id)}
                             />
                           )}
@@ -1069,7 +1073,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                   <div
                     key={c.id}
                     className="p-3 border rounded-3 bg-white shadow-2xs cursor-pointer"
-                    onClick={() => setCurrentHashView('capa', `${vesselName}:${c.id}`)}
+                    onClick={() => setSelectedCapaForDrawer(c as CapaItem)}
                     style={{ cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}
                     title="Click to view details, upload evidence, and re-inspect this CAPA"
                   >
@@ -1122,7 +1126,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                         📷 {c.evidences?.length || 0} Evidence File(s)
                       </span>
                       <span className="fw-bold text-primary">
-                        View & Re-Inspect →
+                        View Details
                       </span>
                     </div>
                   </div>
@@ -1183,6 +1187,14 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
             </div>
           </div>
         </div>
+      )}
+
+      {/* Capa Re-Inspection Drawer inside Physical Inspection Detail page */}
+      {selectedCapaForDrawer && (
+        <CapaReinspectionDrawer
+          capa={selectedCapaForDrawer}
+          onClose={() => setSelectedCapaForDrawer(null)}
+        />
       )}
     </div>
   );
