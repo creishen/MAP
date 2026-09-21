@@ -4,10 +4,10 @@
   role in system: invoked from fleet master view (FleetRegistryView.tsx) when clicking "+ Register Vessel".
 */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { VesselParticulars, ClassificationSociety } from '../../types/vessel';
-import { validateImoNumber } from '../../utils/validation';
+import { isDuplicateVessel, validateImoNumber } from '../../utils/validation';
 
 interface VesselModalProps {
   isOpen: boolean;
@@ -16,7 +16,7 @@ interface VesselModalProps {
 }
 
 export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onRegistered }) => {
-  const { addVessel } = useMapStore();
+  const { addVessel, vessels } = useMapStore();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -90,24 +90,46 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
   const [classCertDocName, setClassCertDocName] = useState('');
   const [uploadNotice, setUploadNotice] = useState('');
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setCurrentStep(1);
+    setErrorMessage('');
+    setUploadNotice('');
+    setRegistrationDocName('');
+    setClassCertDocName('');
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const validateStepOneIdentifiers = () => {
+    if (!name.trim()) {
+      setErrorMessage('Vessel Name is mandatory.');
+      return false;
+    }
+    if (!validateImoNumber(imoNumber)) {
+      setErrorMessage('IMO Number must be exactly 7 digits (e.g. 9123456).');
+      return false;
+    }
+    if (!officialRegNumber.trim()) {
+      setErrorMessage('Official Registration Number is mandatory.');
+      return false;
+    }
+
+    const dupCheck = isDuplicateVessel(imoNumber, officialRegNumber, vessels);
+    if (dupCheck.isDuplicate) {
+      setErrorMessage(dupCheck.reason || 'A vessel with this IMO or Official Registration Number is already registered.');
+      return false;
+    }
+
+    return true;
+  };
 
   const validateCurrentStep = () => {
     setErrorMessage('');
     if (currentStep === 1) {
-      if (!name.trim()) {
-        setErrorMessage('Vessel Name is mandatory.');
-        return false;
-      }
-      if (!validateImoNumber(imoNumber)) {
-        setErrorMessage('IMO Number must be exactly 7 digits (e.g. 9123456).');
-        return false;
-      }
-      if (!officialRegNumber.trim()) {
-        setErrorMessage('Official Registration Number is mandatory.');
-        return false;
-      }
-    } else if (currentStep === 2) {
+      return validateStepOneIdentifiers();
+    }
+    if (currentStep === 2) {
       if (!registeredOwner.trim()) {
         setErrorMessage('Registered Owner Name is required.');
         return false;
@@ -127,8 +149,18 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
+
+    if (currentStep !== 4) {
+      return;
+    }
+
+    if (!validateStepOneIdentifiers()) {
+      setCurrentStep(1);
+      return;
+    }
+
     if (!validateCurrentStep()) return;
 
     const newVessel: VesselParticulars = {
@@ -197,6 +229,9 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     const res = addVessel(newVessel);
     if (!res.success) {
       setErrorMessage(res.message || 'Error registering vessel.');
+      if (res.message?.toLowerCase().includes('already registered')) {
+        setCurrentStep(1);
+      }
       return;
     }
 
@@ -265,7 +300,14 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
             </div>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (currentStep === 4) {
+                handleSubmit(e);
+              }
+            }}
+          >
             <div className="modal-body p-4 overflow-y-auto" style={{ maxHeight: '68vh' }}>
               {errorMessage && (
                 <div className="alert alert-danger py-2 small mb-3">{errorMessage}</div>
@@ -321,7 +363,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       />
                     </div>
                     <div className="col-md-3">
-                      <label className="form-label text-secondary small fw-semibold">Official Reg Number *</label>
+                      <label className="form-label text-secondary small fw-semibold">Official Registration Number *</label>
                       <input
                         type="text"
                         className="form-control form-control-sm font-mono-code"
@@ -813,7 +855,11 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                     Next Step &rarr;
                   </button>
                 ) : (
-                  <button type="submit" className="btn btn-sm btn-success">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-success"
+                    onClick={() => handleSubmit()}
+                  >
                     Confirm & Complete Registration
                   </button>
                 )}
