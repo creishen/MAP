@@ -54,6 +54,14 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const [isAiExtracted, setIsAiExtracted] = useState(false);
   const [aiOcrConfidence, setAiOcrConfidence] = useState(99.2);
 
+  /* per-field reveal state for staggered ai animation */
+  const [revealedFields, setRevealedFields] = useState<{ certNo: boolean; authority: boolean; expiry: boolean; summary: boolean }>({
+    certNo: false,
+    authority: false,
+    expiry: false,
+    summary: false,
+  });
+
   /* simulated upload state */
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -97,6 +105,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       setStatusMessage('');
       setIsDraggingOver(false);
       setIsPendingVerification(false);
+      setRevealedFields({ certNo: false, authority: false, expiry: false, summary: false });
     }
   }, [isOpen, existingDocument, vessels, requirementTitle, defaultVesselId]);
 
@@ -162,20 +171,42 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     setFileName(selectedName);
     setIsExtractingAi(true);
     setIsAiExtracted(false);
+    setRevealedFields({ certNo: false, authority: false, expiry: false, summary: false });
 
+    const generatedCertNo = `DNV-STAT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const selectedVesselObj = vessels.find((v) => v.id === vesselId);
+    const authority = selectedVesselObj?.classificationSociety
+      ? `${selectedVesselObj.classificationSociety} Classification Society`
+      : 'DNV Classification Society';
+
+    /* step 1: complete ai scan after 1100ms then reveal fields with staggered delays */
     setTimeout(() => {
-      const generatedCertNo = `DNV-STAT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-      const selectedVesselObj = vessels.find((v) => v.id === vesselId);
-      const authority = selectedVesselObj?.classificationSociety
-        ? `${selectedVesselObj.classificationSociety} Classification Society`
-        : 'DNV Classification Society';
-
-      setCertificateNo(generatedCertNo);
-      setIssuingAuthority(authority);
-      setExpiryDate('2029-06-30');
-      setAiOcrConfidence(99.2);
       setIsExtractingAi(false);
       setIsAiExtracted(true);
+      setAiOcrConfidence(99.2);
+
+      /* stagger 1: certificate number */
+      setTimeout(() => {
+        setCertificateNo(generatedCertNo);
+        setRevealedFields((prev) => ({ ...prev, certNo: true }));
+      }, 120);
+
+      /* stagger 2: issuing authority */
+      setTimeout(() => {
+        setIssuingAuthority(authority);
+        setRevealedFields((prev) => ({ ...prev, authority: true }));
+      }, 420);
+
+      /* stagger 3: expiry date */
+      setTimeout(() => {
+        setExpiryDate('2029-06-30');
+        setRevealedFields((prev) => ({ ...prev, expiry: true }));
+      }, 720);
+
+      /* stagger 4: revision summary */
+      setTimeout(() => {
+        setRevealedFields((prev) => ({ ...prev, summary: true }));
+      }, 980);
     }, 1100);
   };
 
@@ -473,14 +504,16 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
               {/* 4. Simulated AI Extraction Progress Indicator */}
               {isExtractingAi && (
                 <div className="p-3 mb-3 bg-primary-subtle border border-primary-subtle rounded shadow-2xs">
-                  <div className="d-flex align-items-center justify-content-between mb-1.5">
+                  <div className="d-flex align-items-center justify-content-between mb-1">
                     <span className="fw-bold text-primary small d-flex align-items-center gap-2">
                       <span className="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true" />
-                      Simulating AI OCR &amp; Attribute Extraction...
+                      AI OCR Scanning &amp; Attribute Extraction in Progress...
                     </span>
                     <span className="badge bg-primary text-white font-mono-code">AI Processing</span>
                   </div>
-                  <div className="font-mono-code text-muted small" style={{ fontSize: '0.75rem' }}>
+                  {/* animated scan sweep bar */}
+                  <div className="ai-scan-bar" />
+                  <div className="font-mono-code text-muted small mt-2" style={{ fontSize: '0.75rem' }}>
                     Extracting Certificate Number, Issuing Authority, Expiry Date, and IACS Compliance Attributes from <strong>{fileName}</strong>...
                   </div>
                 </div>
@@ -499,7 +532,9 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                   </div>
 
                   <div className="row g-2">
-                    <div className="col-6">
+                    {/* certificate number — stagger 1 */}
+                    <div className={`col-6 ${revealedFields.certNo ? 'ai-field-reveal ai-field-highlight' : ''}`}
+                      style={{ opacity: revealedFields.certNo ? 1 : 0 }}>
                       <label className="form-label text-secondary small fw-semibold" htmlFor="cert-no">
                         Certificate Number (Extracted) *
                       </label>
@@ -514,7 +549,10 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                         required
                       />
                     </div>
-                    <div className="col-6">
+
+                    {/* issuing authority — stagger 2 */}
+                    <div className={`col-6 ${revealedFields.authority ? 'ai-field-reveal ai-field-highlight' : ''}`}
+                      style={{ opacity: revealedFields.authority ? 1 : 0 }}>
                       <label className="form-label text-secondary small fw-semibold" htmlFor="issuing-auth">
                         Issuing Authority (Extracted) *
                       </label>
@@ -529,7 +567,10 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                         required
                       />
                     </div>
-                    <div className="col-6">
+
+                    {/* expiry date — stagger 3 */}
+                    <div className={`col-6 ${revealedFields.expiry ? 'ai-field-reveal ai-field-highlight' : ''}`}
+                      style={{ opacity: revealedFields.expiry ? 1 : 0 }}>
                       <label className="form-label text-secondary small fw-semibold" htmlFor="expiry-date">
                         Expiry Date (Extracted) *
                       </label>
@@ -543,7 +584,10 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                         required
                       />
                     </div>
-                    <div className="col-6">
+
+                    {/* revision summary — stagger 4 */}
+                    <div className={`col-6 ${revealedFields.summary ? 'ai-field-reveal' : ''}`}
+                      style={{ opacity: revealedFields.summary ? 1 : 0 }}>
                       <label className="form-label text-secondary small fw-semibold" htmlFor="change-summary">
                         Revision Summary / Notes
                       </label>

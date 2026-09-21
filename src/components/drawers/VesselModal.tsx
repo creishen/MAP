@@ -30,6 +30,12 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
   const [activeVerifiedDocs, setActiveVerifiedDocs] = useState<Record<number, { title: string; certNo: string; docId?: string }>>({});
   const [pendingVerificationState, setPendingVerificationState] = useState<{ fileName: string; stepNumber: number } | null>(null);
 
+  /* per-field reveal state for staggered ai animation */
+  const [revealedVesselFields, setRevealedVesselFields] = useState({
+    name: false, imoNumber: false, officialRegNumber: false, flagState: false,
+    classificationSociety: false, yearBuilt: false, gt: false, dwt: false, registeredOwner: false,
+  });
+
   // 1. Vessel Identification
   const [name, setName] = useState('');
   const [previousNames, setPreviousNames] = useState('');
@@ -112,6 +118,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     setSelectedDocIds({});
     setActiveVerifiedDocs({});
     setPendingVerificationState(null);
+    setRevealedVesselFields({ name: false, imoNumber: false, officialRegNumber: false, flagState: false, classificationSociety: false, yearBuilt: false, gt: false, dwt: false, registeredOwner: false });
   }, [isOpen]);
 
 
@@ -281,32 +288,49 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     with what file: src/components/drawers/VesselModal.tsx.
   */
   const autoFillFromDocument = (doc: MasterDocument, stepNumber: number) => {
-    if (doc.vesselAttributes) {
-      if (doc.vesselAttributes.vesselName) setName(doc.vesselAttributes.vesselName);
-      if (doc.vesselAttributes.imoNumber) setImoNumber(doc.vesselAttributes.imoNumber);
-      if (doc.vesselAttributes.flagState) setFlagState(doc.vesselAttributes.flagState);
-      if (doc.vesselAttributes.issuingBody) {
-        const body = doc.vesselAttributes.issuingBody;
-        if (['DNV', 'ABS', "Lloyd's Register", 'Bureau Veritas', 'RINA'].includes(body)) {
-          setClassificationSociety(body as ClassificationSociety);
+    /* reset all reveal flags before staggered fill */
+    setRevealedVesselFields({ name: false, imoNumber: false, officialRegNumber: false, flagState: false, classificationSociety: false, yearBuilt: false, gt: false, dwt: false, registeredOwner: false });
+
+    const doFill = () => {
+      if (doc.vesselAttributes) {
+        if (doc.vesselAttributes.vesselName) {
+          setTimeout(() => { setName(doc.vesselAttributes!.vesselName!); setRevealedVesselFields((p) => ({ ...p, name: true })); }, 0);
+        }
+        if (doc.vesselAttributes.imoNumber) {
+          setTimeout(() => { setImoNumber(doc.vesselAttributes!.imoNumber!); setRevealedVesselFields((p) => ({ ...p, imoNumber: true })); }, 150);
+        }
+        if (doc.vesselAttributes.flagState) {
+          setTimeout(() => { setFlagState(doc.vesselAttributes!.flagState!); setRevealedVesselFields((p) => ({ ...p, flagState: true })); }, 300);
+        }
+        if (doc.vesselAttributes.issuingBody) {
+          const body = doc.vesselAttributes.issuingBody;
+          if (['DNV', 'ABS', "Lloyd's Register", 'Bureau Veritas', 'RINA'].includes(body)) {
+            setTimeout(() => { setClassificationSociety(body as ClassificationSociety); setRevealedVesselFields((p) => ({ ...p, classificationSociety: true })); }, 450);
+          }
+        }
+      } else {
+        if (doc.title) {
+          const cleaned = doc.title.replace(/Certificate of Class|Certificate of Registry/i, '').trim();
+          setTimeout(() => { setName(cleaned || 'MV Pacific Leader'); setRevealedVesselFields((p) => ({ ...p, name: true })); }, 0);
         }
       }
-    } else {
-      if (doc.title) {
-        const cleaned = doc.title.replace(/Certificate of Class|Certificate of Registry/i, '').trim();
-        setName(cleaned || 'MV Pacific Leader');
+
+      if (doc.certificateNo) {
+        setTimeout(() => { setOfficialRegNumber(doc.certificateNo); setRevealedVesselFields((p) => ({ ...p, officialRegNumber: true })); }, 200);
       }
-    }
+      if (!registeredOwner) {
+        setTimeout(() => { setRegisteredOwner('Pacific Ocean Logistics Pty Ltd'); setRevealedVesselFields((p) => ({ ...p, registeredOwner: true })); }, 550);
+      }
 
-    if (doc.certificateNo) setOfficialRegNumber(doc.certificateNo);
-    if (!registeredOwner) setRegisteredOwner('Pacific Ocean Logistics Pty Ltd');
+      setSelectedDocIds((prev) => ({ ...prev, [stepNumber]: doc.id }));
+      setActiveVerifiedDocs((prev) => ({
+        ...prev,
+        [stepNumber]: { title: doc.title, certNo: doc.certificateNo || doc.id, docId: doc.id },
+      }));
+      setAiNotice(`Auto-filled & verified specs from Document Library record: "${doc.title}" (${doc.certificateNo || doc.id}) for Stage ${stepNumber}!`);
+    };
 
-    setSelectedDocIds((prev) => ({ ...prev, [stepNumber]: doc.id }));
-    setActiveVerifiedDocs((prev) => ({
-      ...prev,
-      [stepNumber]: { title: doc.title, certNo: doc.certificateNo || doc.id, docId: doc.id },
-    }));
-    setAiNotice(`Auto-filled & verified specs from Document Library record: "${doc.title}" (${doc.certificateNo || doc.id}) for Stage ${stepNumber}!`);
+    doFill();
   };
 
   const handleStageVesselFileForVerification = (fileOrName: File | string, stepNumber: number) => {
@@ -332,6 +356,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     const fileNameStr = typeof fileOrName === 'string' ? fileOrName : fileOrName.name;
     setIsExtractingAi(true);
     setAiNotice('');
+    setRevealedVesselFields({ name: false, imoNumber: false, officialRegNumber: false, flagState: false, classificationSociety: false, yearBuilt: false, gt: false, dwt: false, registeredOwner: false });
 
     setTimeout(() => {
       const extractedImo = `94${Math.floor(10000 + Math.random() * 90000)}`;
@@ -356,15 +381,15 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
         autoFillFromDocument(existingDoc, stepNumber);
         setAiNotice(`Found matching document in Document Library ("${existingDoc.title}", Cert: ${existingDoc.certificateNo}). Automatically filled vessel particulars for Stage ${stepNumber}!`);
       } else {
-        setName(extractedVesselName);
-        setImoNumber(extractedImo);
-        setOfficialRegNumber(`OSV-REG-${Math.floor(100 + Math.random() * 900)}`);
-        setFlagState('Australia');
-        setClassificationSociety('DNV');
-        setYearBuilt(2023);
-        setGt(3800);
-        setDwt(4600);
-        setRegisteredOwner('Pacific Ocean Logistics Pty Ltd');
+        /* stagger each field reveal by 150ms */
+        setTimeout(() => { setName(extractedVesselName);                                     setRevealedVesselFields((p) => ({ ...p, name: true })); },             0);
+        setTimeout(() => { setImoNumber(extractedImo);                                       setRevealedVesselFields((p) => ({ ...p, imoNumber: true })); },         150);
+        setTimeout(() => { setOfficialRegNumber(`OSV-REG-${Math.floor(100 + Math.random() * 900)}`); setRevealedVesselFields((p) => ({ ...p, officialRegNumber: true })); }, 300);
+        setTimeout(() => { setFlagState('Australia');                                         setRevealedVesselFields((p) => ({ ...p, flagState: true })); },         450);
+        setTimeout(() => { setClassificationSociety('DNV');                                   setRevealedVesselFields((p) => ({ ...p, classificationSociety: true })); }, 600);
+        setTimeout(() => { setYearBuilt(2023);                                               setRevealedVesselFields((p) => ({ ...p, yearBuilt: true })); },         750);
+        setTimeout(() => { setGt(3800); setDwt(4600);                                        setRevealedVesselFields((p) => ({ ...p, gt: true, dwt: true })); },    900);
+        setTimeout(() => { setRegisteredOwner('Pacific Ocean Logistics Pty Ltd');             setRevealedVesselFields((p) => ({ ...p, registeredOwner: true })); },  1050);
 
         const newDocId = `DOC-2026-${Math.floor(100 + Math.random() * 900)}`;
         const newMasterDoc: MasterDocument = {
@@ -590,9 +615,19 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
 
         {/* Active Extraction Indicator */}
         {isExtractingAi && (
-          <div className="mt-2.5 p-2 bg-primary-subtle border border-primary-subtle rounded small d-flex align-items-center gap-2 text-primary">
-            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-            <span>AI is analyzing OCR bytes, extracting specs for {sectionTitle}, and updating form fields...</span>
+          <div className="mt-2 p-3 bg-primary-subtle border border-primary-subtle rounded small text-primary">
+            <div className="d-flex align-items-center justify-content-between">
+              <span className="d-flex align-items-center gap-2 fw-bold">
+                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                AI is scanning OCR bytes, extracting vessel specs for {sectionTitle}...
+              </span>
+              <span className="badge bg-primary text-white font-mono-code">AI Processing</span>
+            </div>
+            {/* animated scan sweep bar */}
+            <div className="ai-scan-bar mt-2" />
+            <div className="font-mono-code text-muted mt-2" style={{ fontSize: '0.7rem' }}>
+              Extracting Vessel Name, IMO Number, Flag State, Classification Society and Ownership details...
+            </div>
           </div>
         )}
       </div>
@@ -683,7 +718,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                   </div>
 
                   <div className="row g-2">
-                    <div className="col-md-4">
+                    <div className={`col-md-4 ${revealedVesselFields.name ? 'ai-field-reveal ai-field-highlight' : ''}`}>
                       <label className="form-label text-secondary small fw-semibold">Vessel Name *</label>
                       <input
                         type="text"
@@ -714,7 +749,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       />
                     </div>
 
-                    <div className="col-md-3">
+                    <div className={`col-md-3 ${revealedVesselFields.imoNumber ? 'ai-field-reveal ai-field-highlight' : ''}`}>
                       <label className="form-label text-secondary small fw-semibold">IMO Number (7 Digits) *</label>
                       <input
                         type="text"
@@ -725,7 +760,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                         required
                       />
                     </div>
-                    <div className="col-md-3">
+                    <div className={`col-md-3 ${revealedVesselFields.officialRegNumber ? 'ai-field-reveal ai-field-highlight' : ''}`}>
                       <label className="form-label text-secondary small fw-semibold">Official Registration Number *</label>
                       <input
                         type="text"
@@ -757,7 +792,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       />
                     </div>
 
-                    <div className="col-md-4">
+                    <div className={`col-md-4 ${revealedVesselFields.flagState ? 'ai-field-reveal ai-field-highlight' : ''}`}>
                       <label className="form-label text-secondary small fw-semibold">Flag State / Country</label>
                       <input
                         type="text"
@@ -817,7 +852,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                         onChange={(e) => setVesselSubtype(e.target.value)}
                       />
                     </div>
-                    <div className="col-md-4">
+                    <div className={`col-md-4 ${revealedVesselFields.classificationSociety ? 'ai-field-reveal ai-field-highlight' : ''}`}>
                       <label className="form-label text-secondary small fw-semibold">Classification Society</label>
                       <select
                         className="form-select form-select-sm"
