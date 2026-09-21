@@ -11,6 +11,8 @@ import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
 import { filterAuditTrailForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
+import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
+import { CapaItem } from '../types/capa';
 
 interface VesselDetailViewProps {
   vesselId: string;
@@ -20,6 +22,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
   const {
     vessels,
     crew,
+    capaItems,
     updateVessel,
     setCurrentHashView,
     previousHashView,
@@ -32,12 +35,17 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
 
   const vessel = vessels.find((v) => v.id === vesselId);
 
-  const [activeTab, setActiveTab] = useState<'particulars' | 'vault' | 'assurance' | 'clients' | 'crew' | 'audit'>('particulars');
+  const [activeTab, setActiveTab] = useState<'particulars' | 'vault' | 'assurance' | 'clients' | 'crew' | 'audit' | 'inspections'>('particulars');
+
+  const linkedCapas = vessel
+    ? capaItems.filter((c) => c.vesselId === vessel.id || c.vesselName.toLowerCase() === vessel.name.toLowerCase())
+    : [];
   const [activeAccordion, setActiveAccordion] = useState<number | null>(1);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<VesselParticulars | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [selectedCapaForDrawer, setSelectedCapaForDrawer] = useState<CapaItem | null>(null);
 
   useEffect(() => {
     const found = vessels.find((v) => v.id === vesselId);
@@ -353,6 +361,15 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             onClick={() => setActiveTab('assurance')}
           >
             Assurance Sets ({linkedSets.length})
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link ${activeTab === 'inspections' ? 'active fw-bold text-primary' : 'text-secondary'}`}
+            onClick={() => setActiveTab('inspections')}
+          >
+            Physical Inspections ({linkedSets.length})
           </button>
         </li>
         {isAdmin && (
@@ -1095,6 +1112,152 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         </div>
       )}
 
+      {/* Tab: Physical Inspections & CAPA Tracker */}
+      {activeTab === 'inspections' && (
+        <div className="d-flex flex-column gap-4">
+          {/* Section 1: Physical Inspection Reports */}
+          <div className="card map-card-custom">
+            <div className="card-header d-flex flex-wrap align-items-center justify-between p-3 gap-2">
+              <div>
+                <span className="fw-bold text-primary m-0" style={{ fontSize: '0.95rem' }}>
+                  Physical Vessel Inspections & Audit Logs
+                </span>
+                <div className="text-secondary small">
+                  Inspection records, finding notes, supporting evidence, and CAPAs logged for {vessel.name}
+                </div>
+              </div>
+              {isCAdmin && (
+                <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle font-mono-code">
+                  Charterer Inspection Monitoring (Read-Only)
+                </span>
+              )}
+            </div>
+            <div className="card-body p-3">
+              {linkedSets.length === 0 ? (
+                <div className="text-muted text-center py-4">No physical inspection campaigns recorded for this vessel yet.</div>
+              ) : (
+                <div className="d-flex flex-column gap-3">
+                  {linkedSets.map((s) => (
+                    <div key={s.id} className="p-3.5 border rounded-3 bg-white shadow-2xs">
+                      <div className="d-flex flex-wrap align-items-center justify-between gap-2 mb-2">
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="fw-bold text-dark font-mono-code" style={{ fontSize: '0.95rem' }}>
+                            Visual Vessel Inspection & Safety Audit
+                          </span>
+                          <span className="badge bg-primary-subtle text-primary border" style={{ fontSize: '0.7rem' }}>
+                            {s.id}
+                          </span>
+                        </div>
+                        <span className="badge bg-success-subtle text-success-emphasis border border-success-subtle font-mono-code" style={{ fontSize: '0.75rem' }}>
+                          Completed
+                        </span>
+                      </div>
+
+                      <div className="row g-3 my-1 p-2.5 bg-light rounded-2 font-mono-code small">
+                        <div className="col-md-4">
+                          <span className="text-secondary d-block" style={{ fontSize: '0.725rem' }}>Assigned Inspector:</span>
+                          <strong className="text-dark">{s.assignedInspector || 'N. Technical (AMSA Marine Audit Division)'}</strong>
+                        </div>
+                        <div className="col-md-4">
+                          <span className="text-secondary d-block" style={{ fontSize: '0.725rem' }}>Inspection Date & Location:</span>
+                          <strong className="text-dark">14 Oct 2026 · Dampier Port Facility</strong>
+                        </div>
+                        <div className="col-md-4">
+                          <span className="text-secondary d-block" style={{ fontSize: '0.725rem' }}>Charterer / Client:</span>
+                          <strong className="text-dark">{s.initiatorOrg || 'Southern Basin Energy Pty Ltd'}</strong>
+                        </div>
+                      </div>
+
+                      <div className="d-flex flex-wrap align-items-center justify-between gap-3 mt-3 pt-2 border-top">
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                          <span className="badge bg-success text-white font-mono-code">12 Satisfactory</span>
+                          <span className="badge bg-info text-white font-mono-code">2 Observations</span>
+                          <span className="badge bg-danger text-white font-mono-code">1 Deficiency</span>
+                          <span className="badge bg-warning text-dark font-mono-code">CAPA-118 Linked</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary d-flex align-items-center gap-1.5"
+                          style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
+                          onClick={() => setCurrentHashView('inspection', vessel.name)}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                          View Inspection Checklist & Evidence
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 2: Vessel Corrective Actions (CAPA) Queue */}
+          <div className="card map-card-custom">
+            <div className="card-header d-flex align-items-center justify-between p-3">
+              <div>
+                <span className="fw-bold text-primary m-0" style={{ fontSize: '0.95rem' }}>
+                  Corrective Action Plans (CAPA) for {vessel.name} ({linkedCapas.length})
+                </span>
+                <div className="text-secondary small">
+                  Action items and re-inspection records logged for findings on this vessel
+                </div>
+              </div>
+            </div>
+            <div className="card-body p-3">
+              {linkedCapas.length === 0 ? (
+                <div className="text-muted text-center py-4">No open or recorded CAPA items for this vessel.</div>
+              ) : (
+                <div className="d-flex flex-column gap-3">
+                  {linkedCapas.map((c) => (
+                    <div key={c.id} className="p-3 border rounded-3 bg-white shadow-2xs">
+                      <div className="d-flex flex-wrap align-items-center justify-between gap-2 mb-2">
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="badge bg-warning text-dark font-mono-code">{c.id}</span>
+                          <span className="fw-bold text-dark" style={{ fontSize: '0.9rem' }}>{c.title}</span>
+                          {c.flaggedForReinspection && (
+                            <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle font-mono-code" style={{ fontSize: '0.7rem' }}>
+                              Flagged for Re-Inspection
+                            </span>
+                          )}
+                        </div>
+                        <span className={`badge ${c.status === 'Verified & Closed' ? 'bg-success text-white' : c.status === 'Under Re-Inspection' ? 'bg-warning text-dark' : 'bg-danger text-white'} font-mono-code`}>
+                          {c.status}
+                        </span>
+                      </div>
+                      <div className="small text-secondary mb-2" style={{ fontSize: '0.775rem' }}>
+                        Finding: {c.findingDescription}
+                      </div>
+                      <div className="d-flex flex-wrap align-items-center justify-between gap-2 pt-2 border-top small font-mono-code">
+                        <div>Owner: <strong className="text-dark">{c.owner}</strong> | Due: <strong className="text-dark">{c.dueDate}</strong></div>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-secondary font-mono-code"
+                          style={{ fontSize: '0.725rem' }}
+                          onClick={() => setSelectedCapaForDrawer(c)}
+                        >
+                          View Re-Inspection Details ({c.evidences.length} Evidences)
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Inline CAPA Re-Inspection Drawer Overlay for Physical Inspections Page */}
+      {selectedCapaForDrawer && (
+        <CapaReinspectionDrawer
+          capa={selectedCapaForDrawer}
+          onClose={() => setSelectedCapaForDrawer(null)}
+        />
+      )}
     </div>
   );
 };

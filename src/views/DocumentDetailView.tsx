@@ -137,7 +137,7 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
                 }`}
               style={{ fontSize: '0.825rem' }}
             >
-              Status: {doc.verificationStatus}
+              {doc.verificationStatus}
             </span>
           </div>
 

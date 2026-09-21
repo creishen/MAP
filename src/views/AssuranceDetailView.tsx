@@ -28,13 +28,14 @@ interface AssuranceDetailViewProps {
   with what file: src/views/AssuranceDetailView.tsx loaded by App.tsx.
 */
 export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId }) => {
-  const { assuranceSets, updateRequirementStatus, documents, activePersona } = useMapStore();
+  const { assuranceSets, updateRequirementStatus, updateAssuranceInspector, documents, activePersona, users, setCurrentHashView } = useMapStore();
   const [selectedDocForReview, setSelectedDocForReview] = useState<{ doc: MasterDocument; notes?: string } | null>(null);
   const [selectedDocForVersionHistory, setSelectedDocForVersionHistory] = useState<MasterDocument | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadTargetRequirement, setUploadTargetRequirement] = useState<AssuranceRequirement | null>(null);
   const [replaceExistingDoc, setReplaceExistingDoc] = useState<MasterDocument | null>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isAssigningInspector, setIsAssigningInspector] = useState(false);
 
   const assuranceSet = assuranceSets.find((s) => s.id === setId) || assuranceSets[0];
 
@@ -198,12 +199,57 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                     <div className="fw-bold text-dark">{assuranceSet.assignedVerifier || 'A. Fontaine (DNV Compliance Services)'}</div>
                   </div>
                   <div className="border-bottom pb-1.5">
-                    <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Inspector:</div>
-                    <div className="fw-bold text-dark">
-                      {assuranceSet.mandatoryInspectionRequired
-                        ? (assuranceSet.assignedInspector || 'N. Technical (AMSA Marine Audit Division)')
-                        : 'N/A (Not Required)'}
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Inspector:</div>
+                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && (
+                        <button
+                          type="button"
+                          className="btn btn-link p-0 text-decoration-none small font-mono-code ms-auto"
+                          style={{ fontSize: '0.7rem', color: '#0284c7' }}
+                          onClick={() => setIsAssigningInspector(!isAssigningInspector)}
+                        >
+                          {isAssigningInspector ? 'Cancel' : 'Assign / Change'}
+                        </button>
+                      )}
                     </div>
+                    {isAssigningInspector ? (
+                      <div className="mt-1 d-flex flex-column gap-1">
+                        <select
+                          className="form-select form-select-sm font-mono-code"
+                          style={{ fontSize: '0.75rem' }}
+                          value={assuranceSet.assignedInspector || ''}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              updateAssuranceInspector(assuranceSet.id, e.target.value);
+                              setIsAssigningInspector(false);
+                            }
+                          }}
+                        >
+                          <option value="">Select Inspector...</option>
+                          {users
+                            .filter((u) => u.role === 'Inspector')
+                            .map((u) => (
+                              <option key={u.id} value={`${u.name} (${u.organization})`}>
+                                {u.name} - {u.organization}
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-primary font-mono-code align-self-start mt-1"
+                          style={{ fontSize: '0.675rem' }}
+                          onClick={() => setCurrentHashView('users')}
+                        >
+                          + Invite New Inspector in User Management
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="fw-bold text-dark">
+                        {assuranceSet.mandatoryInspectionRequired
+                          ? (assuranceSet.assignedInspector || 'N. Technical (AMSA Marine Audit Division)')
+                          : 'N/A (Not Required)'}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Approver:</div>

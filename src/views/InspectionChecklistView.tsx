@@ -140,6 +140,8 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
   const [newCapaDueDate, setNewCapaDueDate] = useState('30 Sep 2026');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
+  const isInspector = activePersona === 'Inspector' || activePersona === 'Administrator';
+
   /* calculate recommended outcome dynamically */
   const observationCount = items.filter((i) => i.status === 'Observation').length;
   const deficiencyCount = items.filter((i) => i.status === 'Deficiency').length;
@@ -545,16 +547,18 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
           {/* Opposite Corner Controls: Status Badge + CAPA link + Export Data Button */}
           <div className="d-flex align-items-center gap-3 ms-auto">
             <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-mono-code px-3 py-2" style={{ fontSize: '0.8rem' }}>
-              Status: Audit In Progress
+              Audit In Progress
             </span>
 
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-primary fw-bold"
-              onClick={() => setCurrentHashView('capa', vesselName)}
-            >
-              Manage & Re-Inspect CAPAs
-            </button>
+            {isInspector && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-primary fw-bold"
+                onClick={() => setCurrentHashView('capa', vesselName)}
+              >
+                Manage & Re-Inspect CAPAs
+              </button>
+            )}
 
             {/* Export Data Button in opposite corner */}
             <div className="dropdown position-relative">
@@ -597,89 +601,106 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
             <div className="d-flex flex-column gap-3.5">
               {items.map((item) => (
                 <div key={item.id} className="map-checklist-item-container">
-                  {/* Item Title Header */}
-                  <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                  {/* Item Header (Title + Rating Status) */}
+                  <div className="d-flex align-items-start justify-content-between gap-2 mb-3 flex-wrap">
                     <div>
                       <div className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>{item.title}</div>
                       <div className="font-mono-code small text-muted" style={{ fontSize: '0.75rem' }}>{item.subtitle}</div>
+                      {item.capaCode && (
+                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle mt-1" style={{ fontSize: '0.675rem' }}>
+                          Linked {item.capaCode}
+                        </span>
+                      )}
                     </div>
-                    {item.capaCode && (
-                      <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style={{ fontSize: '0.675rem' }}>
-                        Linked {item.capaCode}
-                      </span>
+                    {/* Rating Status Pill Buttons or Read-Only Rating Badge */}
+                    {isInspector ? (
+                      <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                        <button
+                          type="button"
+                          className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Satisfactory'
+                            ? 'btn-outline-primary fw-semibold active'
+                            : 'btn-light text-secondary border'
+                            }`}
+                          style={{
+                            fontSize: '0.775rem',
+                            borderColor: item.status === 'Satisfactory' ? '#0d9488' : '#e2e8f0',
+                            color: item.status === 'Satisfactory' ? '#0d9488' : '#64748b',
+                            backgroundColor: item.status === 'Satisfactory' ? '#f0fdf4' : '#f8fafc',
+                          }}
+                          onClick={() => handleStatusChange(item.id, 'Satisfactory')}
+                        >
+                          Satisfactory
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Observation'
+                            ? 'btn-outline-info fw-semibold active'
+                            : 'btn-light text-secondary border'
+                            }`}
+                          style={{
+                            fontSize: '0.775rem',
+                            borderColor: item.status === 'Observation' ? '#0284c7' : '#e2e8f0',
+                            color: item.status === 'Observation' ? '#0369a1' : '#64748b',
+                            backgroundColor: item.status === 'Observation' ? '#e0f2fe' : '#f8fafc',
+                          }}
+                          onClick={() => handleStatusChange(item.id, 'Observation')}
+                        >
+                          Observation
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Deficiency'
+                            ? 'btn-outline-danger fw-semibold active'
+                            : 'btn-light text-secondary border'
+                            }`}
+                          style={{
+                            fontSize: '0.775rem',
+                            borderColor: item.status === 'Deficiency' ? '#b91c1c' : '#e2e8f0',
+                            color: item.status === 'Deficiency' ? '#b91c1c' : '#64748b',
+                            backgroundColor: item.status === 'Deficiency' ? '#fee2e2' : '#f8fafc',
+                          }}
+                          onClick={() => handleStatusChange(item.id, 'Deficiency')}
+                        >
+                          Deficiency
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <span
+                          className={`badge font-mono-code px-3 py-1.5 border ${item.status === 'Satisfactory'
+                            ? 'bg-success-subtle text-success-emphasis border-success-subtle'
+                            : item.status === 'Observation'
+                              ? 'bg-info-subtle text-info-emphasis border-info-subtle'
+                              : 'bg-danger-subtle text-danger-emphasis border-danger-subtle'
+                            }`}
+                          style={{ fontSize: '0.775rem' }}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
                     )}
-                  </div>
-
-                  {/* Rating Status Pill Buttons */}
-                  <div className="d-flex align-items-center gap-1.5 mb-3 flex-wrap">
-                    <button
-                      type="button"
-                      className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Satisfactory'
-                        ? 'btn-outline-primary fw-semibold active'
-                        : 'btn-light text-secondary border'
-                        }`}
-                      style={{
-                        fontSize: '0.775rem',
-                        borderColor: item.status === 'Satisfactory' ? '#0d9488' : '#e2e8f0',
-                        color: item.status === 'Satisfactory' ? '#0d9488' : '#64748b',
-                        backgroundColor: item.status === 'Satisfactory' ? '#f0fdf4' : '#f8fafc',
-                      }}
-                      onClick={() => handleStatusChange(item.id, 'Satisfactory')}
-                    >
-                      Satisfactory
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Observation'
-                        ? 'btn-outline-info fw-semibold active'
-                        : 'btn-light text-secondary border'
-                        }`}
-                      style={{
-                        fontSize: '0.775rem',
-                        borderColor: item.status === 'Observation' ? '#0284c7' : '#e2e8f0',
-                        color: item.status === 'Observation' ? '#0369a1' : '#64748b',
-                        backgroundColor: item.status === 'Observation' ? '#e0f2fe' : '#f8fafc',
-                      }}
-                      onClick={() => handleStatusChange(item.id, 'Observation')}
-                    >
-                      Observation
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn btn-sm rounded-pill px-3 py-1 ${item.status === 'Deficiency'
-                        ? 'btn-outline-danger fw-semibold active'
-                        : 'btn-light text-secondary border'
-                        }`}
-                      style={{
-                        fontSize: '0.775rem',
-                        borderColor: item.status === 'Deficiency' ? '#b91c1c' : '#e2e8f0',
-                        color: item.status === 'Deficiency' ? '#b91c1c' : '#64748b',
-                        backgroundColor: item.status === 'Deficiency' ? '#fee2e2' : '#f8fafc',
-                      }}
-                      onClick={() => handleStatusChange(item.id, 'Deficiency')}
-                    >
-                      Deficiency
-                    </button>
                   </div>
 
                   {/* Finding Comment Callout */}
                   {item.findingNotes && editingCommentItemId !== item.id && (
                     <div className="p-3 rounded-2 mb-3" style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a' }}>
-                      <div className="d-flex align-items-center justify-content-between mb-1">
+                      <div className="d-flex align-items-center justify-between mb-1">
                         <span className="fw-bold" style={{ fontSize: '0.8rem', color: '#b45309' }}>
                           Finding Recorded
                         </span>
-                        <button
-                          type="button"
-                          className="btn btn-link btn-sm p-0 text-decoration-none"
-                          style={{ fontSize: '0.725rem', color: '#b45309' }}
-                          onClick={() => {
-                            setEditingCommentItemId(item.id);
-                            setCommentText(item.findingNotes || '');
-                          }}
-                        >
-                          Edit Note
-                        </button>
+                        {isInspector && (
+                          <button
+                            type="button"
+                            className="btn btn-link btn-sm p-0 text-decoration-none"
+                            style={{ fontSize: '0.725rem', color: '#b45309' }}
+                            onClick={() => {
+                              setEditingCommentItemId(item.id);
+                              setCommentText(item.findingNotes || '');
+                            }}
+                          >
+                            Edit Note
+                          </button>
+                        )}
                       </div>
                       <div style={{ fontSize: '0.775rem', color: '#92400e', lineHeight: '1.4' }}>
                         {item.findingNotes}
@@ -688,7 +709,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                   )}
 
                   {/* Inline Comment Editor */}
-                  {editingCommentItemId === item.id && (
+                  {isInspector && editingCommentItemId === item.id && (
                     <div className="p-3 border rounded-2 bg-light mb-3">
                       <div className="fw-bold text-dark small mb-2" style={{ fontSize: '0.8rem' }}>
                         Finding Note for {item.title}
@@ -723,7 +744,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                   )}
 
                   {/* Inline Raise CAPA Form */}
-                  {raisingCapaItemId === item.id && (
+                  {isInspector && raisingCapaItemId === item.id && (
                     <div className="p-3 border rounded-2 bg-light mb-3">
                       <div className="fw-bold text-dark small mb-2" style={{ fontSize: '0.8rem' }}>
                         Raise Corrective Action (CAPA) for {item.title}
@@ -824,13 +845,15 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                             )}
                           </div>
 
-                          <button
-                            type="button"
-                            className="btn-close ms-auto flex-shrink-0 align-self-start"
-                            style={{ fontSize: '0.6rem' }}
-                            aria-label="Remove evidence"
-                            onClick={() => handleRemoveEvidence(item.id, ev.id)}
-                          />
+                          {isInspector && (
+                            <button
+                              type="button"
+                              className="btn-close ms-auto flex-shrink-0 align-self-start"
+                              style={{ fontSize: '0.6rem' }}
+                              aria-label="Remove evidence"
+                              onClick={() => handleRemoveEvidence(item.id, ev.id)}
+                            />
+                          )}
                         </div>
                       ))}
                       {item.evidences.length === 0 && (
@@ -841,52 +864,54 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                     </div>
                   </div>
 
-                  {/* Frictionless Action Toolbar */}
-                  <div className="map-checklist-action-toolbar">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5"
-                      onClick={() => openLiveCameraModal(item.id)}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                        <circle cx="12" cy="13" r="4" />
-                      </svg>
-                      Take Photo
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-light border text-secondary d-flex align-items-center gap-1.5"
-                      style={{ backgroundColor: '#f8fafc' }}
-                      onClick={() => handleTriggerUpload(item.id)}
-                    >
-                      + Attach File
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-light border text-secondary"
-                      style={{ backgroundColor: '#f8fafc' }}
-                      onClick={() => {
-                        setEditingCommentItemId(item.id);
-                        setCommentText(item.findingNotes || '');
-                      }}
-                    >
-                      + Add Note
-                    </button>
-                    {!item.capaCode && (
+                  {/* Frictionless Action Toolbar - only visible for Inspectors */}
+                  {isInspector && (
+                    <div className="map-checklist-action-toolbar">
                       <button
                         type="button"
-                        className="btn btn-sm btn-outline-warning text-dark"
+                        className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5"
+                        onClick={() => openLiveCameraModal(item.id)}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                          <circle cx="12" cy="13" r="4" />
+                        </svg>
+                        Take Photo
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-light border text-secondary d-flex align-items-center gap-1.5"
+                        style={{ backgroundColor: '#f8fafc' }}
+                        onClick={() => handleTriggerUpload(item.id)}
+                      >
+                        + Attach File
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-light border text-secondary"
+                        style={{ backgroundColor: '#f8fafc' }}
                         onClick={() => {
-                          setRaisingCapaItemId(item.id);
-                          setItemCapaTitle(`Corrective action for ${item.title}`);
+                          setEditingCommentItemId(item.id);
+                          setCommentText(item.findingNotes || '');
                         }}
                       >
-                        + Raise CAPA
+                        + Add Note
                       </button>
-                    )}
-                  </div>
+                      {!item.capaCode && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-warning text-dark"
+                          onClick={() => {
+                            setRaisingCapaItemId(item.id);
+                            setItemCapaTitle(`Corrective action for ${item.title}`);
+                          }}
+                        >
+                          + Raise CAPA
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -899,7 +924,6 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
           <div className="card map-card-custom map-checklist-card">
             <div className="d-flex align-items-center justify-between mb-3 border-bottom pb-2">
               <h6 className="fw-bold text-primary m-0">Survey Outcome Summary</h6>
-
             </div>
 
             <div className="d-flex flex-column gap-3">
@@ -926,26 +950,34 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
               {/* Selector for final outcome */}
               <div>
                 <label className="form-label fw-bold text-dark small mb-1">Final Inspection Outcome</label>
-                <select
-                  className="form-select form-select-sm fw-semibold"
-                  value={selectedResult}
-                  onChange={(e) => setSelectedResult(e.target.value as any)}
-                  style={{ fontSize: '0.85rem' }}
-                >
-                  <option value="Pass">Pass — Fully Compliant</option>
-                  <option value="Pass with observations">Pass with Observations — CAPA Tracked</option>
-                  <option value="Fail">Fail — Critical Deficiencies</option>
-                </select>
+                {isInspector ? (
+                  <select
+                    className="form-select form-select-sm fw-semibold"
+                    value={selectedResult}
+                    onChange={(e) => setSelectedResult(e.target.value as any)}
+                    style={{ fontSize: '0.85rem' }}
+                  >
+                    <option value="Pass">Pass — Fully Compliant</option>
+                    <option value="Pass with observations">Pass with Observations — CAPA Tracked</option>
+                    <option value="Fail">Fail — Critical Deficiencies</option>
+                  </select>
+                ) : (
+                  <div className="p-2 border rounded bg-white fw-bold font-mono-code text-primary small">
+                    {selectedResult}
+                  </div>
+                )}
               </div>
 
-              <button
-                type="button"
-                className="btn btn-warning font-weight-500 w-100 py-2.5 shadow-sm mt-1"
-                onClick={handleSubmitOutcome}
-                style={{ fontSize: '0.9rem' }}
-              >
-                Submit Inspection Outcome & Log CAPA
-              </button>
+              {isInspector && (
+                <button
+                  type="button"
+                  className="btn btn-warning font-weight-500 w-100 py-2.5 shadow-sm mt-1"
+                  onClick={handleSubmitOutcome}
+                  style={{ fontSize: '0.9rem' }}
+                >
+                  Submit Inspection Outcome & Log CAPA
+                </button>
+              )}
             </div>
           </div>
 
@@ -953,14 +985,16 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
           <div className="card map-card-custom map-checklist-card">
             <div className="d-flex align-items-center justify-between mb-3 border-bottom pb-2">
               <h6 className="fw-bold text-primary m-0">Corrective Action Plan (CAPA)</h6>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-warning text-dark font-weight-500"
-                onClick={() => setShowAddCapa(!showAddCapa)}
-                style={{ fontSize: '0.75rem' }}
-              >
-                {showAddCapa ? 'Cancel' : '+ New CAPA Item'}
-              </button>
+              {isInspector && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-warning text-dark font-weight-500"
+                  onClick={() => setShowAddCapa(!showAddCapa)}
+                  style={{ fontSize: '0.75rem' }}
+                >
+                  {showAddCapa ? 'Cancel' : '+ New CAPA Item'}
+                </button>
+              )}
             </div>
 
             {/* Add CAPA form */}
@@ -1011,17 +1045,17 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                 const displayList = storeCapas.length > 0
                   ? storeCapas
                   : capas.map((c) => ({
-                      id: c.id,
-                      vesselName,
-                      checklistItemTitle: 'Inspection Finding',
-                      title: c.title,
-                      findingDescription: 'Corrective action item logged during visual survey.',
-                      owner: c.owner,
-                      dueDate: c.dueDate,
-                      status: (c.status === 'Closed' ? 'Verified & Closed' : 'Open') as any,
-                      evidences: [],
-                      createdDate: '18 Sep 2026',
-                    }));
+                    id: c.id,
+                    vesselName,
+                    checklistItemTitle: 'Inspection Finding',
+                    title: c.title,
+                    findingDescription: 'Corrective action item logged during visual survey.',
+                    owner: c.owner,
+                    dueDate: c.dueDate,
+                    status: (c.status === 'Closed' ? 'Verified & Closed' : 'Open') as any,
+                    evidences: [],
+                    createdDate: '18 Sep 2026',
+                  }));
 
                 if (displayList.length === 0) {
                   return (

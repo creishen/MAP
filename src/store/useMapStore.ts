@@ -50,6 +50,7 @@ export interface MapStoreState {
   assuranceSets: AssuranceSet[];
   addAssuranceSet: (set: AssuranceSet) => void;
   updateAssuranceStage: (setId: string, stage: AssuranceStage) => void;
+  updateAssuranceInspector: (setId: string, inspectorName: string) => void;
   updateRequirementStatus: (
     setId: string,
     reqId: string,
@@ -111,6 +112,7 @@ export interface MapStoreState {
   updateCapaStatus: (capaId: string, status: CapaStatus, inspectorNotes?: string) => void;
   addCapaEvidence: (capaId: string, evidence: CapaEvidenceItem) => void;
   removeCapaEvidence: (capaId: string, evidenceId: string) => void;
+  flagCapaForReinspection: (capaId: string, reason?: string) => void;
 }
 
 
@@ -249,6 +251,21 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set((state) => ({
       assuranceSets: state.assuranceSets.map((s) => (s.id === setId ? { ...s, stage } : s)),
     }));
+  },
+  updateAssuranceInspector: (setId, inspectorName) => {
+    set((state) => ({
+      assuranceSets: state.assuranceSets.map((s) =>
+        s.id === setId ? { ...s, assignedInspector: inspectorName, mandatoryInspectionRequired: true } : s
+      ),
+    }));
+    get().logAuditEvent({
+      userId: 'USR-CURRENT',
+      userRole: get().activePersona,
+      organization: get().activePersona === 'C Admin' ? 'Southern Basin Energy' : 'Northwind Marine',
+      action: 'Assigned Vessel Inspector',
+      targetAsset: `${setId} · ${inspectorName}`,
+      justificationNotes: `Assigned inspector ${inspectorName} to assurance campaign ${setId}`,
+    });
   },
   updateRequirementStatus: (setId, reqId, status, notes) => {
     set((state) => {
@@ -692,5 +709,28 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           : item
       ),
     }));
+  },
+  flagCapaForReinspection: (capaId, reason) => {
+    set((state) => ({
+      capaItems: state.capaItems.map((item) =>
+        item.id === capaId
+          ? {
+              ...item,
+              status: 'Under Re-Inspection',
+              flaggedForReinspection: true,
+              cadminFlagReason: reason?.trim() || 'Re-inspection requested by C Admin charterer',
+              flaggedByCAdminDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            }
+          : item
+      ),
+    }));
+    get().logAuditEvent({
+      userId: 'USR-CADMIN-01',
+      userRole: get().activePersona,
+      organization: 'Charterer Organization',
+      action: `Flagged CAPA (${capaId}) for Re-Inspection`,
+      targetAsset: `CAPA ${capaId}`,
+      justificationNotes: reason || 'C Admin requested re-inspection verification by inspector',
+    });
   },
 }));

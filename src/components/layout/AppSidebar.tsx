@@ -70,7 +70,6 @@ export const AppSidebar: React.FC = () => {
       key: 'crew',
       label: 'Crew Directory',
       allowedRoles: ['Administrator', 'Submitter'],
-      badgeText: 'STCW',
     },
     {
       key: 'verifier',
@@ -82,25 +81,23 @@ export const AppSidebar: React.FC = () => {
       key: 'inspector',
       label: 'Physical Inspections',
       allowedRoles: ['Administrator'],
-      badgeText: '1',
     },
     {
       key: 'capa',
       label: 'CAPA Tracker',
       allowedRoles: ['Administrator', 'Inspector', 'Verifier', 'Approver'],
-      badgeText: 'CAPA',
+
     },
     {
       key: 'audit',
       label: 'Immutable Audit Trail',
       allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
-      badgeText: 'Logs',
+
     },
     {
       key: 'users',
       label: 'User Management',
-      allowedRoles: ['Administrator'],
-      badgeText: 'Admin',
+      allowedRoles: ['Administrator', 'C Admin'],
     },
   ];
 

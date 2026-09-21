@@ -32,4 +32,8 @@ export interface CapaItem {
   evidences: CapaEvidenceItem[];
   createdDate: string;
   lastInspectedDate?: string;
+  flaggedForReinspection?: boolean;
+  cadminFlagReason?: string;
+  flaggedByCAdminDate?: string;
 }
+

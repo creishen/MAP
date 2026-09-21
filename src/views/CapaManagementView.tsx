@@ -9,6 +9,7 @@ import { useMapStore } from '../store/useMapStore';
 import { getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { CapaItem, CapaStatus, CapaEvidenceItem } from '../types/capa';
+import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
 
 interface CapaManagementViewProps {
   vesselName?: string;
@@ -52,15 +53,23 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
     }
   }
 
-  const isFleetOverview = targetVesselName === 'ALL_FLEET' || targetVesselName === 'All Vessels';
+  const isFleetOverview =
+    !targetVesselName ||
+    targetVesselName === '' ||
+    targetVesselName === 'ALL' ||
+    targetVesselName === 'ALL_FLEET' ||
+    targetVesselName === 'All Vessels' ||
+    targetVesselName === 'capa' ||
+    targetVesselName === 'capas';
+
   const selectedVesselName = isFleetOverview
     ? 'All Fleet Vessels'
-    : (targetVesselName || vessels[0]?.name || 'MV Pacific Endeavour');
+    : targetVesselName;
 
   const vesselCapas = isFleetOverview
     ? capaItems
     : capaItems.filter(
-      (c) => c.vesselName.toLowerCase() === selectedVesselName.toLowerCase()
+      (c) => c.vesselName.toLowerCase() === selectedVesselName.toLowerCase() || c.vesselId === selectedVesselName
     );
 
   /* filter & search state */
@@ -367,16 +376,22 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
           <div className="d-flex align-items-center gap-3 ms-auto">
             {/* Vessel Selector dropdown */}
             <select
-              className="form-select form-select-sm fw-semibold"
-              value={selectedVesselName}
+              className="form-select form-select-sm fw-semibold border"
+              value={isFleetOverview ? 'ALL_FLEET' : selectedVesselName}
               onChange={(e) => setCurrentHashView('capas', e.target.value)}
-              style={{ fontSize: '0.8125rem', minWidth: '200px' }}
+              style={{ fontSize: '0.8125rem', minWidth: '220px' }}
             >
-              {vessels.map((v) => (
-                <option key={v.id} value={v.name}>
-                  {v.name} ({v.flagState})
-                </option>
-              ))}
+              <option value="ALL_FLEET">All Fleet Vessels ({capaItems.length} CAPAs)</option>
+              {vessels.map((v) => {
+                const vesselCapaCount = capaItems.filter(
+                  (c) => c.vesselName.toLowerCase() === v.name.toLowerCase()
+                ).length;
+                return (
+                  <option key={v.id} value={v.name}>
+                    {v.name} ({vesselCapaCount} CAPA{vesselCapaCount === 1 ? '' : 's'})
+                  </option>
+                );
+              })}
             </select>
 
             <div className="dropdown position-relative">
@@ -496,6 +511,11 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
                     <span className="badge bg-light text-dark border font-mono-code" style={{ fontSize: '0.7rem' }}>
                       Linked {capa.checklistId || 'General Audit'}
                     </span>
+                    {capa.flaggedForReinspection && (
+                      <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle font-mono-code" style={{ fontSize: '0.7rem' }}>
+                        Flagged for Re-Inspection
+                      </span>
+                    )}
                   </div>
                   <h6 className="fw-bold text-dark m-0" style={{ fontSize: '1rem' }}>
                     {capa.title}
@@ -625,253 +645,10 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
 
       {/* Interactive CAPA Re-Inspection Drawer / Modal */}
       {activeCapa && (
-        <>
-          <div className="map-modal-backdrop" onClick={() => setActiveCapa(null)} style={{ zIndex: 1040 }} />
-          <div
-            className="offcanvas offcanvas-end show bg-light text-dark border-start shadow-lg"
-            style={{ width: '92vw', maxWidth: '850px', visibility: 'visible', zIndex: 1050 }}
-            tabIndex={-1}
-          >
-            <div className="offcanvas-header border-bottom p-3 bg-white d-flex align-items-center justify-content-between">
-              <div>
-                <div className="font-mono-code text-uppercase small" style={{ fontSize: '0.725rem', color: '#94a3b8', letterSpacing: '0.05em' }}>
-                  INSPECTOR RE-INSPECTION WORKFLOW · {activeCapa.id}
-                </div>
-                <h5 className="offcanvas-title fw-bold text-dark m-0" style={{ fontSize: '1.2rem' }}>
-                  {activeCapa.title}
-                </h5>
-                <div className="font-mono-code small text-muted" style={{ fontSize: '0.75rem' }}>
-                  Vessel: {activeCapa.vesselName} · Linked Point: {activeCapa.checklistItemTitle}
-                </div>
-              </div>
-              <button type="button" className="btn-close ms-auto" onClick={() => setActiveCapa(null)} aria-label="Close" />
-            </div>
-
-            <div className="offcanvas-body p-4" style={{ backgroundColor: '#f8fafc' }}>
-              <div className="d-flex flex-column gap-4">
-                {/* Initial Finding Summary Box */}
-                <div className="card map-card-custom p-3 bg-white">
-                  <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>Original Survey Finding:</div>
-                  <div className="small text-secondary mb-3" style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
-                    {activeCapa.findingDescription}
-                  </div>
-                  <div className="d-flex flex-wrap align-items-center justify-between gap-2 pt-2 border-top small text-muted" style={{ fontSize: '0.75rem' }}>
-                    <span>Responsible Owner: <strong className="text-dark">{activeCapa.owner}</strong></span>
-                    <span>Target Due Date: <span className="font-mono-code fw-bold text-dark">{activeCapa.dueDate}</span></span>
-                  </div>
-                </div>
-
-                {/* Inspector Status Evaluation Selector */}
-                <div className="card map-card-custom p-3 bg-white">
-                  <label className="form-label fw-bold text-dark small mb-2">
-                    Inspector Re-Inspection Status Decision
-                  </label>
-
-                  <div className="d-flex flex-wrap gap-2 mb-3">
-                    {(['Open', 'Under Re-Inspection', 'Verified & Closed', 'Rectification Required'] as CapaStatus[]).map((statusChoice) => (
-                      <button
-                        key={statusChoice}
-                        type="button"
-                        className={`btn btn-sm rounded-pill px-3 py-1.5 ${reInspectStatus === statusChoice ? 'btn-primary fw-semibold' : 'btn-light border text-secondary'}`}
-                        style={{
-                          fontSize: '0.775rem',
-                          backgroundColor: reInspectStatus === statusChoice ? (statusChoice === 'Verified & Closed' ? '#059669' : 'rgb(11, 27, 43)') : '#f8fafc',
-                          borderColor: reInspectStatus === statusChoice ? (statusChoice === 'Verified & Closed' ? '#059669' : 'rgb(11, 27, 43)') : '#e2e8f0',
-                        }}
-                        onClick={() => setReInspectStatus(statusChoice)}
-                      >
-                        {statusChoice}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Re-inspection notes text area */}
-                  <div className="mb-2">
-                    <label className="form-label fw-bold text-dark small mb-1">
-                      Inspector Re-Inspection Notes & Finding Verification
-                    </label>
-                    <textarea
-                      className="form-control form-control-sm"
-                      rows={3}
-                      placeholder="Enter detailed re-inspection observations, physical condition checks, or reason for closure/rectification..."
-                      value={reInspectNotes}
-                      onChange={(e) => setReInspectNotes(e.target.value)}
-                      style={{ fontSize: '0.8rem' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Supporting Evidence List & Camera Capture Section */}
-                <div className="card map-card-custom p-3 bg-white">
-                  <div className="d-flex align-items-center justify-between mb-3 border-bottom pb-2">
-                    <div>
-                      <h6 className="fw-bold text-dark m-0" style={{ fontSize: '0.9rem' }}>
-                        Re-Inspection Supporting Evidence ({activeCapa.evidences.length})
-                      </h6>
-                      <div className="small text-muted" style={{ fontSize: '0.725rem' }}>
-                        Attach real-life photos or documents endorsing CAPA status
-                      </div>
-                    </div>
-
-                    <div className="d-flex align-items-center gap-2">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1.5"
-                        onClick={openLiveCameraModal}
-                        style={{ fontSize: '0.775rem' }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                          <circle cx="12" cy="13" r="4" />
-                        </svg>
-                        Take Photo
-                      </button>
-
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-light border text-secondary d-flex align-items-center gap-1.5"
-                        onClick={handleTriggerFileInput}
-                        style={{ fontSize: '0.775rem', backgroundColor: '#f8fafc' }}
-                      >
-                        + Attach File
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* List of Evidence Items */}
-                  <div className="d-flex flex-wrap gap-2.5">
-                    {activeCapa.evidences.map((ev) => (
-                      <div key={ev.id} className="map-checklist-evidence-item shadow-2xs position-relative">
-                        {ev.previewUrl ? (
-                          <img src={ev.previewUrl} alt={ev.title} className="map-checklist-evidence-thumb" />
-                        ) : (
-                          <div
-                            className="d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
-                            style={{
-                              width: '48px',
-                              height: '48px',
-                              backgroundColor: ev.type === 'Photo' ? '#e0f2fe' : '#f1f5f9',
-                              border: '1px solid',
-                              borderColor: ev.type === 'Photo' ? '#bae6fd' : '#cbd5e1',
-                            }}
-                          >
-                            {ev.type === 'Photo' ? (
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                <circle cx="12" cy="13" r="4" />
-                              </svg>
-                            ) : (
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                <polyline points="14 2 14 8 20 8" />
-                                <line x1="16" y1="13" x2="8" y2="13" />
-                                <line x1="16" y1="17" x2="8" y2="17" />
-                              </svg>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-                          <span
-                            className="font-mono-code fw-bold text-uppercase px-2 py-0.5 rounded align-self-start mb-0.5"
-                            style={{
-                              fontSize: '0.625rem',
-                              backgroundColor: ev.type === 'Photo' ? '#e0f2fe' : '#f1f5f9',
-                              color: ev.type === 'Photo' ? '#0369a1' : '#475569',
-                            }}
-                          >
-                            {ev.type}
-                          </span>
-                          <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.825rem' }}>
-                            {ev.title}
-                          </div>
-                          <div className="font-mono-code text-muted small text-truncate" style={{ fontSize: '0.675rem' }}>
-                            {ev.fileName || ev.title}
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="btn-close ms-auto flex-shrink-0 align-self-start"
-                          style={{ fontSize: '0.6rem' }}
-                          aria-label="Remove evidence"
-                          onClick={() => handleRemoveEv(activeCapa.id, ev.id)}
-                        />
-                      </div>
-                    ))}
-
-                    {activeCapa.evidences.length === 0 && (
-                      <div className="text-muted small fst-italic py-2">
-                        No supporting evidence files attached to this CAPA yet. Use Take Photo or Attach File above.
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Submit Re-Inspection Endorsement */}
-                <button
-                  type="button"
-                  className="btn btn-warning w-100 py-2.5 fw-bold shadow-sm"
-                  onClick={handleSaveReInspection}
-                  style={{ fontSize: '0.9rem' }}
-                >
-                  Endorse & Save CAPA Re-Inspection Status
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Camera Live Stream Snapshot Modal */}
-      {isCameraModalOpen && (
-        <div className="map-modal-backdrop d-flex align-items-center justify-content-center p-3" style={{ zIndex: 1060 }}>
-          <div className="map-camera-modal-dialog card p-3">
-            <div className="d-flex align-items-center justify-content-between pb-2 border-bottom mb-3">
-              <h6 className="fw-bold text-dark m-0">Live Camera Photo Capture</h6>
-              <button type="button" className="btn-close" onClick={closeCameraModal} aria-label="Close modal" />
-            </div>
-
-            <div className="d-flex flex-column align-items-center gap-3">
-              {!capturedPhotoDataUrl ? (
-                <>
-                  <video ref={videoRef} autoPlay playsInline className="map-camera-video-preview" />
-                  <canvas ref={canvasRef} className="d-none" />
-                  <div className="d-flex justify-content-center flex-wrap gap-2 w-100">
-                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={closeCameraModal}>
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline-primary btn-sm"
-                      onClick={() => {
-                        closeCameraModal();
-                        handleTriggerCameraInput();
-                      }}
-                    >
-                      Use Device Camera
-                    </button>
-                    <button type="button" className="btn btn-primary btn-sm px-4" onClick={takeCameraSnapshot}>
-                      Snap Photo
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <img src={capturedPhotoDataUrl} alt="Captured preview" className="map-camera-video-preview" />
-                  <div className="d-flex justify-content-center gap-2 w-100">
-                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setCapturedPhotoDataUrl(null)}>
-                      Retake
-                    </button>
-                    <button type="button" className="btn btn-success btn-sm px-4" onClick={attachLiveSnapshot}>
-                      Attach Photo
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <CapaReinspectionDrawer
+          capa={activeCapa}
+          onClose={() => setActiveCapa(null)}
+        />
       )}
     </div>
   );

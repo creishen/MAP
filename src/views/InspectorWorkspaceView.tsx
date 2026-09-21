@@ -165,6 +165,9 @@ export const InspectorWorkspaceView: React.FC = () => {
             <tbody>
               {assignedVessels.map((v: VesselParticulars) => {
                 const linkedSet = assuranceSets.find((s) => s.vesselId === v.id || s.vesselName === v.name);
+                const openCapaCountForVessel = capaItems.filter(
+                  (c) => (c.vesselName.toLowerCase() === v.name.toLowerCase() || c.vesselId === v.id) && c.status !== 'Verified & Closed'
+                ).length;
                 return (
                   <tr
                     key={v.id}
@@ -195,13 +198,14 @@ export const InspectorWorkspaceView: React.FC = () => {
                       <div className="d-flex align-items-center justify-content-end gap-2">
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline-danger"
+                          className={`btn btn-sm ${openCapaCountForVessel > 0 ? 'btn-outline-danger fw-bold' : 'btn-outline-secondary'}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setCurrentHashView('capa', v.name);
                           }}
+                          title={`View ${openCapaCountForVessel} open CAPA items for ${v.name}`}
                         >
-                          CAPAs
+                          CAPAs ({openCapaCountForVessel})
                         </button>
                         <button
                           type="button"

@@ -35,10 +35,7 @@ export function isAssuranceSetAssignedToPersona(
     return Boolean(set.assignedApprover);
   }
   if (persona === "C Admin") {
-    return (
-      set.initiatorRole === "C Admin · Client Created" ||
-      Boolean(set.assignedApprover)
-    );
+    return set.initiatorRole === "C Admin · Client Created";
   }
   return true;
 }
@@ -97,6 +94,30 @@ export function filterVesselsForPersona(
   );
 
   return vessels.filter((v) => assignedSetVesselIds.has(v.id));
+}
+
+/**
+  what: filters list of users based on active user persona RBAC rules.
+  how: returns all users for Administrator, and for C Admin returns only themselves and inspectors/verifiers.
+  with what file: src/utils/rbacHelpers.ts consumed by UserManagementView.tsx and UserTable.tsx.
+*/
+export function filterUsersForPersona(
+  users: import("../types/user").UserProfile[],
+  persona: UserRolePersona,
+): import("../types/user").UserProfile[] {
+  if (persona === "Administrator") return users;
+  if (persona === "C Admin") {
+    return users.filter(
+      (u) =>
+        u.role === "C Admin" ||
+        u.role === "Inspector" ||
+        u.role === "Verifier" ||
+        u.organization.includes("Southern Basin") ||
+        u.organization.includes("Chevron") ||
+        u.organization.includes("Woodside")
+    );
+  }
+  return users;
 }
 
 /**
@@ -285,13 +306,13 @@ export function isViewAccessibleToPersona(
   persona: UserRolePersona,
 ): boolean {
   if (persona === "Administrator") return true;
-  if (view === "users") return false;
+  if (view === "users" && !["Administrator", "C Admin"].includes(persona)) return false;
   if (view === "crew" && !["Administrator", "Submitter"].includes(persona))
     return false;
   if (view === "dashboard" || view === "audit" || view === "capa" || view === "capas") return true;
 
   if (persona === "C Admin") {
-    if (["documents", "verifier", "inspector", "inspection"].includes(view)) {
+    if (["documents", "verifier"].includes(view)) {
       return false;
     }
     return true;

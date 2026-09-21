@@ -11,16 +11,19 @@ import { UserRolePersona } from '../../types/audit';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 import { EditUserModal } from '../drawers/EditUserModal';
 
+import { filterUsersForPersona } from '../../utils/rbacHelpers';
+
 interface UserTableProps {
   onAddUser?: () => void;
+  roleCategoryTab?: 'ALL' | 'Inspector' | 'Verifier' | 'AdminApprover';
 }
 
 /**
   what: renders master user directory table matching assurance sets table layout.
-  how: filters users array by search query, role persona, and user classification, with export to CSV/PDF.
+  how: filters users array by search query, persona isolation rules, role category tabs, and classification, with export to CSV/PDF.
   with what file: src/components/tables/UserTable.tsx loaded by UserManagementView.tsx.
 */
-export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
+export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab = 'ALL' }) => {
   const { users, updateUserStatus, activePersona } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
@@ -29,9 +32,11 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
 
-  const canManageUsers = activePersona === 'Administrator';
+  const canManageUsers = activePersona === 'Administrator' || activePersona === 'C Admin';
 
-  const filteredUsers = users.filter((u) => {
+  const visibleUsers = filterUsersForPersona(users, activePersona);
+
+  const filteredUsers = visibleUsers.filter((u) => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       u.name.toLowerCase().includes(term) ||
@@ -43,7 +48,16 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser }) => {
     const matchesType = typeFilter === 'ALL' || u.userType === typeFilter;
     const matchesStatus = statusFilter === 'ALL' || u.status === statusFilter;
 
-    return matchesSearch && matchesRole && matchesType && matchesStatus;
+    let matchesRoleTab = true;
+    if (roleCategoryTab === 'Inspector') {
+      matchesRoleTab = u.role === 'Inspector';
+    } else if (roleCategoryTab === 'Verifier') {
+      matchesRoleTab = u.role === 'Verifier';
+    } else if (roleCategoryTab === 'AdminApprover') {
+      matchesRoleTab = u.role === 'C Admin' || u.role === 'Administrator' || u.role === 'Approver';
+    }
+
+    return matchesSearch && matchesRole && matchesType && matchesStatus && matchesRoleTab;
   });
 
   const getRoleBadgeClass = (role: UserRolePersona) => {

@@ -23,21 +23,27 @@ function vesselHasExpiringCert(vessel: VesselParticulars): boolean {
 interface VesselTableProps {
   onSelectVessel: (vessel: VesselParticulars) => void;
   onRegisterVessel?: () => void;
+  filterMode?: 'all' | 'chartered';
 }
 
-export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegisterVessel }) => {
+export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegisterVessel, filterMode }) => {
   const { vessels, assuranceSets, setActiveVesselId, activePersona } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [flagFilter, setFlagFilter] = useState('ALL');
   const [classFilter, setClassFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   // BR-4: Client Admin (C Admin) or Inspector cannot register new vessels
   const canRegister = activePersona === 'Administrator';
 
-  const personaVessels = filterVesselsForPersona(vessels, assuranceSets, activePersona);
+  const baseVessels = filterMode === 'all'
+    ? vessels
+    : filterMode === 'chartered'
+      ? filterVesselsForPersona(vessels, assuranceSets, 'C Admin')
+      : filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
-  const filteredVessels = personaVessels.filter((v) => {
+  const filteredVessels = baseVessels.filter((v) => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       v.name.toLowerCase().includes(term) ||
@@ -47,7 +53,8 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
 
     const matchesFlag = flagFilter === 'ALL' || v.flagState === flagFilter;
     const matchesClass = classFilter === 'ALL' || v.classificationSociety === classFilter;
-    return matchesSearch && matchesFlag && matchesClass;
+    const matchesStatus = statusFilter === 'ALL' || v.status === statusFilter;
+    return matchesSearch && matchesFlag && matchesClass && matchesStatus;
   });
 
   const handleExportCsv = () => {
@@ -117,6 +124,21 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
             <option value="ABS">ABS</option>
             <option value="Lloyd's Register">Lloyd's Register</option>
             <option value="Bureau Veritas">Bureau Veritas</option>
+          </select>
+
+          <select
+            className="form-select form-select-sm bg-white text-dark border-secondary"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ width: '150px' }}
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="In Operations">In Operations</option>
+            <option value="Under Charter">Under Charter</option>
+            <option value="In Transit">In Transit</option>
+            <option value="Dry Docking">Dry Docking</option>
+            <option value="Lay-up">Lay-up</option>
+            <option value="Port Stay">Port Stay</option>
           </select>
         </div>
 
