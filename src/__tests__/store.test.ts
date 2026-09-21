@@ -87,6 +87,55 @@ describe('Map Store State Management', () => {
     expect(updatedSet?.stage).toBe('Inspection');
   });
 
+  it('should link uploaded document to assurance requirement for verifier queue demo flow', () => {
+    const store = useMapStore.getState();
+    store.setActivePersona('Submitter');
+
+    const targetSet = store.assuranceSets.find((s) =>
+      s.requirements.some((r) => !r.documentId),
+    );
+    if (!targetSet) {
+      const customSet = store.assuranceSets[0];
+      const targetReq = customSet.requirements[0];
+      const mockDoc = {
+        ...store.documents[0],
+        id: 'DOC-REQ-LINK-TEST',
+        title: targetReq.title,
+        verificationStatus: 'Pending' as const,
+      };
+      store.uploadDocumentForRequirement(customSet.id, targetReq.id, mockDoc);
+      const updatedSet = useMapStore.getState().assuranceSets.find((s) => s.id === customSet.id);
+      const updatedReq = updatedSet?.requirements.find((r) => r.id === targetReq.id);
+      expect(updatedReq?.documentId).toBe('DOC-REQ-LINK-TEST');
+      expect(updatedReq?.verifierStatus).toBe('Pending');
+      expect(useMapStore.getState().documents.some((d) => d.id === 'DOC-REQ-LINK-TEST')).toBe(true);
+      return;
+    }
+
+    const targetReq = targetSet.requirements.find((r) => !r.documentId)!;
+    const mockDoc = {
+      ...store.documents[0],
+      id: 'DOC-REQ-LINK-TEST',
+      title: targetReq.title,
+      vesselId: targetSet.vesselId,
+      verificationStatus: 'Pending' as const,
+    };
+
+    store.uploadDocumentForRequirement(targetSet.id, targetReq.id, mockDoc);
+
+    const updatedSet = useMapStore.getState().assuranceSets.find((s) => s.id === targetSet.id);
+    const updatedReq = updatedSet?.requirements.find((r) => r.id === targetReq.id);
+    expect(updatedReq?.documentId).toBe('DOC-REQ-LINK-TEST');
+    expect(updatedReq?.verifierStatus).toBe('Pending');
+
+    const scoped = filterDocumentsForVerifierQueue(
+      useMapStore.getState().documents,
+      useMapStore.getState().assuranceSets,
+      'Verifier',
+    );
+    expect(scoped.some((d) => d.id === 'DOC-REQ-LINK-TEST')).toBe(true);
+  });
+
   it('should scope verifier queue documents to assigned assurance set requirements', () => {
     const store = useMapStore.getState();
     store.setActivePersona('Verifier');

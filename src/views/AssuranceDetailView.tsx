@@ -32,6 +32,8 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
   const [selectedDocForReview, setSelectedDocForReview] = useState<{ doc: MasterDocument; notes?: string } | null>(null);
   const [selectedDocForVersionHistory, setSelectedDocForVersionHistory] = useState<MasterDocument | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadTargetRequirement, setUploadTargetRequirement] = useState<AssuranceRequirement | null>(null);
+  const [replaceExistingDoc, setReplaceExistingDoc] = useState<MasterDocument | null>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   const assuranceSet = assuranceSets.find((s) => s.id === setId) || assuranceSets[0];
@@ -45,6 +47,13 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
   const totalCount = assuranceSet.requirements.length;
 
   const renderRequirementStatus = (req: AssuranceRequirement) => {
+    if (!req.documentId) {
+      return (
+        <span className="badge bg-secondary text-white font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>
+          Awaiting Upload
+        </span>
+      );
+    }
     if (req.verifierStatus === 'Verified' || req.isFulfilled) {
       return <span className="badge bg-success text-white font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>Approved</span>;
     }
@@ -64,7 +73,27 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
       return <span className="badge bg-warning text-dark font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>To Inspect</span>;
     }
 
+    if (req.verifierStatus === 'Pending') {
+      return (
+        <span className="badge bg-info text-dark font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>
+          Pending Verification
+        </span>
+      );
+    }
+
     return <span className="badge bg-primary text-white font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>To Verify</span>;
+  };
+
+  const closeUploadModal = () => {
+    setIsUploadModalOpen(false);
+    setUploadTargetRequirement(null);
+    setReplaceExistingDoc(null);
+  };
+
+  const openRequirementUpload = (req: AssuranceRequirement, existingDoc?: MasterDocument) => {
+    setUploadTargetRequirement(req);
+    setReplaceExistingDoc(existingDoc || null);
+    setIsUploadModalOpen(true);
   };
 
   const handleExportCsv = () => {
@@ -275,25 +304,38 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                       {renderRequirementStatus(req)}
                     </td>
                     <td className="text-end">
-                      {linkedDoc ? (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-primary font-mono-code"
-                          onClick={() => setSelectedDocForReview({ doc: linkedDoc, notes: req.notes })}
-                        >
-                          Review Document
-                        </button>
-                      ) : canUpload ? (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-primary text-white font-mono-code"
-                          onClick={() => setIsUploadModalOpen(true)}
-                        >
-                          Upload Document
-                        </button>
-                      ) : (
-                        <span className="text-secondary small font-mono-code">No Document</span>
-                      )}
+                      <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap">
+                        {linkedDoc ? (
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary font-mono-code"
+                              onClick={() => setSelectedDocForReview({ doc: linkedDoc, notes: req.notes })}
+                            >
+                              Review Document
+                            </button>
+                            {canUpload && linkedDoc.verificationStatus !== 'Verified' && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary font-mono-code"
+                                onClick={() => openRequirementUpload(req, linkedDoc)}
+                              >
+                                Replace Revision
+                              </button>
+                            )}
+                          </>
+                        ) : canUpload ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary text-white font-mono-code"
+                            onClick={() => openRequirementUpload(req)}
+                          >
+                            Upload Document
+                          </button>
+                        ) : (
+                          <span className="text-secondary small font-mono-code">No Document</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -319,7 +361,13 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
       {/* Document Upload Modal */}
       <DocumentUploadModal
         isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
+        onClose={closeUploadModal}
+        existingDocument={replaceExistingDoc}
+        assuranceSetId={uploadTargetRequirement ? assuranceSet.id : undefined}
+        requirementId={uploadTargetRequirement?.id}
+        requirementTitle={uploadTargetRequirement?.title}
+        defaultVesselId={assuranceSet.vesselId}
+        onUploadComplete={closeUploadModal}
       />
     </div>
   );

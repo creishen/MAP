@@ -62,6 +62,11 @@ export interface MapStoreState {
   // Document Library State
   documents: MasterDocument[];
   addDocument: (doc: MasterDocument) => void;
+  uploadDocumentForRequirement: (
+    setId: string,
+    requirementId: string,
+    doc: MasterDocument,
+  ) => void;
   addDocumentVersion: (
     docId: string,
     newVersionLabel: string,
@@ -319,6 +324,52 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       action: 'Uploaded New Master Document',
       targetAsset: `${doc.id} (${doc.title})`,
       justificationNotes: `Uploaded certificate ${doc.certificateNo}`,
+    });
+  },
+  uploadDocumentForRequirement: (setId, requirementId, doc) => {
+    set((state) => {
+      const updatedSets = state.assuranceSets.map((s) => {
+        if (s.id !== setId) return s;
+
+        const updatedReqs = s.requirements.map((r) => {
+          if (r.id !== requirementId) return r;
+          return {
+            ...r,
+            documentId: doc.id,
+            documentVersion: doc.currentVersion,
+            verifierStatus: 'Pending' as const,
+            isFulfilled: false,
+            ocrConfidence: doc.ocrConfidence,
+            notes: `Mock upload linked to requirement (${doc.versions[0]?.fileName || doc.title}).`,
+          };
+        });
+
+        const hasLinkedDocuments = updatedReqs.some((r) => r.documentId);
+        let nextStage = s.stage;
+        if (hasLinkedDocuments && (s.stage === 'Initiated' || s.stage === 'Validation')) {
+          nextStage = 'Verification';
+        }
+
+        return {
+          ...s,
+          requirements: updatedReqs,
+          stage: nextStage,
+        };
+      });
+
+      return {
+        documents: [...state.documents, doc],
+        assuranceSets: updatedSets,
+      };
+    });
+
+    get().logAuditEvent({
+      userId: 'USR-SUBMIT-01',
+      userRole: get().activePersona,
+      organization: 'Vessel Provider Operations',
+      action: 'Uploaded Document for Assurance Requirement',
+      targetAsset: `${doc.id} → ${setId} / ${requirementId}`,
+      justificationNotes: `Mock upload: ${doc.title} (${doc.certificateNo}) queued for verifier review.`,
     });
   },
   addDocumentVersion: (docId, newVersionLabel, fileName, fileSizeBytes, changeSummary) => {

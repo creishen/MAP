@@ -13,6 +13,11 @@ interface DocumentUploadModalProps {
   onClose: () => void;
   existingDocument?: MasterDocument | null;
   onUploadComplete?: () => void;
+  /** When uploading from an assurance set requirement row (demo mock link). */
+  assuranceSetId?: string;
+  requirementId?: string;
+  requirementTitle?: string;
+  defaultVesselId?: string;
 }
 
 /**
@@ -25,8 +30,13 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   onClose,
   existingDocument,
   onUploadComplete,
+  assuranceSetId,
+  requirementId,
+  requirementTitle,
+  defaultVesselId,
 }) => {
-  const { vessels, addDocument, addDocumentVersion, verifyDocument, activePersona } = useMapStore();
+  const { vessels, addDocument, uploadDocumentForRequirement, addDocumentVersion, verifyDocument, activePersona } =
+    useMapStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,20 +69,26 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         );
         setChangeSummary('Replacement document revision uploaded by submitter.');
       } else {
-        setTitle('');
+        setTitle(requirementTitle || '');
         setEntityType('Vessel Certificate');
-        setVesselId(vessels[0]?.id || '');
-        setCertificateNo('');
+        setVesselId(defaultVesselId || vessels[0]?.id || '');
+        setCertificateNo(requirementTitle ? `DEMO-${Math.floor(10000 + Math.random() * 89999)}` : '');
         setIssuingAuthority('DNV');
         setExpiryDate('2029-06-30');
-        setFileName('');
-        setChangeSummary('');
+        setFileName(
+          requirementTitle
+            ? `${requirementTitle.replace(/\s+/g, '_')}_DemoUpload.pdf`
+            : '',
+        );
+        setChangeSummary(
+          requirementTitle ? `Initial upload for assurance requirement: ${requirementTitle}.` : '',
+        );
       }
       setIsUploading(false);
       setUploadProgress(0);
       setStatusMessage('');
     }
-  }, [isOpen, existingDocument, vessels]);
+  }, [isOpen, existingDocument, vessels, requirementTitle, defaultVesselId]);
 
   if (!isOpen) return null;
 
@@ -174,7 +190,11 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           },
           verificationStatus: 'Pending',
         };
-        addDocument(newDoc);
+        if (assuranceSetId && requirementId) {
+          uploadDocumentForRequirement(assuranceSetId, requirementId, newDoc);
+        } else {
+          addDocument(newDoc);
+        }
       }
 
       setIsUploading(false);
@@ -207,7 +227,9 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             <h5 className="modal-title fw-bold text-slate-900 m-0">
               {existingDocument
                 ? `Upload Replacement Revision — ${existingDocument.title}`
-                : 'Upload New Master Document'}
+                : requirementTitle
+                  ? `Upload Document — ${requirementTitle}`
+                  : 'Upload New Master Document'}
             </h5>
             <button
               type="button"
