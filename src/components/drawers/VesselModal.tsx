@@ -930,7 +930,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                         onChange={(e) => setConstructionCountry(e.target.value)}
                       />
                     </div>
-                    <div className="col-md-4">
+                    <div className={`col-md-4 ${revealedVesselFields.yearBuilt ? 'ai-field-reveal ai-field-highlight' : ''}`}>
                       <label className="form-label text-secondary small fw-semibold">Year Built / Completed</label>
                       <input
                         type="number"
@@ -960,7 +960,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                         onChange={(e) => setBeam(parseFloat(e.target.value) || 0)}
                       />
                     </div>
-                    <div className="col-md-3">
+                    <div className={`col-md-3 ${revealedVesselFields.gt ? 'ai-field-reveal ai-field-highlight' : ''}`}>
                       <label className="form-label text-secondary small fw-semibold">Gross Tonnage (GT)</label>
                       <input
                         type="number"
@@ -969,7 +969,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                         onChange={(e) => setGt(parseInt(e.target.value) || 0)}
                       />
                     </div>
-                    <div className="col-md-3">
+                    <div className={`col-md-3 ${revealedVesselFields.dwt ? 'ai-field-reveal ai-field-highlight' : ''}`}>
                       <label className="form-label text-secondary small fw-semibold">Deadweight (DWT)</label>
                       <input
                         type="number"
@@ -984,7 +984,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                     Section 4 & 5: Ownership, ISM & Operating Management
                   </div>
                   <div className="row g-2">
-                    <div className="col-md-6">
+                    <div className={`col-md-6 ${revealedVesselFields.registeredOwner ? 'ai-field-reveal ai-field-highlight' : ''}`}>
                       <label className="form-label text-secondary small fw-semibold">Registered Owner Name *</label>
                       <input
                         type="text"
