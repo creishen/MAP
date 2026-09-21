@@ -1,33 +1,31 @@
 /* 
-  file summary: dedicated vessel capa tracking and re-inspection management view in light theme.
-  responsibilities: presents vessel corrective actions (capa) queue, status filter tabs, interactive re-inspection drawer, real-life photo camera capture, and evidence attachment.
+  file summary: dedicated vessel capa tracking and re-inspection management table view in light theme.
+  responsibilities: presents vessel corrective actions (capa) queue as a sortable, filterable master table and launches CapaReinspectionDrawer for detailed re-inspections.
   role in system: full-page view rendered when clicking capa tracker in sidebar or inspector workspace (/capa or /capa/vesselName).
 */
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
-import { CapaItem, CapaStatus, CapaEvidenceItem } from '../types/capa';
+import { CapaItem, CapaStatus } from '../types/capa';
 import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
 
 interface CapaManagementViewProps {
   vesselName?: string;
 }
 
+type CapaSortField = 'id' | 'vesselName' | 'title' | 'owner' | 'dueDate' | 'status';
+
 /**
-  what: renders dedicated vessel capa items list and inspector re-inspection workspace with camera evidence capture.
-  how: filters store capaItems by vesselName and active status tab, allowing inspectors to re-inspect findings, update statuses, snap real-life photo evidence, and log immutable audit trail events.
+  what: renders dedicated vessel capa items table with search, filters, column sorting, and inspector re-inspection drawer.
+  how: aggregates capaItems into a clean sortable table with status/vessel dropdown filters and launches CapaReinspectionDrawer.
   with what file: src/views/CapaManagementView.tsx loaded by App.tsx when currentHashView is capa or capas.
 */
 export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselName }) => {
   const {
     capaItems,
     vessels,
-    updateCapaStatus,
-    addCapaEvidence,
-    removeCapaEvidence,
-    logAuditEvent,
     activePersona,
     setCurrentHashView,
     previousHashView,
@@ -72,15 +70,15 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
       (c) => c.vesselName.toLowerCase() === selectedVesselName.toLowerCase() || c.vesselId === selectedVesselName
     );
 
-  /* filter & search state */
+  /* filter, sort & search state */
   const [activeTab, setActiveTab] = useState<'All' | CapaStatus>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [sortField, setSortField] = useState<CapaSortField>('id');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   /* re-inspection drawer state */
   const [activeCapa, setActiveCapa] = useState<CapaItem | null>(null);
-  const [reInspectStatus, setReInspectStatus] = useState<CapaStatus>('Open');
-  const [reInspectNotes, setReInspectNotes] = useState('');
 
   /* auto-open target CAPA item re-inspection drawer if targetCapaId is specified */
   React.useEffect(() => {
@@ -88,22 +86,9 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
       const found = capaItems.find((c) => c.id === targetCapaId);
       if (found) {
         setActiveCapa(found);
-        setReInspectStatus(found.status);
-        setReInspectNotes(found.inspectorNotes || '');
       }
     }
   }, [targetCapaId, capaItems]);
-
-  /* photo & file upload input refs */
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const cameraInputRef = useRef<HTMLInputElement | null>(null);
-
-  /* live camera modal state */
-  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  const [capturedPhotoDataUrl, setCapturedPhotoDataUrl] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   /* compute capa KPI counts */
   const totalCount = vesselCapas.length;
@@ -116,14 +101,50 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
     const matchesTab = activeTab === 'All' || item.status === activeTab;
     const matchesSearch =
       item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.vesselName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.owner.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.findingDescription.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.checklistItemTitle.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
 
+  /* apply column sorting */
+  const sortedCapas = [...filteredCapas].sort((a, b) => {
+    let valA = (a[sortField] || '').toString().toLowerCase();
+    let valB = (b[sortField] || '').toString().toLowerCase();
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (field: CapaSortField) => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const renderSortHeader = (label: string, field: CapaSortField) => (
+    <th
+      className="cursor-pointer user-select-none"
+      onClick={() => handleSort(field)}
+      style={{ cursor: 'pointer' }}
+    >
+      <div className="d-flex align-items-center justify-between gap-1">
+        <span>{label}</span>
+        <span className="text-muted small" style={{ fontSize: '0.7rem' }}>
+          {sortField === field ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </div>
+    </th>
+  );
+
   const handleExportCsv = () => {
-    const exportData = filteredCapas.map((c) => ({
+    const exportData = sortedCapas.map((c) => ({
       CapaId: c.id,
       Vessel: c.vesselName,
       ChecklistItem: c.checklistItemTitle,
@@ -140,282 +161,44 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
   };
 
   const handleExportPdf = () => {
-    const headers = ['CAPA ID', 'Title & Checklist Link', 'Status & Owner', 'Notes & Details'];
-    const rows = filteredCapas.map((c) => [
+    const headers = ['CAPA ID', 'Vessel', 'Title & Checklist', 'Status', 'Owner', 'Due Date'];
+    const rows = sortedCapas.map((c) => [
       c.id,
+      c.vesselName,
       `${c.title}\n(${c.checklistItemTitle})`,
-      `${c.status}\nOwner: ${c.owner} · Due: ${c.dueDate}`,
-      `Notes: ${c.inspectorNotes || 'Pending re-inspection'}\nEvidence Files: ${c.evidences.length}`,
+      c.status,
+      c.owner,
+      c.dueDate,
     ]);
     exportToPdf(`${selectedVesselName} CAPA Re-Inspection Summary`, headers, rows);
     setIsExportOpen(false);
   };
 
-  /* open re-inspection drawer for a capa item */
-  const handleOpenReInspect = (capa: CapaItem) => {
-    setActiveCapa(capa);
-    setReInspectStatus(capa.status);
-    setReInspectNotes(capa.inspectorNotes || '');
-  };
-
-  /* save re-inspection outcome */
-  const handleSaveReInspection = () => {
-    if (!activeCapa) return;
-    updateCapaStatus(activeCapa.id, reInspectStatus, reInspectNotes.trim() ? reInspectNotes.trim() : undefined);
-
-    logAuditEvent({
-      userId: 'USR-INSPEC-01',
-      userRole: activePersona,
-      organization: 'Meridian Marine Surveyors',
-      action: `Re-Inspected CAPA (${activeCapa.id})`,
-      targetAsset: `${selectedVesselName} · ${activeCapa.title}`,
-      justificationNotes: `Updated CAPA ${activeCapa.id} status to ${reInspectStatus}. Notes: ${reInspectNotes || 'Endorsed'}`,
-    });
-
-    alert(`Saved Re-Inspection status (${reInspectStatus}) for ${activeCapa.id}.`);
-    setActiveCapa(null);
-  };
-
-  /* trigger native mobile camera input */
-  const handleTriggerCameraInput = () => {
-    if (cameraInputRef.current) {
-      cameraInputRef.current.value = '';
-      cameraInputRef.current.click();
+  const getStatusBadgeClass = (status: CapaStatus) => {
+    switch (status) {
+      case 'Verified & Closed':
+        return 'bg-success text-white';
+      case 'Under Re-Inspection':
+        return 'bg-warning text-dark';
+      case 'Rectification Required':
+        return 'bg-danger text-white';
+      case 'Open':
+      default:
+        return 'bg-secondary text-white';
     }
-  };
-
-  /* process camera photo upload */
-  const handleCameraFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeCapa) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      const timeStamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const newEv: CapaEvidenceItem = {
-        id: `EV-${Date.now().toString().slice(-4)}`,
-        title: `Re-Inspection Photo (${timeStamp})`,
-        type: 'Photo',
-        fileName: file.name || `capa_photo_${Date.now()}.jpg`,
-        fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        previewUrl: dataUrl,
-        uploadedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        uploadedBy: 'Inspector Marcus Vance',
-      };
-
-      addCapaEvidence(activeCapa.id, newEv);
-
-      /* update active capa state locally for responsive UI update */
-      setActiveCapa((prev) => (prev ? { ...prev, evidences: [...prev.evidences, newEv] } : prev));
-
-      logAuditEvent({
-        userId: 'USR-INSPEC-01',
-        userRole: activePersona,
-        organization: 'Meridian Marine Surveyors',
-        action: `Attached Photo Evidence for ${activeCapa.id}`,
-        targetAsset: `${selectedVesselName} · ${activeCapa.id}`,
-        justificationNotes: `Uploaded photo evidence: ${newEv.fileName}`,
-      });
-
-      e.target.value = '';
-    };
-    reader.readAsDataURL(file);
-  };
-
-  /* trigger general document file upload input */
-  const handleTriggerFileInput = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleDocumentFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeCapa) return;
-
-    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(file.name);
-    const newEv: CapaEvidenceItem = {
-      id: `EV-${Date.now().toString().slice(-4)}`,
-      title: file.name.replace(/\.[^/.]+$/, ''),
-      type: isImage ? 'Photo' : 'Document',
-      fileName: file.name,
-      fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-      uploadedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      uploadedBy: 'Inspector Marcus Vance',
-    };
-
-    addCapaEvidence(activeCapa.id, newEv);
-    setActiveCapa((prev) => (prev ? { ...prev, evidences: [...prev.evidences, newEv] } : prev));
-
-    logAuditEvent({
-      userId: 'USR-INSPEC-01',
-      userRole: activePersona,
-      organization: 'Meridian Marine Surveyors',
-      action: `Attached ${newEv.type} Evidence for ${activeCapa.id}`,
-      targetAsset: `${selectedVesselName} · ${activeCapa.id}`,
-      justificationNotes: `Uploaded ${newEv.type} evidence file: ${newEv.fileName}`,
-    });
-
-    e.target.value = '';
-  };
-
-  /* open live camera video stream modal */
-  const openLiveCameraModal = async () => {
-    setCapturedPhotoDataUrl(null);
-    setIsCameraModalOpen(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      setCameraStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      /* camera video stream unavailable, fallback to direct device camera file input */
-      console.warn('live camera video stream unaccessible, falling back to camera input');
-      closeCameraModal();
-      handleTriggerCameraInput();
-    }
-  };
-
-  /* take camera snapshot from live stream */
-  const takeCameraSnapshot = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      setCapturedPhotoDataUrl(dataUrl);
-    }
-  };
-
-  /* attach snapshot captured from live stream */
-  const attachLiveSnapshot = () => {
-    if (!capturedPhotoDataUrl || !activeCapa) return;
-    const timeStamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const newEv: CapaEvidenceItem = {
-      id: `EV-${Date.now().toString().slice(-4)}`,
-      title: `On-Site Photo (${timeStamp})`,
-      type: 'Photo',
-      fileName: `capa_photo_${Date.now().toString().slice(-4)}.jpg`,
-      fileSize: '1.4 MB',
-      previewUrl: capturedPhotoDataUrl,
-      uploadedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      uploadedBy: 'Inspector Marcus Vance',
-    };
-
-    addCapaEvidence(activeCapa.id, newEv);
-    setActiveCapa((prev) => (prev ? { ...prev, evidences: [...prev.evidences, newEv] } : prev));
-
-    logAuditEvent({
-      userId: 'USR-INSPEC-01',
-      userRole: activePersona,
-      organization: 'Meridian Marine Surveyors',
-      action: `Captured Live Photo Evidence for ${activeCapa.id}`,
-      targetAsset: `${selectedVesselName} · ${activeCapa.id}`,
-      justificationNotes: `Attached live webcam photo for ${activeCapa.id}`,
-    });
-
-    closeCameraModal();
-  };
-
-  const closeCameraModal = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop());
-    }
-    setCameraStream(null);
-    setCapturedPhotoDataUrl(null);
-    setIsCameraModalOpen(false);
-  };
-
-  const handleRemoveEv = (capaId: string, evId: string) => {
-    removeCapaEvidence(capaId, evId);
-    setActiveCapa((prev) => (prev ? { ...prev, evidences: prev.evidences.filter((e) => e.id !== evId) } : prev));
   };
 
   return (
     <div className="d-flex flex-column gap-4">
-      {/* hidden input triggers for file attachments and native camera capture */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="d-none"
-        onChange={handleDocumentFileChange}
-        accept="image/*,.pdf,.doc,.docx"
-      />
-      <input
-        type="file"
-        ref={cameraInputRef}
-        className="d-none"
-        accept="image/*"
-        capture="environment"
-        onChange={handleCameraFileChange}
-      />
-
       {/* Top Header & Context Banner */}
-      <div className="card map-card-custom map-checklist-card bg-white">
+      <div className="card map-card-custom bg-white p-3">
         <div className="d-flex flex-wrap align-items-center justify-between gap-3">
-          <div className="d-flex align-items-center gap-3">
-            <div>
-              <h5 className="fw-bold text-dark m-0" style={{ fontSize: '1.25rem' }}>
-                Corrective Actions (CAPA) & Re-Inspection Registry
-              </h5>
-              <div className="font-mono-code small text-muted mt-0.5" style={{ fontSize: '0.75rem' }}>
-                Vessel: <span className="fw-bold text-primary">{selectedVesselName}</span> · Active Survey CAPA Audit Queue
-              </div>
-            </div>
-          </div>
-
-          <div className="d-flex align-items-center gap-3 ms-auto">
-            {/* Vessel Selector dropdown */}
-            <select
-              className="form-select form-select-sm fw-semibold border"
-              value={isFleetOverview ? 'ALL_FLEET' : selectedVesselName}
-              onChange={(e) => setCurrentHashView('capas', e.target.value)}
-              style={{ fontSize: '0.8125rem', minWidth: '220px' }}
-            >
-              <option value="ALL_FLEET">All Fleet Vessels ({capaItems.length} CAPAs)</option>
-              {vessels.map((v) => {
-                const vesselCapaCount = capaItems.filter(
-                  (c) => c.vesselName.toLowerCase() === v.name.toLowerCase()
-                ).length;
-                return (
-                  <option key={v.id} value={v.name}>
-                    {v.name} ({vesselCapaCount} CAPA{vesselCapaCount === 1 ? '' : 's'})
-                  </option>
-                );
-              })}
-            </select>
-
-            <div className="dropdown position-relative">
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
-                onClick={() => setIsExportOpen(!isExportOpen)}
-              >
-                Export CAPA Report
-              </button>
-              {isExportOpen && (
-                <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border" style={{ zIndex: 1050 }}>
-                  <li>
-                    <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
-                      Export as CSV (.csv)
-                    </button>
-                  </li>
-                  <li>
-                    <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
-                      Export as PDF (.pdf)
-                    </button>
-                  </li>
-                </ul>
-              )}
+          <div>
+            <h5 className="fw-bold text-dark m-0" style={{ fontSize: '1.25rem' }}>
+              Corrective Actions (CAPA) & Re-Inspection Registry
+            </h5>
+            <div className="font-mono-code small text-muted mt-0.5" style={{ fontSize: '0.75rem' }}>
+              Vessel: <span className="fw-bold text-primary">{selectedVesselName}</span> · Active Survey CAPA Audit Queue
             </div>
           </div>
         </div>
@@ -464,186 +247,156 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
         </div>
       </div>
 
-      {/* Main CAPA Registry Card */}
-      <div className="card map-card-custom map-checklist-card">
-        {/* Controls Header: Status Filter Pills & Search */}
-        <div className="d-flex flex-wrap align-items-center justify-between gap-3 mb-4 pb-3 border-bottom">
-          <div className="d-flex align-items-center gap-1.5 flex-wrap">
-            {(['All', 'Open', 'Under Re-Inspection', 'Verified & Closed'] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1.5 ${activeTab === tab ? 'btn-primary fw-semibold' : 'btn-light text-secondary border'}`}
-                style={{
-                  fontSize: '0.775rem',
-                  backgroundColor: activeTab === tab ? 'rgb(11, 27, 43)' : '#f8fafc',
-                  borderColor: activeTab === tab ? 'rgb(11, 27, 43)' : '#e2e8f0',
-                }}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab === 'All' ? 'All CAPAs' : tab}
-              </button>
-            ))}
-          </div>
+      {/* Main CAPA Master Table Card */}
+      <div className="card map-card-custom">
+        {/* Controls Header: Vessel Filter + Status Filter + Search + Export */}
+        <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
+          <div className="d-flex flex-wrap align-items-center gap-2">
+            {/* Vessel Selector Dropdown */}
+            <select
+              className="form-select form-select-sm bg-white text-dark border-secondary"
+              value={isFleetOverview ? 'ALL_FLEET' : selectedVesselName}
+              onChange={(e) => setCurrentHashView('capas', e.target.value)}
+              style={{ width: '220px' }}
+            >
+              <option value="ALL_FLEET">All Fleet Vessels ({capaItems.length})</option>
+              {vessels.map((v) => {
+                const vesselCapaCount = capaItems.filter(
+                  (c) => c.vesselName.toLowerCase() === v.name.toLowerCase()
+                ).length;
+                return (
+                  <option key={v.id} value={v.name}>
+                    {v.name} ({vesselCapaCount})
+                  </option>
+                );
+              })}
+            </select>
 
-          <div style={{ maxWidth: '280px', width: '100%' }}>
+            {/* Status Filter Dropdown */}
+            <select
+              className="form-select form-select-sm bg-white text-dark border-secondary"
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as any)}
+              style={{ width: '180px' }}
+            >
+              <option value="All">All Statuses</option>
+              <option value="Open">Open</option>
+              <option value="Under Re-Inspection">Under Re-Inspection</option>
+              <option value="Rectification Required">Rectification Required</option>
+              <option value="Verified & Closed">Verified & Closed</option>
+            </select>
+
+            {/* Search Input */}
             <input
               type="text"
-              className="form-control form-control-sm"
-              placeholder="Search CAPA code, title, owner..."
+              className="form-control form-control-sm bg-white text-dark border-secondary"
+              placeholder="Search CAPA ID, Title, Owner, Finding..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ fontSize: '0.8125rem' }}
+              style={{ width: '250px' }}
             />
+          </div>
+
+          <div className="dropdown position-relative ms-auto">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle ms-2"
+              onClick={() => setIsExportOpen(!isExportOpen)}
+            >
+              Export CAPA Report
+            </button>
+            {isExportOpen && (
+              <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border" style={{ zIndex: 1050 }}>
+                <li>
+                  <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
+                    Export as CSV (.csv)
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
+                    Export as PDF (.pdf)
+                  </button>
+                </li>
+              </ul>
+            )}
           </div>
         </div>
 
-        {/* CAPA Item List */}
-        <div className="d-flex flex-column gap-3.5">
-          {filteredCapas.map((capa) => (
-            <div key={capa.id} className="map-checklist-item-container">
-              <div className="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
-                <div>
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    <span className="font-mono-code fw-bold text-primary" style={{ fontSize: '0.9rem' }}>
-                      {capa.id}
-                    </span>
-                    <span className="badge bg-light text-dark border font-mono-code" style={{ fontSize: '0.7rem' }}>
-                      Linked {capa.checklistId || 'General Audit'}
-                    </span>
+        {/* Table Area */}
+        <div className="table-responsive">
+          <table className="table map-table-custom align-middle mb-0">
+            <thead>
+              <tr>
+                {renderSortHeader('CAPA ID', 'id')}
+                {renderSortHeader('Vessel Name', 'vesselName')}
+                {renderSortHeader('Title & Finding', 'title')}
+                {renderSortHeader('Owner / Dept', 'owner')}
+                {renderSortHeader('Due Date', 'dueDate')}
+                <th>Evidence</th>
+                {renderSortHeader('Status', 'status')}
+                <th className="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedCapas.map((capa) => (
+                <tr key={capa.id} onClick={() => setActiveCapa(capa)} style={{ cursor: 'pointer' }}>
+                  <td>
+                    <span className="font-mono-code fw-bold text-primary small me-1">{capa.id}</span>
                     {capa.flaggedForReinspection && (
-                      <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle font-mono-code" style={{ fontSize: '0.7rem' }}>
-                        Flagged for Re-Inspection
+                      <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle font-mono-code" style={{ fontSize: '0.65rem' }}>
+                        Flagged
                       </span>
                     )}
-                  </div>
-                  <h6 className="fw-bold text-dark m-0" style={{ fontSize: '1rem' }}>
-                    {capa.title}
-                  </h6>
-                  <div className="small text-secondary mt-0.5" style={{ fontSize: '0.775rem' }}>
-                    Checklist Point: <span className="fw-semibold text-dark">{capa.checklistItemTitle}</span>
-                  </div>
-                </div>
+                  </td>
+                  <td>
+                    <span className="fw-semibold text-dark font-mono-code small">{capa.vesselName}</span>
+                  </td>
+                  <td>
+                    <div className="fw-bold text-dark" style={{ fontSize: '0.875rem' }}>{capa.title}</div>
+                    <div className="text-muted small text-truncate" style={{ maxWidth: '300px', fontSize: '0.75rem' }}>
+                      {capa.findingDescription}
+                    </div>
+                  </td>
+                  <td className="small text-secondary">{capa.owner}</td>
+                  <td className="font-mono-code small">{capa.dueDate}</td>
+                  <td>
+                    <span className="badge bg-light text-dark border font-mono-code" style={{ fontSize: '0.725rem' }}>
+                      📷 {capa.evidences?.length || 0} Files
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`badge ${getStatusBadgeClass(capa.status)}`}>
+                      {capa.status}
+                    </span>
+                  </td>
+                  <td className="text-end">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary ms-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveCapa(capa);
+                      }}
+                    >
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
 
-                <div className="d-flex align-items-center gap-2">
-                  <span
-                    className={`badge ${capa.status === 'Verified & Closed'
-                      ? 'bg-success-subtle text-success-emphasis border border-success-subtle'
-                      : capa.status === 'Under Re-Inspection'
-                        ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
-                        : capa.status === 'Rectification Required'
-                          ? 'bg-danger-subtle text-danger-emphasis border border-danger-subtle'
-                          : 'bg-secondary-subtle text-secondary-emphasis border'
-                      } px-3 py-1.5 font-mono-code`}
-                    style={{ fontSize: '0.75rem' }}
-                  >
-                    {capa.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Finding Description callout */}
-              <div className="p-3 rounded-2 mb-3 bg-light border">
-                <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.775rem' }}>Finding Description:</div>
-                <div className="small text-secondary" style={{ fontSize: '0.775rem', lineHeight: '1.4' }}>
-                  {capa.findingDescription}
-                </div>
-              </div>
-
-              {/* Owner, Target Date & Evidence Metadata Bar */}
-              <div className="d-flex flex-wrap align-items-center justify-between gap-3 mb-3 small text-secondary" style={{ fontSize: '0.75rem' }}>
-                <div>Responsible Owner: <strong className="text-dark">{capa.owner}</strong></div>
-                <div>Target Completion Due: <span className="font-mono-code fw-bold text-dark">{capa.dueDate}</span></div>
-                <div>Supporting Evidence Files: <strong className="text-primary">{capa.evidences.length} Attached</strong></div>
-              </div>
-
-              {/* Supporting Evidence Thumbnails */}
-              {capa.evidences.length > 0 && (
-                <div className="mb-3 pt-2 border-top">
-                  <div className="font-mono-code text-uppercase small mb-2" style={{ fontSize: '0.65rem', color: '#64748b', letterSpacing: '0.05em' }}>
-                    CAPA Evidence ({capa.evidences.length})
-                  </div>
-                  <div className="d-flex flex-wrap gap-2">
-                    {capa.evidences.map((ev) => (
-                      <div key={ev.id} className="map-checklist-evidence-item shadow-2xs position-relative">
-                        {ev.previewUrl ? (
-                          <img src={ev.previewUrl} alt={ev.title} className="map-checklist-evidence-thumb" />
-                        ) : (
-                          <div
-                            className="d-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
-                            style={{
-                              width: '48px',
-                              height: '48px',
-                              backgroundColor: ev.type === 'Photo' ? '#e0f2fe' : '#f1f5f9',
-                              border: '1px solid',
-                              borderColor: ev.type === 'Photo' ? '#bae6fd' : '#cbd5e1',
-                            }}
-                          >
-                            {ev.type === 'Photo' ? (
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                <circle cx="12" cy="13" r="4" />
-                              </svg>
-                            ) : (
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                <polyline points="14 2 14 8 20 8" />
-                                <line x1="16" y1="13" x2="8" y2="13" />
-                                <line x1="16" y1="17" x2="8" y2="17" />
-                              </svg>
-                            )}
-                          </div>
-                        )}
-                        <div className="d-flex flex-column flex-grow-1 overflow-hidden">
-                          <span
-                            className="font-mono-code fw-bold text-uppercase px-2 py-0.5 rounded align-self-start mb-0.5"
-                            style={{
-                              fontSize: '0.625rem',
-                              backgroundColor: ev.type === 'Photo' ? '#e0f2fe' : '#f1f5f9',
-                              color: ev.type === 'Photo' ? '#0369a1' : '#475569',
-                            }}
-                          >
-                            {ev.type}
-                          </span>
-                          <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.825rem' }}>
-                            {ev.title}
-                          </div>
-                          <div className="font-mono-code text-muted small text-truncate" style={{ fontSize: '0.675rem' }}>
-                            {ev.fileName || ev.title}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              {sortedCapas.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="text-center text-muted py-4 fst-italic">
+                    No corrective action items match the selected search filters.
+                  </td>
+                </tr>
               )}
-
-              {/* Inspector Action Toolbar */}
-              <div className="map-checklist-action-toolbar pt-2 border-top">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary d-flex align-items-center gap-1.5 fw-semibold ms-auto"
-                  onClick={() => handleOpenReInspect(capa)}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                  Re-Inspect CAPA & Endorse Evidence
-                </button>
-              </div>
-            </div>
-          ))}
-
-          {filteredCapas.length === 0 && (
-            <div className="text-muted small text-center py-5 fst-italic">
-              No corrective action items match the active status or search filter for {selectedVesselName}.
-            </div>
-          )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Interactive CAPA Re-Inspection Drawer / Modal */}
+      {/* Interactive CAPA Re-Inspection & Evidence Drawer */}
       {activeCapa && (
         <CapaReinspectionDrawer
           capa={activeCapa}
