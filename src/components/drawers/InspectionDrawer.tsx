@@ -475,9 +475,6 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({ vesselName, 
         {/* modal header */}
         <div className="offcanvas-header border-bottom p-3 bg-white d-flex align-items-center justify-content-between">
           <div>
-            <div className="font-mono-code text-uppercase small" style={{ fontSize: '0.725rem', color: '#94a3b8', letterSpacing: '0.05em' }}>
-              UC-09 · INSPECTOR
-            </div>
             <h5 className="offcanvas-title fw-bold text-dark m-0" style={{ fontSize: '1.25rem' }}>
               Visual vessel inspection
             </h5>

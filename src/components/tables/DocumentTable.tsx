@@ -1,6 +1,6 @@
 /* 
-  file summary: Document Library data table component with grouped search box/filters on left and grouped export/upload buttons on right.
-  responsibilities: presents certificate numbers, issuing authorities, ocr confidence scores, and action controls on opposite side of search.
+  file summary: Document Library data table component with grouped search box/filters/sort controls on left and grouped export/upload buttons on right.
+  responsibilities: presents certificate numbers, issuing authorities, ocr confidence scores, multi-column sorting, and action controls.
   role in system: main data table for DocumentLibraryView.tsx.
 */
 
@@ -11,6 +11,16 @@ import { ConfidenceBadge } from '../common/ConfidenceBadge';
 import { formatMaritimeDate } from '../../utils/formatters';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 
+type SortField =
+  | 'title'
+  | 'entityType'
+  | 'certificateNo'
+  | 'issuingAuthority'
+  | 'expiryDate'
+  | 'ocrConfidence'
+  | 'complianceState'
+  | 'currentVersion';
+
 interface DocumentTableProps {
   onSelectDocument: (doc: MasterDocument) => void;
   onOpenVersionHistory?: (doc: MasterDocument) => void;
@@ -18,8 +28,8 @@ interface DocumentTableProps {
 }
 
 /**
-  what: renders Document Library table with search filters and export/upload actions.
-  how: filters documents array and triggers csv/pdf exports or opens upload modal on button clicks.
+  what: renders Document Library table with search filters, column sorting, and export/upload actions.
+  how: filters and sorts documents array and triggers csv/pdf exports or opens upload modal on button clicks.
   with what file: src/components/tables/DocumentTable.tsx loaded by DocumentLibraryView.tsx.
 */
 export const DocumentTable: React.FC<DocumentTableProps> = ({
@@ -31,6 +41,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sortField, setSortField] = useState<SortField>('title');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   const canUpload = activePersona === 'Administrator' || activePersona === 'Submitter';
@@ -45,6 +57,40 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
     return matchesSearch && matchesType && matchesStatus;
   });
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIndicator = (field: SortField) => {
+    if (sortField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{sortDirection === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const sortedDocs = [...filteredDocs].sort((a, b) => {
+    let valA: any = a[sortField] ?? '';
+    let valB: any = b[sortField] ?? '';
+
+    if (sortField === 'ocrConfidence') {
+      valA = Number(valA) || 0;
+      valB = Number(valB) || 0;
+    } else if (sortField === 'expiryDate') {
+      valA = new Date(valA).getTime() || 0;
+      valB = new Date(valB).getTime() || 0;
+    } else if (typeof valA === 'string') {
+      valA = valA.toLowerCase();
+      valB = (valB as string).toLowerCase();
+    }
+
+    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   const getComplianceBadgeClass = (state: ComplianceState) => {
     switch (state) {
       case 'Valid': return 'bg-success text-white';
@@ -56,7 +102,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   };
 
   const handleExportCsv = () => {
-    const exportData = filteredDocs.map((d) => ({
+    const exportData = sortedDocs.map((d) => ({
       DocumentTitle: d.title,
       EntityType: d.entityType,
       CertificateNo: d.certificateNo,
@@ -72,11 +118,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   };
 
   const handleExportPdf = () => {
-    const headers = ['Document Title', 'Type', 'Certificate No', 'Issuing Authority', 'Expiry Date', 'OCR Conf', 'State', 'Version'];
-    const rows = filteredDocs.map((d) => [
+    const headers = ['Document Title', 'Type', 'Issuing Authority', 'Expiry Date', 'OCR Conf', 'State', 'Version'];
+    const rows = sortedDocs.map((d) => [
       d.title,
       d.entityType,
-      d.certificateNo,
       d.issuingAuthority,
       d.expiryDate,
       `${d.ocrConfidence}%`,
@@ -89,9 +134,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
   return (
     <div className="card map-card-custom">
-      {/* Table Header Controls Row: Grouped Search/Filter Left, Grouped Export/Upload Right */}
+      {/* Table Header Controls Row: Grouped Search/Filter/Sort Left, Grouped Export/Upload Right */}
       <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
-        {/* Group 1 (Left): Search Box & Filter Dropdowns */}
+        {/* Group 1 (Left): Search Box, Filter Dropdowns & Sort Controls */}
         <div className="d-flex flex-wrap align-items-center gap-2">
           <input
             type="text"
@@ -99,13 +144,13 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             placeholder="Search Cert #, Title, Authority..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: '260px' }}
+            style={{ width: '240px' }}
           />
           <select
             className="form-select form-select-sm bg-white text-dark border-secondary"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            style={{ width: '160px' }}
+            style={{ width: '150px' }}
           >
             <option value="ALL">All Entity Types</option>
             <option value="Vessel Certificate">Vessel Certificate</option>
@@ -115,7 +160,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             className="form-select form-select-sm bg-white text-dark border-secondary"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ width: '160px' }}
+            style={{ width: '150px' }}
           >
             <option value="ALL">All States</option>
             <option value="Valid">Valid</option>
@@ -158,7 +203,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
               className="btn btn-sm btn-primary"
               onClick={onUploadDocument}
             >
-              Upload Master Document
+              Upload Document
             </button>
           )}
         </div>
@@ -168,19 +213,32 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th>Document Title</th>
-              <th>Type</th>
-              <th>Certificate No</th>
-              <th>Issuing Authority</th>
-              <th>Expiry Date</th>
-              <th>OCR Confidence</th>
-              <th>Compliance State</th>
-              <th>Version</th>
+              <th onClick={() => handleSort('title')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Document Title {renderSortIndicator('title')}
+              </th>
+              <th onClick={() => handleSort('entityType')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Type {renderSortIndicator('entityType')}
+              </th>
+              <th onClick={() => handleSort('issuingAuthority')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Issuing Authority {renderSortIndicator('issuingAuthority')}
+              </th>
+              <th onClick={() => handleSort('expiryDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Expiry Date {renderSortIndicator('expiryDate')}
+              </th>
+              <th onClick={() => handleSort('ocrConfidence')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                OCR Confidence {renderSortIndicator('ocrConfidence')}
+              </th>
+              <th onClick={() => handleSort('complianceState')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Compliance State {renderSortIndicator('complianceState')}
+              </th>
+              <th onClick={() => handleSort('currentVersion')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Version {renderSortIndicator('currentVersion')}
+              </th>
               <th className="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredDocs.map((doc) => (
+            {sortedDocs.map((doc) => (
               <tr
                 key={doc.id}
                 onClick={() => onSelectDocument(doc)}
@@ -192,7 +250,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     {doc.entityType}
                   </span>
                 </td>
-                <td className="font-mono-code">{doc.certificateNo}</td>
                 <td>{doc.issuingAuthority}</td>
                 <td className="font-mono-code small">{formatMaritimeDate(doc.expiryDate)}</td>
                 <td>
@@ -235,3 +292,4 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
     </div>
   );
 };
+

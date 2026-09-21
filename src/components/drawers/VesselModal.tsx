@@ -23,11 +23,12 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
 
   const aiFileInputRef = useRef<HTMLInputElement>(null);
 
-  /* AI extraction and Document Library lookup states */
+  /* AI extraction and Document Library lookup states (tracked per step/stage) */
   const [isExtractingAi, setIsExtractingAi] = useState(false);
   const [aiNotice, setAiNotice] = useState('');
-  const [selectedDocId, setSelectedDocId] = useState('');
-  const [pendingVerificationFile, setPendingVerificationFile] = useState<string | null>(null);
+  const [selectedDocIds, setSelectedDocIds] = useState<Record<number, string>>({});
+  const [activeVerifiedDocs, setActiveVerifiedDocs] = useState<Record<number, { title: string; certNo: string; docId?: string }>>({});
+  const [pendingVerificationState, setPendingVerificationState] = useState<{ fileName: string; stepNumber: number } | null>(null);
 
   // 1. Vessel Identification
   const [name, setName] = useState('');
@@ -108,7 +109,9 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     setClassCertDocName('');
     setIsExtractingAi(false);
     setAiNotice('');
-    setSelectedDocId('');
+    setSelectedDocIds({});
+    setActiveVerifiedDocs({});
+    setPendingVerificationState(null);
   }, [isOpen]);
 
 
@@ -248,8 +251,12 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
       return;
     }
 
-    if (res.vesselId && selectedDocId) {
-      linkDocumentToVessel(selectedDocId, res.vesselId, name, imoNumber);
+    if (res.vesselId) {
+      Object.values(selectedDocIds).forEach((docId) => {
+        if (docId) {
+          linkDocumentToVessel(docId, res.vesselId!, name, imoNumber);
+        }
+      });
     }
 
     onClose();
@@ -269,11 +276,11 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
   };
 
   /*
-    what: auto-fills vessel registration fields from an existing document library record.
-    how: extracts vessel attributes from MasterDocument model and sets state values.
+    what: auto-fills vessel registration fields from an existing document library record for a specific stage.
+    how: extracts vessel attributes from MasterDocument model, updates form fields and updates activeVerifiedDocs for that step.
     with what file: src/components/drawers/VesselModal.tsx.
   */
-  const autoFillFromDocument = (doc: MasterDocument) => {
+  const autoFillFromDocument = (doc: MasterDocument, stepNumber: number) => {
     if (doc.vesselAttributes) {
       if (doc.vesselAttributes.vesselName) setName(doc.vesselAttributes.vesselName);
       if (doc.vesselAttributes.imoNumber) setImoNumber(doc.vesselAttributes.imoNumber);
@@ -293,29 +300,35 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
 
     if (doc.certificateNo) setOfficialRegNumber(doc.certificateNo);
     if (!registeredOwner) setRegisteredOwner('Pacific Ocean Logistics Pty Ltd');
-    setAiNotice(`Auto-filled vessel identification particulars from Document Library record: "${doc.title}" (${doc.certificateNo || doc.id}).`);
+
+    setSelectedDocIds((prev) => ({ ...prev, [stepNumber]: doc.id }));
+    setActiveVerifiedDocs((prev) => ({
+      ...prev,
+      [stepNumber]: { title: doc.title, certNo: doc.certificateNo || doc.id, docId: doc.id },
+    }));
+    setAiNotice(`Auto-filled & verified specs from Document Library record: "${doc.title}" (${doc.certificateNo || doc.id}) for Stage ${stepNumber}!`);
   };
 
-  const handleStageVesselFileForVerification = (fileOrName: File | string) => {
+  const handleStageVesselFileForVerification = (fileOrName: File | string, stepNumber: number) => {
     const nameStr = typeof fileOrName === 'string' ? fileOrName : fileOrName.name;
-    setPendingVerificationFile(nameStr);
+    setPendingVerificationState({ fileName: nameStr, stepNumber });
     setAiNotice('');
   };
 
   const handleConfirmVesselFileVerification = () => {
-    if (pendingVerificationFile) {
-      const fileToExtract = pendingVerificationFile;
-      setPendingVerificationFile(null);
-      handleAiFileUpload(fileToExtract);
+    if (pendingVerificationState) {
+      const { fileName, stepNumber } = pendingVerificationState;
+      setPendingVerificationState(null);
+      handleAiFileUpload(fileName, stepNumber);
     }
   };
 
   /*
-    what: processes file attachment during vessel registration for AI OCR extraction and document library insertion.
+    what: processes file attachment during vessel registration for AI OCR extraction and document library insertion per stage.
     how: checks if matching document exists in store; if present, auto-fills from it; if missing, extracts details, auto-fills form, and calls addDocument.
     with what file: src/components/drawers/VesselModal.tsx.
   */
-  const handleAiFileUpload = (fileOrName: File | string) => {
+  const handleAiFileUpload = (fileOrName: File | string, stepNumber: number) => {
     const fileNameStr = typeof fileOrName === 'string' ? fileOrName : fileOrName.name;
     setIsExtractingAi(true);
     setAiNotice('');
@@ -340,8 +353,8 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
       );
 
       if (existingDoc) {
-        autoFillFromDocument(existingDoc);
-        setAiNotice(`Found matching document in Document Library ("${existingDoc.title}", Cert: ${existingDoc.certificateNo}). Automatically filled vessel particulars!`);
+        autoFillFromDocument(existingDoc, stepNumber);
+        setAiNotice(`Found matching document in Document Library ("${existingDoc.title}", Cert: ${existingDoc.certificateNo}). Automatically filled vessel particulars for Stage ${stepNumber}!`);
       } else {
         setName(extractedVesselName);
         setImoNumber(extractedImo);
@@ -400,21 +413,36 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
         };
 
         addDocument(newMasterDoc);
-        setSelectedDocId(newDocId);
+        setSelectedDocIds((prev) => ({ ...prev, [stepNumber]: newDocId }));
         setRegistrationDocName(fileNameStr);
-        setAiNotice(`AI Extracted vessel specs from "${fileNameStr}" & added Certificate (${extractedCertNo}) to Document Library!`);
+        setActiveVerifiedDocs((prev) => ({
+          ...prev,
+          [stepNumber]: { title: newMasterDoc.title, certNo: extractedCertNo, docId: newDocId },
+        }));
+        setAiNotice(`AI Extracted vessel specs from "${fileNameStr}" for Stage ${stepNumber} & added Certificate (${extractedCertNo}) to Document Library!`);
       }
 
       setIsExtractingAi(false);
     }, 1100);
   };
 
-  const handleSelectExistingDoc = (docId: string) => {
-    setSelectedDocId(docId);
-    if (!docId) return;
+  const handleSelectExistingDoc = (docId: string, stepNumber: number) => {
+    if (!docId) {
+      setSelectedDocIds((prev) => {
+        const next = { ...prev };
+        delete next[stepNumber];
+        return next;
+      });
+      setActiveVerifiedDocs((prev) => {
+        const next = { ...prev };
+        delete next[stepNumber];
+        return next;
+      });
+      return;
+    }
     const found = documents.find((d) => d.id === docId);
     if (found) {
-      autoFillFromDocument(found);
+      autoFillFromDocument(found, stepNumber);
     }
   };
 
@@ -446,6 +474,131 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     return !isDocumentAttachedToVessel(d);
   });
 
+  /*
+    what: renders the reusable AI Document Intake & Library Auto-Fill card for each section of vessel registration.
+    how: combines auto-fill select from unassigned master docs and drag-and-drop / clickable file upload with verification gate.
+    with what file: src/components/drawers/VesselModal.tsx.
+  */
+  const renderAiDocumentIntakeCard = (sectionTitle: string, stepNumber: number) => {
+    const activeDoc = activeVerifiedDocs[stepNumber];
+    const stepSelectedDocId = selectedDocIds[stepNumber] || '';
+
+    return (
+      <div className="p-3 bg-light border rounded shadow-2xs mb-3 overflow-hidden">
+        <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+          <span className="fw-bold text-dark small d-flex align-items-center gap-2">
+            <span>AI Document Intake &amp; Auto-Fill — {sectionTitle}</span>
+            <span className="badge bg-primary text-white font-mono-code" style={{ fontSize: '0.7rem' }}>
+              Automated OCR
+            </span>
+          </span>
+        </div>
+
+        {/* Single Unified Active Extracted & Verified Document Status Banner for this section */}
+        {activeDoc && (
+          <div className="p-3 bg-success-subtle border border-success-subtle rounded mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div className="d-flex align-items-center gap-2.5">
+              <div>
+                <strong className="text-dark small d-block">Active Extracted &amp; Verified Document</strong>
+                <div className="text-success-emphasis small font-mono-code fw-bold">
+                  "{activeDoc.title}" ({activeDoc.certNo || 'VERIFIED'})
+                </div>
+              </div>
+            </div>
+            <div className="d-flex align-items-center gap-2 ms-auto">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-success bg-white text-success fw-bold d-inline-flex align-items-center gap-1.5 shadow-2xs"
+                style={{ fontSize: '0.75rem' }}
+                onClick={() => {
+                  setActiveVerifiedDocs((prev) => {
+                    const next = { ...prev };
+                    delete next[stepNumber];
+                    return next;
+                  });
+                  setSelectedDocIds((prev) => {
+                    const next = { ...prev };
+                    delete next[stepNumber];
+                    return next;
+                  });
+                }}
+                title="Clear active document for this section and re-upload or select a different file"
+              >
+                Re-upload / Change File
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Option A & Option B Intake Row (Hidden when a document is active & verified for this section) */}
+        {!activeDoc && (
+          <div className="row g-2 align-items-start mb-2">
+            {/* Option A: Auto-fill from Existing Document Library */}
+            <div className="col-md-6 d-flex flex-column">
+              <label className="form-label text-secondary small fw-semibold mb-1 text-truncate" htmlFor={`existing-doc-select-${stepNumber}`}>
+                Option A: Auto-Fill from the Document Library
+              </label>
+              <select
+                id={`existing-doc-select-${stepNumber}`}
+                className="form-select form-select-sm bg-white text-dark border-secondary w-100"
+                style={{ height: '38px', fontSize: '0.8125rem' }}
+                value={stepSelectedDocId}
+                onChange={(e) => handleSelectExistingDoc(e.target.value, stepNumber)}
+                disabled={isExtractingAi}
+              >
+                <option value="">
+                  {unassignedDocuments.length > 0
+                    ? `Select from the Document Library `
+                    : 'No available documents in library'}
+                </option>
+                {unassignedDocuments.map((doc) => (
+                  <option key={doc.id} value={doc.id}>
+                    {doc.title} ({doc.certificateNo || doc.id}) — Unassigned Master Document
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Option B: Drag & Drop / Clickable File Upload for AI Extraction */}
+            <div className="col-md-6 d-flex flex-column">
+              <label className="form-label text-secondary small fw-semibold mb-1 text-truncate">
+                Option B: Drag &amp; Drop / Click File
+              </label>
+              <div
+                className="border border-dashed border-primary rounded bg-white p-2 text-center cursor-pointer hover-bg-light transition-all d-flex align-items-center justify-content-center gap-2 w-100"
+                style={{ borderStyle: 'dashed', borderWidth: '1.5px', height: '38px' }}
+                onClick={() => aiFileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleStageVesselFileForVerification(file, stepNumber);
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary flex-shrink-0">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <span className="small text-dark fw-semibold text-truncate" style={{ fontSize: '0.8125rem' }}>
+                  Drop document file here or <span className="text-primary text-decoration-underline">browse</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Active Extraction Indicator */}
+        {isExtractingAi && (
+          <div className="mt-2.5 p-2 bg-primary-subtle border border-primary-subtle rounded small d-flex align-items-center gap-2 text-primary">
+            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+            <span>AI is analyzing OCR bytes, extracting specs for {sectionTitle}, and updating form fields...</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div
       className="modal show d-block map-modal-backdrop"
@@ -465,7 +618,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
             accept=".pdf,.jpg,.jpeg,.png"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) handleStageVesselFileForVerification(file);
+              if (file) handleStageVesselFileForVerification(file, currentStep);
             }}
           />
 
@@ -523,147 +676,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
               {/* STEP 1: Identification & Classification */}
               {currentStep === 1 && (
                 <div className="d-flex flex-column gap-3">
-                  {/* AI Document Intake & Library Auto-Fill Card */}
-                  <div className="p-3 bg-light border rounded shadow-2xs">
-                    <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
-                      <span className="fw-bold text-dark small d-flex align-items-center gap-2">
-                        <span>AI Document Intake &amp; Document Library Auto-Fill</span>
-                        <span className="badge bg-primary text-white font-mono-code" style={{ fontSize: '0.7rem' }}>
-                          Automated OCR
-                        </span>
-                      </span>
-                    </div>
-
-                    <div className="row g-2 align-items-end mb-2">
-                      {/* 1. Auto-fill from Existing Document Library */}
-                      <div className="col-md-7">
-                        <label className="form-label text-secondary small fw-semibold mb-1" htmlFor="existing-doc-select">
-                          Auto-Fill from Existing Document Library Record
-                        </label>
-                        <select
-                          id="existing-doc-select"
-                          className="form-select form-select-sm bg-white text-dark border-secondary"
-                          value={selectedDocId}
-                          onChange={(e) => handleSelectExistingDoc(e.target.value)}
-                          disabled={isExtractingAi}
-                        >
-                          <option value="">
-                            {unassignedDocuments.length > 0
-                              ? `-- Select unassigned Document Library record (${unassignedDocuments.length} available) --`
-                              : '-- No unassigned documents in library (attach file below) --'}
-                          </option>
-                          {unassignedDocuments.map((doc) => (
-                            <option key={doc.id} value={doc.id}>
-                              {doc.title} ({doc.certificateNo || doc.id}) — Unassigned Master Document
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* 2. Upload / Attach File for AI Extraction */}
-                      <div className="col-md-5">
-                        <label className="form-label text-secondary small fw-semibold mb-1">
-                          Upload Document &amp; Extract via AI
-                        </label>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-primary text-white fw-bold w-100 d-flex align-items-center justify-content-center gap-1.5"
-                          onClick={() => aiFileInputRef.current?.click()}
-                          disabled={isExtractingAi}
-                        >
-                          Attach File for AI Extraction
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Quick Sample File Chips */}
-                    <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                      <span className="text-secondary small me-1" style={{ fontSize: '0.725rem' }}>
-                        Sample file attach:
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
-                        style={{ fontSize: '0.7rem' }}
-                        onClick={() => handleStageVesselFileForVerification('MV_Pacific_Leader_Certificate_of_Class.pdf')}
-                        disabled={isExtractingAi}
-                      >
-                        + MV_Pacific_Leader_Certificate_of_Class.pdf
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
-                        style={{ fontSize: '0.7rem' }}
-                        onClick={() => handleStageVesselFileForVerification('MV_Coral_Titan_Certificate_of_Registry.pdf')}
-                        disabled={isExtractingAi}
-                      >
-                        + MV_Coral_Titan_Certificate_of_Registry.pdf
-                      </button>
-                    </div>
-
-                    {/* Document Preview & User Verification Gate */}
-                    {pendingVerificationFile && (
-                      <div className="mt-3 p-3 bg-white border border-primary rounded shadow-2xs">
-                        <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
-                          <span className="fw-bold text-dark small d-flex align-items-center gap-2">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                              <polyline points="14 2 14 8 20 8"/>
-                              <line x1="16" y1="13" x2="8" y2="13"/>
-                              <line x1="16" y1="17" x2="8" y2="17"/>
-                            </svg>
-                            <span>Attached Document Preview &amp; Verification</span>
-                          </span>
-                          <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-mono-code" style={{ fontSize: '0.7rem' }}>
-                            Verification Gate
-                          </span>
-                        </div>
-
-                        <div className="bg-light p-3 border rounded text-start mb-3" style={{ fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: '1.4' }}>
-                          <div className="text-uppercase fw-bold text-primary border-bottom pb-1 mb-2 d-flex justify-content-between">
-                            <span>CLASSIFICATION SCAN PREVIEW</span>
-                            <span className="text-success fw-bold font-mono-code">LEGIBILITY: CLEAR</span>
-                          </div>
-                          <div className="text-dark fw-semibold">FILE NAME: {pendingVerificationFile}</div>
-                          <div className="text-secondary mt-1">TARGET OPERATION: Extract Vessel Specifications &amp; Register Document</div>
-                          <div className="text-muted border-top pt-1.5 mt-2 text-center" style={{ fontSize: '0.7rem' }}>
-                            [ Review document preview scan above. User verification required before AI extraction runs. ]
-                          </div>
-                        </div>
-
-                        <div className="d-flex align-items-center justify-content-between bg-light p-2.5 border rounded">
-                          <div className="small text-secondary">
-                            <strong className="text-dark">User Gate:</strong> Confirm readability to authorize AI OCR extraction.
-                          </div>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-success fw-bold px-3 d-inline-flex align-items-center gap-1.5"
-                            onClick={handleConfirmVesselFileVerification}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                            Verify Document &amp; Extract Specs
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Active Extraction Indicator */}
-                    {isExtractingAi && (
-                      <div className="mt-2.5 p-2 bg-primary-subtle border border-primary-subtle rounded small d-flex align-items-center gap-2 text-primary">
-                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                        <span>AI is reading document OCR bytes, extracting vessel specifications, and syncing with Document Library...</span>
-                      </div>
-                    )}
-
-                    {/* Success / Notice Alert */}
-                    {aiNotice && !isExtractingAi && (
-                      <div className="mt-2.5 alert alert-success py-1.5 px-3 small mb-0 font-mono-code" style={{ fontSize: '0.75rem' }}>
-                        {aiNotice}
-                      </div>
-                    )}
-                  </div>
+                  {renderAiDocumentIntakeCard('Identification & Classification (Cat 1-2)', 1)}
 
                   <div className="text-uppercase text-primary small fw-bold">
                     Section 1: Vessel Identification
@@ -858,6 +871,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
               {/* STEP 2: Construction, Ownership, Management & Title */}
               {currentStep === 2 && (
                 <div className="d-flex flex-column gap-3">
+                  {renderAiDocumentIntakeCard('Construction, Ownership & Title (Cat 3-6)', 2)}
                   <div className="text-uppercase text-primary small fw-bold">
                     Section 3: Construction & Dimensions
                   </div>
@@ -1035,6 +1049,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
               {/* STEP 3: Insurance, Crew, Safety & Environmental */}
               {currentStep === 3 && (
                 <div className="d-flex flex-column gap-3">
+                  {renderAiDocumentIntakeCard('Safety, Crew, Insurance & Environment (Cat 8-10)', 3)}
                   <div className="text-uppercase text-primary small fw-bold">
                     Section 8: Insurance & Financial Security
                   </div>
@@ -1140,44 +1155,13 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
               {/* STEP 4: Initial Statutory Certificates & File Attachments */}
               {currentStep === 4 && (
                 <div className="d-flex flex-column gap-3">
+                  {renderAiDocumentIntakeCard('Statutory Certificates & Master Documents (Cat 7 & 11)', 4)}
                   <div className="text-uppercase text-primary small fw-bold">
-                    Section 7 & 11: Statutory Certificates & Initial Files
+                    Section 7 & 11: Statutory Certificates & Master Documents
                   </div>
                   <p className="text-secondary small mb-2">
-                    Pre-attach foundational statutory certificates for immediate OCR extraction and compliance readiness scoring (BR-5).
+                    Pre-attached foundational statutory certificates and extracted specifications are automatically linked to the Pre-Assurance Vault and fleet compliance readiness score.
                   </p>
-
-                  <div className="border rounded p-3 bg-light map-vessel-upload-zone">
-                    <div className="fw-semibold text-dark mb-1">Upload Registration Document / Builder's Certificate</div>
-                    <div className="text-muted small mb-2">Supported formats: PDF, JPG, PNG (Max 15MB)</div>
-                    <input
-                      type="file"
-                      className="form-control form-control-sm"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleMockFileSelect(e.target.files?.[0], 'registration')}
-                    />
-                    {registrationDocName && (
-                      <div className="map-vessel-upload-success small mt-2">Selected: {registrationDocName}</div>
-                    )}
-                  </div>
-
-                  <div className="border rounded p-3 bg-light map-vessel-upload-zone">
-                    <div className="fw-semibold text-dark mb-1">Upload Certificate of Class / Registry</div>
-                    <div className="text-muted small mb-2">Initial proof for automatic OCR confidence matching (&ge; 95%)</div>
-                    <input
-                      type="file"
-                      className="form-control form-control-sm"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleMockFileSelect(e.target.files?.[0], 'class')}
-                    />
-                    {classCertDocName && (
-                      <div className="map-vessel-upload-success small mt-2">Selected: {classCertDocName}</div>
-                    )}
-                  </div>
-
-                  {uploadNotice && (
-                    <div className="alert alert-success py-2 small mt-2 mb-0">{uploadNotice}</div>
-                  )}
 
                   <div className="alert alert-info py-2 small mt-2">
                     <strong>Note:</strong> Additional statutory certificates (Safety Equipment, Load Line, IOPP) can be uploaded at any time in the <strong>Pre-Assurance Vault</strong> inside the vessel detail page.
@@ -1218,6 +1202,104 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
           </form>
         </div>
       </div>
+
+      {/* Universal Document Preview & AI Verification Gate Popup Modal */}
+      {pendingVerificationState && (
+        <div
+          className="modal show d-block map-modal-backdrop"
+          tabIndex={-1}
+          style={{ zIndex: 1070 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPendingVerificationState(null);
+          }}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content bg-white text-dark border shadow-lg">
+              {/* Header */}
+              <div className="modal-header border-bottom bg-light d-flex align-items-center justify-content-between p-3">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="p-2 rounded bg-primary-subtle text-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark m-0">
+                      Document Preview &amp; Verification Gate
+                    </h5>
+                    <div className="text-secondary small mt-0.5">
+                      Review document clarity before authorizing AI OCR metadata extraction for Stage {pendingVerificationState.stepNumber}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setPendingVerificationState(null)}
+                  aria-label="Close"
+                />
+              </div>
+
+              {/* Body */}
+              <div className="modal-body p-4">
+                <div className="bg-light border rounded p-3 mb-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="badge bg-danger text-white font-mono-code" style={{ fontSize: '0.7rem' }}>PDF SCAN</span>
+                      <span className="fw-bold text-dark font-mono-code">{pendingVerificationState.fileName}</span>
+                    </div>
+                    <span className="badge bg-success text-white font-mono-code" style={{ fontSize: '0.7rem' }}>OCR LEGIBILITY: 100% CLEAR</span>
+                  </div>
+
+                  {/* Document Scan Wireframe Graphic */}
+                  <div className="bg-white p-3 border rounded font-mono-code text-start" style={{ fontSize: '0.775rem', lineHeight: '1.5' }}>
+                    <div className="text-uppercase fw-bold text-primary border-bottom pb-1 mb-2 d-flex justify-content-between">
+                      <span>MARITIME STATUTORY CERTIFICATE SCAN</span>
+                      <span className="text-muted">PAGE 1 OF 1</span>
+                    </div>
+
+                    <div className="text-secondary mt-1">TARGET STAGE: Registration Stage {pendingVerificationState.stepNumber}</div>
+                    <div className="text-secondary">EXTRACTABLE FIELDS: Vessel Name, IMO Number, Flag State, Classification Society, Year Built, GT/DWT</div>
+                    <div className="p-2.5 bg-light border rounded mt-2.5 text-muted text-center" style={{ fontSize: '0.725rem' }}>
+                      [ High resolution scan ready for automated AI OCR parsing &amp; form auto-population for Stage {pendingVerificationState.stepNumber} ]
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-primary-subtle border border-primary-subtle rounded text-primary small d-flex align-items-center gap-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  <span>Click <strong>Extract Specs &amp; Verify Document</strong> below to run AI OCR processing and apply extracted data for Stage {pendingVerificationState.stepNumber}.</span>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="modal-footer border-top bg-light d-flex justify-between">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setPendingVerificationState(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-success fw-bold px-3 d-inline-flex align-items-center gap-1.5"
+                  onClick={handleConfirmVesselFileVerification}
+                >
+                  Extract &amp; Verify Document
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

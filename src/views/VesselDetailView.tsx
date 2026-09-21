@@ -12,6 +12,7 @@ import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
 import { filterAuditTrailForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
+import { InspectionDrawer } from '../components/drawers/InspectionDrawer';
 import { AddCrewModal } from '../components/drawers/AddCrewModal';
 import { CapaItem } from '../types/capa';
 
@@ -90,6 +91,17 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
   const [capaStatusFilter, setCapaStatusFilter] = useState('ALL');
   const [capaSortField, setCapaSortField] = useState<'id' | 'title' | 'dueDate' | 'status'>('id');
   const [capaSortDirection, setCapaSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  /* Physical Inspections search, filter, sorting, and detail modal states */
+  const [inspectionSearch, setInspectionSearch] = useState('');
+  const [inspectionStatusFilter, setInspectionStatusFilter] = useState('ALL');
+  const [inspectionSortField, setInspectionSortField] = useState<'id' | 'title' | 'date' | 'status'>('id');
+  const [inspectionSortDirection, setInspectionSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedInspectionForDetail, setSelectedInspectionForDetail] = useState<any | null>(null);
+  const [showInspectionDrawer, setShowInspectionDrawer] = useState(false);
+
+  /* Audit Log detail modal state */
+  const [selectedAuditForDetail, setSelectedAuditForDetail] = useState<any | null>(null);
 
   useEffect(() => {
     const found = vessels.find((v) => v.id === vesselId);
@@ -396,6 +408,147 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         return capaSortDirection === 'asc' ? comp : -comp;
       });
   }, [linkedCapas, capaSearch, capaStatusFilter, capaSortField, capaSortDirection]);
+
+  const physicalInspections = useMemo(() => {
+    if (!vessel) return [];
+
+    const derivedInspections = linkedSets.map((s, idx) => ({
+      id: `INSP-2026-${101 + idx}`,
+      assuranceSetId: s.id,
+      title: `Visual Vessel Inspection & Safety Audit — ${s.title}`,
+      inspector: s.assignedInspector || 'N. Technical (AMSA Marine Audit Division)',
+      inspectorRole: 'Lead Marine Vetting Inspector',
+      date: '14 Oct 2026',
+      location: 'Dampier Port Facility, WA',
+      client: s.initiatorOrg || 'Southern Basin Energy Pty Ltd',
+      status: s.inspectionCompleted ? 'Completed' : 'Scheduled',
+      findingsSummary: {
+        satisfactory: 12,
+        observations: 2,
+        deficiencies: 1,
+        capaCode: 'CAPA-118'
+      },
+      checklists: [
+        {
+          id: 'CHK-01',
+          category: 'Life-Saving Appliances (LSA)',
+          ref: 'SOLAS Reg III/20',
+          status: 'Satisfactory',
+          notes: 'All lifeboats, davits, and hydrostatic release units in good working condition.',
+          evidence: ['lsa_locker_01.jpg', 'davits_test_cert.pdf']
+        },
+        {
+          id: 'CHK-02',
+          category: 'Fire-Fighting Equipment (FFE)',
+          ref: 'SOLAS Reg II-2/10',
+          status: 'Satisfactory',
+          notes: 'Fixed CO2 system pressure gauges verified within operational green zone.',
+          evidence: ['ffe_station3.jpg']
+        },
+        {
+          id: 'CHK-03',
+          category: 'Liferaft HRU Serviceability',
+          ref: 'LSA Code IV/4.1',
+          status: 'Observation',
+          notes: 'Port-side liferaft HRU service date exceeded by 3 weeks. Replacement on order; CAPA-118 raised.',
+          evidence: ['hru_tag_port.jpg', 'hru_cert_2026.pdf'],
+          capaId: 'CAPA-118'
+        },
+        {
+          id: 'CHK-04',
+          category: 'Deck Cargo Securing Arrangement',
+          ref: 'IMO Cargo Securing Manual',
+          status: 'Satisfactory',
+          notes: 'Turnbuckles and D-rings inspected with 0% heavy corrosion.',
+          evidence: ['deck_securing_aft.jpg']
+        },
+        {
+          id: 'CHK-05',
+          category: 'Navigation & Bridge Equipment',
+          ref: 'SOLAS Reg V/19',
+          status: 'Satisfactory',
+          notes: 'ECDIS dual redundancy verified with latest ENC chart vector packs.',
+          evidence: ['ecdis_log_oct2026.pdf']
+        }
+      ],
+      auditTrail: [
+        { time: '2026-10-14 08:30 UTC', action: 'INSPECTION_INITIATED', user: s.assignedInspector || 'N. Technical', notes: 'Inspector boarded vessel at Dampier Berth 3.' },
+        { time: '2026-10-14 11:45 UTC', action: 'FINDING_LOGGED', user: s.assignedInspector || 'N. Technical', notes: 'Observation logged for Port Liferaft HRU expiration date.' },
+        { time: '2026-10-14 14:15 UTC', action: 'CAPA_RAISED', user: s.assignedInspector || 'N. Technical', notes: 'Corrective Action CAPA-118 automatically generated.' },
+        { time: '2026-10-14 16:00 UTC', action: 'INSPECTION_COMPLETED', user: s.assignedInspector || 'N. Technical', notes: 'Visual inspection completed with score 94%. Report signed off.' }
+      ]
+    }));
+
+    if (derivedInspections.length === 0) {
+      return [
+        {
+          id: 'INSP-2026-001',
+          assuranceSetId: 'AS-2026-001',
+          title: `Annual Statutory Vetting & Safety Audit — ${vessel.name}`,
+          inspector: 'N. Technical (AMSA Marine Audit Division)',
+          inspectorRole: 'Senior Offshore Surveyor',
+          date: '10 Sep 2026',
+          location: 'Fremantle Port Outer Anchorage, WA',
+          client: 'Pacific Ocean Logistics Pty Ltd',
+          status: 'Completed',
+          findingsSummary: {
+            satisfactory: 14,
+            observations: 1,
+            deficiencies: 0,
+            capaCode: 'CAPA-114'
+          },
+          checklists: [
+            {
+              id: 'CHK-01',
+              category: 'Life-Saving Appliances (LSA)',
+              ref: 'SOLAS Reg III/20',
+              status: 'Satisfactory',
+              notes: 'Life-saving appliances fully inspected and verified compliant.',
+              evidence: ['lsa_inspection.pdf']
+            },
+            {
+              id: 'CHK-02',
+              category: 'Dynamic Positioning Systems',
+              ref: 'IMCA M 103 / DP2',
+              status: 'Satisfactory',
+              notes: 'DP2 trial failure modes tested with zero thrust loss.',
+              evidence: ['dp2_trial_log.pdf']
+            }
+          ],
+          auditTrail: [
+            { time: '2026-09-10 09:00 UTC', action: 'INSPECTION_COMPLETED', user: 'N. Technical', notes: 'Annual statutory audit completed.' }
+          ]
+        }
+      ];
+    }
+
+    return derivedInspections;
+  }, [vessel, linkedSets]);
+
+  const filteredInspections = useMemo(() => {
+    return physicalInspections
+      .filter((item) => {
+        const matchesSearch =
+          !inspectionSearch ||
+          item.id.toLowerCase().includes(inspectionSearch.toLowerCase()) ||
+          item.title.toLowerCase().includes(inspectionSearch.toLowerCase()) ||
+          item.inspector.toLowerCase().includes(inspectionSearch.toLowerCase()) ||
+          item.client.toLowerCase().includes(inspectionSearch.toLowerCase()) ||
+          item.location.toLowerCase().includes(inspectionSearch.toLowerCase());
+
+        const matchesStatus = inspectionStatusFilter === 'ALL' || item.status === inspectionStatusFilter;
+
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        let comp = 0;
+        if (inspectionSortField === 'id') comp = a.id.localeCompare(b.id);
+        else if (inspectionSortField === 'title') comp = a.title.localeCompare(b.title);
+        else if (inspectionSortField === 'date') comp = new Date(a.date).getTime() - new Date(b.date).getTime();
+        else if (inspectionSortField === 'status') comp = a.status.localeCompare(b.status);
+        return inspectionSortDirection === 'asc' ? comp : -comp;
+      });
+  }, [physicalInspections, inspectionSearch, inspectionStatusFilter, inspectionSortField, inspectionSortDirection]);
 
   if (!vessel || !formData) {
     return <div className="p-4 text-center">Vessel not found.</div>;
@@ -1252,7 +1405,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                           else { setAssuranceSortField('id'); setAssuranceSortDirection('asc'); }
                         }}
                       >
-                        Set ID & Title {assuranceSortField === 'id' ? (assuranceSortDirection === 'asc' ? '↑' : '↓') : ''}
+                        Set ID {assuranceSortField === 'id' ? (assuranceSortDirection === 'asc' ? '↑' : '↓') : ''}
                       </th>
                       <th>Initiating Organization</th>
                       <th>Charter Window</th>
@@ -1282,11 +1435,10 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                       <tr key={s.id}>
                         <td>
                           <div className="fw-semibold font-mono-code text-primary">{s.id}</div>
-                          <div className="small text-dark">{s.title}</div>
+
                         </td>
                         <td className="small">
                           <div>{s.initiatorOrg}</div>
-                          <span className="badge bg-light text-secondary border">{s.initiatorRole}</span>
                         </td>
                         <td className="font-mono-code small">
                           {s.charterWindowStart} &rarr; {s.charterWindowEnd}
@@ -1784,13 +1936,14 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     User & Role {auditSortField === 'userId' ? (auditSortDirection === 'asc' ? '↑' : '↓') : ''}
                   </th>
                   <th>Organization</th>
-                  <th>Justification & Details</th>
+                  <th>Justification &amp; Details</th>
+                  <th className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredAudits.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-4 text-muted">
+                    <td colSpan={6} className="text-center py-4 text-muted">
                       No tamper-evident audit entries match the search and filter criteria.
                     </td>
                   </tr>
@@ -1813,6 +1966,16 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                       </td>
                       <td className="small text-secondary">{event.organization}</td>
                       <td className="small text-dark font-mono-code">{event.justificationNotes}</td>
+                      <td className="text-end">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary py-1 px-2"
+                          style={{ fontSize: '0.75rem' }}
+                          onClick={() => setSelectedAuditForDetail(event)}
+                        >
+                          View Details
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -1827,120 +1990,62 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         <div className="d-flex flex-column gap-4">
           {/* Section 1: Physical Inspection Reports Table */}
           <div className="card map-card-custom">
-            <div className="card-header d-flex flex-wrap align-items-center justify-between p-3 gap-2 border-bottom">
-              <div>
-                <span className="fw-bold text-primary m-0" style={{ fontSize: '0.95rem' }}>
-                  Physical Vessel Inspections & Audit Logs
-                </span>
-                <div className="text-secondary small">
-                  Inspection records, finding notes, supporting evidence, and CAPAs logged for {vessel.name}
-                </div>
-              </div>
-            </div>
-            <div className="card-body p-3">
-              {linkedSets.length === 0 ? (
-                <div className="text-muted text-center py-4">No physical inspection campaigns recorded for this vessel yet.</div>
-              ) : (
-                <div className="d-flex flex-column gap-3">
-                  {linkedSets.map((s) => (
-                    <div key={s.id} className="p-3.5 border rounded-3 bg-white shadow-2xs">
-                      <div className="d-flex flex-wrap align-items-center justify-between gap-2 mb-2">
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="fw-bold text-dark font-mono-code" style={{ fontSize: '0.95rem' }}>
-                            Visual Vessel Inspection & Safety Audit
-                          </span>
-                          <span className="badge bg-primary-subtle text-primary border" style={{ fontSize: '0.7rem' }}>
-                            {s.id}
-                          </span>
-                        </div>
-                        <span className="badge bg-success-subtle text-success-emphasis border border-success-subtle font-mono-code" style={{ fontSize: '0.75rem' }}>
-                          Completed
-                        </span>
-                      </div>
-
-                      <div className="row g-3 my-1 p-2.5 bg-light rounded-2 font-mono-code small">
-                        <div className="col-md-4">
-                          <span className="text-secondary d-block" style={{ fontSize: '0.725rem' }}>Assigned Inspector:</span>
-                          <strong className="text-dark">{s.assignedInspector || 'N. Technical (AMSA Marine Audit Division)'}</strong>
-                        </div>
-                        <div className="col-md-4">
-                          <span className="text-secondary d-block" style={{ fontSize: '0.725rem' }}>Inspection Date & Location:</span>
-                          <strong className="text-dark">14 Oct 2026 · Dampier Port Facility</strong>
-                        </div>
-                        <div className="col-md-4">
-                          <span className="text-secondary d-block" style={{ fontSize: '0.725rem' }}>Charterer / Client:</span>
-                          <strong className="text-dark">{s.initiatorOrg || 'Southern Basin Energy Pty Ltd'}</strong>
-                        </div>
-                      </div>
-
-                      <div className="d-flex flex-wrap align-items-center justify-between gap-3 mt-3 pt-2 border-top">
-                        <div className="d-flex align-items-center gap-2 flex-wrap">
-                          <span className="badge bg-success text-white font-mono-code">12 Satisfactory</span>
-                          <span className="badge bg-info text-white font-mono-code">2 Observations</span>
-                          <span className="badge bg-danger text-white font-mono-code">1 Deficiency</span>
-                          <span className="badge bg-warning text-dark font-mono-code">CAPA-118 Linked</span>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-primary d-flex align-items-center gap-1.5"
-                          style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
-                          onClick={() => setCurrentHashView('inspection', vessel.name)}
-                        >
-                          View Details
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Section 2: Vessel Corrective Actions (CAPA) Master Table */}
-          <div className="card map-card-custom">
             <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
               <div className="d-flex flex-wrap align-items-center gap-2">
                 <input
                   type="text"
                   className="form-control form-control-sm bg-white text-dark border-secondary"
-                  placeholder="Search CAPA ID, Finding, Owner..."
-                  value={capaSearch}
-                  onChange={(e) => setCapaSearch(e.target.value)}
+                  placeholder="Search Inspection ID, Title, Inspector..."
+                  value={inspectionSearch}
+                  onChange={(e) => setInspectionSearch(e.target.value)}
                   style={{ width: '250px' }}
                 />
 
                 <select
                   className="form-select form-select-sm bg-white text-dark border-secondary"
-                  value={capaStatusFilter}
-                  onChange={(e) => setCapaStatusFilter(e.target.value)}
-                  style={{ width: '180px' }}
+                  value={inspectionStatusFilter}
+                  onChange={(e) => setInspectionStatusFilter(e.target.value)}
+                  style={{ width: '160px' }}
                 >
-                  <option value="ALL">All CAPA Statuses</option>
-                  <option value="Open">Open</option>
-                  <option value="Under Re-Inspection">Under Re-Inspection</option>
-                  <option value="Rectification Required">Rectification Required</option>
-                  <option value="Verified & Closed">Verified &amp; Closed</option>
+                  <option value="ALL">All Statuses</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="In Progress">In Progress</option>
                 </select>
 
                 <select
                   className="form-select form-select-sm bg-white text-dark border-secondary"
-                  value={capaSortField}
-                  onChange={(e) => setCapaSortField(e.target.value as any)}
+                  value={inspectionSortField}
+                  onChange={(e) => setInspectionSortField(e.target.value as any)}
                   style={{ width: '150px' }}
                 >
-                  <option value="id">Sort: CAPA ID</option>
+                  <option value="id">Sort: Campaign ID</option>
                   <option value="title">Sort: Title</option>
-                  <option value="dueDate">Sort: Due Date</option>
+                  <option value="date">Sort: Inspection Date</option>
                   <option value="status">Sort: Status</option>
                 </select>
 
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-secondary text-dark"
-                  onClick={() => setCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'))}
-                  title={`Sort direction: ${capaSortDirection === 'asc' ? 'Ascending' : 'Descending'}`}
+                  onClick={() => setInspectionSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'))}
+                  title={`Sort direction: ${inspectionSortDirection === 'asc' ? 'Ascending' : 'Descending'}`}
                 >
-                  {capaSortDirection === 'asc' ? '↑ Asc' : '↓ Desc'}
+                  {inspectionSortDirection === 'asc' ? '↑ Asc' : '↓ Desc'}
+                </button>
+              </div>
+
+              <div className="d-flex align-items-center gap-2 ms-auto">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary fw-semibold d-flex align-items-center gap-1.5"
+                  onClick={() => setShowInspectionDrawer(true)}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  New Live Inspection Checklist
                 </button>
               </div>
             </div>
@@ -1952,83 +2057,102 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     <th
                       style={{ cursor: 'pointer' }}
                       onClick={() => {
-                        if (capaSortField === 'id') setCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
-                        else { setCapaSortField('id'); setCapaSortDirection('asc'); }
+                        if (inspectionSortField === 'id') setInspectionSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                        else { setInspectionSortField('id'); setInspectionSortDirection('asc'); }
                       }}
                     >
-                      CAPA ID {capaSortField === 'id' ? (capaSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      Inspection Campaign {inspectionSortField === 'id' ? (inspectionSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th>Assigned Assurance Set</th>
+                    <th>Assigned Inspector</th>
+                    <th
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        if (inspectionSortField === 'date') setInspectionSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                        else { setInspectionSortField('date'); setInspectionSortDirection('asc'); }
+                      }}
+                    >
+                      Date &amp; Location {inspectionSortField === 'date' ? (inspectionSortDirection === 'asc' ? '↑' : '↓') : ''}
                     </th>
                     <th
                       style={{ cursor: 'pointer' }}
                       onClick={() => {
-                        if (capaSortField === 'title') setCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
-                        else { setCapaSortField('title'); setCapaSortDirection('asc'); }
+                        if (inspectionSortField === 'status') setInspectionSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                        else { setInspectionSortField('status'); setInspectionSortDirection('asc'); }
                       }}
                     >
-                      Title & Finding {capaSortField === 'title' ? (capaSortDirection === 'asc' ? '↑' : '↓') : ''}
-                    </th>
-                    <th>Owner / Dept</th>
-                    <th
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        if (capaSortField === 'dueDate') setCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
-                        else { setCapaSortField('dueDate'); setCapaSortDirection('asc'); }
-                      }}
-                    >
-                      Due Date {capaSortField === 'dueDate' ? (capaSortDirection === 'asc' ? '↑' : '↓') : ''}
-                    </th>
-                    <th
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        if (capaSortField === 'status') setCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
-                        else { setCapaSortField('status'); setCapaSortDirection('asc'); }
-                      }}
-                    >
-                      Status {capaSortField === 'status' ? (capaSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      Status {inspectionSortField === 'status' ? (inspectionSortDirection === 'asc' ? '↑' : '↓') : ''}
                     </th>
                     <th className="text-end">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCapas.length === 0 ? (
+                  {filteredInspections.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="text-center py-4 text-muted">
-                        No CAPA items match the search and filter criteria.
+                        No physical inspection records match the search and filter criteria.
                       </td>
                     </tr>
                   ) : (
-                    filteredCapas.map((c) => (
-                      <tr key={c.id}>
-                        <td className="font-mono-code fw-semibold text-warning-emphasis">
-                          {c.id}
+                    filteredInspections.map((insp) => (
+                      <tr
+                        key={insp.id}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setCurrentHashView('inspector', vessel.name)}
+                      >
+                        <td>
+                          <button
+                            type="button"
+                            className="btn btn-link p-0 text-primary fw-bold text-decoration-underline border-0 bg-transparent text-start font-mono-code"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentHashView('inspector', vessel.name);
+                            }}
+                          >
+                            {insp.id}
+                          </button>
+                          <div className="small fw-semibold text-dark mt-0.5">{insp.title}</div>
                         </td>
                         <td>
-                          <div className="fw-semibold text-dark">{c.title}</div>
-                          <div className="small text-secondary" style={{ fontSize: '0.775rem' }}>
-                            {c.findingDescription}
-                          </div>
-                          {c.flaggedForReinspection && (
-                            <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle font-mono-code mt-1" style={{ fontSize: '0.675rem' }}>
-                              Flagged for Re-Inspection
-                            </span>
-                          )}
+                          <button
+                            type="button"
+                            className="btn btn-link p-0 font-mono-code text-primary fw-semibold text-decoration-underline border-0 bg-transparent text-start"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentHashView('assurance-sets', insp.assuranceSetId);
+                            }}
+                            title="Open assigned Assurance Set"
+                          >
+                            {insp.assuranceSetId} &rarr;
+                          </button>
                         </td>
-                        <td className="small">{c.owner}</td>
-                        <td className="font-mono-code small">{c.dueDate}</td>
                         <td>
-                          <span className={`badge ${c.status === 'Verified & Closed' ? 'bg-success text-white' : c.status === 'Under Re-Inspection' ? 'bg-warning text-dark' : 'bg-danger text-white'} font-mono-code`}>
-                            {c.status}
+                          <div className="fw-semibold text-dark small">{insp.inspector}</div>
+                          <div className="text-secondary font-mono-code" style={{ fontSize: '0.725rem' }}>{insp.inspectorRole}</div>
+                        </td>
+                        <td>
+                          <div className="font-mono-code small text-dark fw-semibold">{insp.date}</div>
+                          <div className="text-secondary small">{insp.location}</div>
+                        </td>
+                        <td>
+                          <span className={`badge ${insp.status === 'Completed' ? 'bg-success text-white' : 'bg-primary text-white'} font-mono-code`}>
+                            {insp.status}
                           </span>
                         </td>
                         <td className="text-end">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary py-1 px-2"
-                            style={{ fontSize: '0.75rem' }}
-                            onClick={() => setSelectedCapaForDrawer(c)}
-                          >
-                            View Details
-                          </button>
+                          <div className="d-flex align-items-center justify-content-end gap-1.5">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary py-1 px-2 fw-semibold"
+                              style={{ fontSize: '0.75rem' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentHashView('inspector', vessel.name);
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -2055,6 +2179,362 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
           onClose={() => setIsAddCrewModalOpen(false)}
           initialVesselId={vessel.id}
           onViewCrewDetail={(crewId) => setCurrentHashView('crew', crewId)}
+        />
+      )}
+
+      {/* Physical Inspection Table Detail Page Modal */}
+      {selectedInspectionForDetail && (
+        <div
+          className="modal show d-block map-modal-backdrop"
+          tabIndex={-1}
+          style={{ zIndex: 1060 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedInspectionForDetail(null);
+          }}
+        >
+          <div className="modal-dialog modal-xl modal-dialog-centered">
+            <div className="modal-content bg-white text-dark border shadow-lg">
+              {/* Header */}
+              <div className="modal-header border-bottom bg-light d-flex align-items-center justify-content-between p-3">
+                <div>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge bg-primary text-white font-mono-code">{selectedInspectionForDetail.id}</span>
+                    <h5 className="modal-title fw-bold text-dark m-0">
+                      {selectedInspectionForDetail.title}
+                    </h5>
+                  </div>
+                  <div className="text-secondary small mt-0.5">
+                    Physical Vetting Inspection &amp; Audit Log Dossier — {vessel.name} (IMO {vessel.imoNumber})
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setSelectedInspectionForDetail(null)}
+                  aria-label="Close"
+                />
+              </div>
+
+              {/* Body */}
+              <div className="modal-body p-4 overflow-y-auto" style={{ maxHeight: '72vh' }}>
+                {/* Key Metadata Cards */}
+                <div className="row g-3 mb-4">
+                  <div className="col-md-3">
+                    <div className="p-3 bg-light border rounded h-100">
+                      <div className="text-secondary small text-uppercase fw-semibold mb-1">Target Vessel</div>
+                      <div className="fw-bold text-primary">{vessel.name}</div>
+                      <div className="font-mono-code small text-muted">IMO: {vessel.imoNumber}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="p-3 bg-light border rounded h-100">
+                      <div className="text-secondary small text-uppercase fw-semibold mb-1">Assigned Inspector</div>
+                      <div className="fw-bold text-dark">{selectedInspectionForDetail.inspector}</div>
+                      <div className="text-secondary small">{selectedInspectionForDetail.inspectorRole}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="p-3 bg-light border rounded h-100">
+                      <div className="text-secondary small text-uppercase fw-semibold mb-1">Date &amp; Location</div>
+                      <div className="fw-bold font-mono-code text-dark">{selectedInspectionForDetail.date}</div>
+                      <div className="text-secondary small">{selectedInspectionForDetail.location}</div>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="p-3 bg-light border rounded h-100">
+                      <div className="text-secondary small text-uppercase fw-semibold mb-1">Assigned Assurance Set</div>
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 fw-bold text-primary font-mono-code text-decoration-underline text-start"
+                        onClick={() => {
+                          const setCode = selectedInspectionForDetail.assuranceSetId;
+                          setSelectedInspectionForDetail(null);
+                          setCurrentHashView('assurance-sets', setCode);
+                        }}
+                        title="Open assigned Assurance Set"
+                      >
+                        {selectedInspectionForDetail.assuranceSetId} &rarr;
+                      </button>
+                      <div className="small text-secondary text-truncate" title={selectedInspectionForDetail.assuranceSetTitle}>
+                        {selectedInspectionForDetail.assuranceSetTitle || 'Standard Vetting Audit'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Audit Findings Summary Bar */}
+                <div className="p-3 bg-primary-subtle border border-primary-subtle rounded mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="fw-bold text-primary small">Audit Findings Summary:</span>
+                    <span className="badge bg-success text-white font-mono-code">{selectedInspectionForDetail.findingsSummary.satisfactory} Satisfactory</span>
+                    <span className="badge bg-info text-white font-mono-code">{selectedInspectionForDetail.findingsSummary.observations} Observations</span>
+                    <span className="badge bg-danger text-white font-mono-code">{selectedInspectionForDetail.findingsSummary.deficiencies} Deficiencies</span>
+                  </div>
+                </div>
+
+                {/* Physical Checklist Breakdown Table */}
+                <div className="mb-4">
+                  <h6 className="fw-bold text-dark mb-2">Physical Survey Checklist Items &amp; Observations</h6>
+                  <div className="table-responsive border rounded">
+                    <table className="table map-table-custom align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Item ID</th>
+                          <th>Category &amp; Standard Ref</th>
+                          <th>Finding Status</th>
+                          <th>Inspector Findings &amp; Observations</th>
+                          <th>Evidence Files</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedInspectionForDetail.checklists.map((chk: any) => (
+                          <tr key={chk.id}>
+                            <td className="font-mono-code fw-semibold text-dark">{chk.id}</td>
+                            <td>
+                              <div className="fw-semibold text-dark small">{chk.category}</div>
+                              <div className="text-secondary font-mono-code" style={{ fontSize: '0.725rem' }}>{chk.ref}</div>
+                            </td>
+                            <td>
+                              <span className={`badge ${chk.status === 'Satisfactory' ? 'bg-success text-white' : chk.status === 'Observation' ? 'bg-warning text-dark' : 'bg-danger text-white'} font-mono-code`}>
+                                {chk.status}
+                              </span>
+                            </td>
+                            <td className="small text-dark">
+                              {chk.notes}
+                              {chk.capaId && (
+                                <div className="mt-1">
+                                  <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-mono-code" style={{ fontSize: '0.7rem' }}>
+                                    {chk.capaId} Action Item Active
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <div className="d-flex flex-wrap gap-1">
+                                {chk.evidence.map((ev: string) => (
+                                  <span key={ev} className="badge bg-light text-secondary border font-mono-code" style={{ fontSize: '0.7rem' }}>
+                                    {ev}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Linked Corrective Actions (CAPA) Section */}
+                <div className="mb-4">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <h6 className="fw-bold text-dark m-0">Corrective &amp; Preventive Actions (CAPA)</h6>
+                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-mono-code">
+                      {linkedCapas.length} CAPA Item{linkedCapas.length !== 1 ? 's' : ''} Linked
+                    </span>
+                  </div>
+                  <div className="table-responsive border rounded">
+                    <table className="table map-table-custom align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>CAPA ID</th>
+                          <th>Title &amp; Finding</th>
+                          <th>Owner / Dept</th>
+                          <th>Due Date</th>
+                          <th>Status</th>
+                          <th className="text-end">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {linkedCapas.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="text-center py-3 text-muted small">
+                              No corrective actions raised for this inspection campaign.
+                            </td>
+                          </tr>
+                        ) : (
+                          linkedCapas.map((capa) => (
+                            <tr key={capa.id}>
+                              <td className="font-mono-code fw-semibold text-warning-emphasis">{capa.id}</td>
+                              <td>
+                                <div className="fw-semibold text-dark small">{capa.title}</div>
+                                <div className="text-secondary" style={{ fontSize: '0.75rem' }}>{capa.findingDescription}</div>
+                              </td>
+                              <td className="small">{capa.owner}</td>
+                              <td className="font-mono-code small">{capa.dueDate}</td>
+                              <td>
+                                <span className={`badge ${capa.status === 'Verified & Closed' ? 'bg-success text-white' : capa.status === 'Under Re-Inspection' ? 'bg-warning text-dark' : 'bg-danger text-white'} font-mono-code`}>
+                                  {capa.status}
+                                </span>
+                              </td>
+                              <td className="text-end">
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-primary py-1 px-2"
+                                  style={{ fontSize: '0.75rem' }}
+                                  onClick={() => setSelectedCapaForDrawer(capa)}
+                                >
+                                  View / Re-inspect &rarr;
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Inspection Campaign Event Log */}
+                <div>
+                  <h6 className="fw-bold text-dark mb-2">Inspection Campaign Activity Log</h6>
+                  <div className="border rounded bg-light p-3">
+                    <div className="d-flex flex-column gap-2">
+                      {selectedInspectionForDetail.auditTrail.map((log: any, i: number) => (
+                        <div key={i} className="d-flex align-items-center justify-content-between p-2 bg-white border rounded small">
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="badge bg-primary-subtle text-primary font-mono-code" style={{ fontSize: '0.7rem' }}>{log.action}</span>
+                            <strong className="text-dark">{log.user}:</strong>
+                            <span className="text-secondary">{log.notes}</span>
+                          </div>
+                          <span className="font-mono-code text-muted" style={{ fontSize: '0.725rem' }}>{log.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="modal-footer border-top bg-light d-flex justify-between">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setSelectedInspectionForDetail(null)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary fw-semibold d-flex align-items-center gap-1.5"
+                  onClick={() => {
+                    setSelectedInspectionForDetail(null);
+                    setShowInspectionDrawer(true);
+                  }}
+                >
+                  View Details &rarr;
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Audit Log Table Detail Page Modal */}
+      {selectedAuditForDetail && (
+        <div
+          className="modal show d-block map-modal-backdrop"
+          tabIndex={-1}
+          style={{ zIndex: 1060 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedAuditForDetail(null);
+          }}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content bg-white text-dark border shadow-lg">
+              {/* Header */}
+              <div className="modal-header border-bottom bg-light d-flex align-items-center justify-content-between p-3">
+                <div>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge bg-primary text-white font-mono-code">{selectedAuditForDetail.id}</span>
+                    <h5 className="modal-title fw-bold text-dark m-0">
+                      Audit Event Log Detail
+                    </h5>
+                  </div>
+                  <div className="text-secondary small mt-0.5">
+                    Tamper-evident cryptographically verified audit log entry
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setSelectedAuditForDetail(null)}
+                  aria-label="Close"
+                />
+              </div>
+
+              {/* Body */}
+              <div className="modal-body p-4">
+                <div className="row g-3 mb-3">
+                  <div className="col-md-6">
+                    <div className="p-3 bg-light border rounded">
+                      <span className="text-secondary small d-block">Timestamp (UTC):</span>
+                      <strong className="font-mono-code text-dark d-block mt-0.5">
+                        {new Date(selectedAuditForDetail.timestampUtc).toUTCString()}
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="p-3 bg-light border rounded">
+                      <span className="text-secondary small d-block">Action Type:</span>
+                      <span className="badge bg-primary text-white font-mono-code mt-1" style={{ fontSize: '0.85rem' }}>
+                        {selectedAuditForDetail.action}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="p-3 bg-light border rounded">
+                      <span className="text-secondary small d-block">User &amp; Role:</span>
+                      <strong className="text-dark d-block mt-0.5">{selectedAuditForDetail.userId}</strong>
+                      <span className="badge bg-secondary text-white font-mono-code mt-1">{selectedAuditForDetail.userRole}</span>
+                    </div>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="p-3 bg-light border rounded">
+                      <span className="text-secondary small d-block">Organization:</span>
+                      <strong className="text-dark d-block mt-0.5">{selectedAuditForDetail.organization}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-light border rounded mb-3">
+                  <span className="text-secondary small d-block fw-semibold mb-1">Target Asset / Vessel:</span>
+                  <div className="font-mono-code text-primary fw-bold">{selectedAuditForDetail.targetAsset}</div>
+                </div>
+
+                <div className="p-3 bg-light border rounded mb-3">
+                  <span className="text-secondary small d-block fw-semibold mb-1">Justification Notes &amp; Payload Diffs:</span>
+                  <div className="font-mono-code bg-white p-2.5 border rounded text-dark small" style={{ lineHeight: '1.4' }}>
+                    {selectedAuditForDetail.justificationNotes || 'No additional notes recorded for this action.'}
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-success-subtle border border-success-subtle rounded d-flex align-items-center justify-content-between font-mono-code small text-success">
+                  <span>CRYPTO HASH VERIFICATION: SHA256-MATCH</span>
+                  <span className="fw-bold">TAMPER-EVIDENT VERIFIED</span>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="modal-footer border-top bg-light">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setSelectedAuditForDetail(null)}
+                >
+                  Close Detail Modal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Live Interactive Inspection Drawer Workspace */}
+      {showInspectionDrawer && vessel && (
+        <InspectionDrawer
+          vesselName={vessel.name}
+          onClose={() => setShowInspectionDrawer(false)}
         />
       )}
     </div>

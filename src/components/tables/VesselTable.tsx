@@ -1,6 +1,6 @@
 /* 
-  file summary: master fleet registry table component featuring grouped search/filters on left and grouped export/register buttons on right.
-  responsibilities: renders list of vessels with search filters on left and export/register action buttons on right.
+  file summary: master fleet registry table component featuring grouped search/filters on left, interactive column sorting, and grouped export/register buttons on right.
+  responsibilities: renders list of vessels with search filters, multi-column sorting by header clicks, and export/register action buttons.
   role in system: main data table for FleetRegistryView.tsx.
 */
 
@@ -12,6 +12,15 @@ import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 import { getDaysUntilExpiry } from '../../utils/formatters';
 
 import { filterVesselsForPersona } from '../../utils/rbacHelpers';
+
+type VesselSortField =
+  | 'name'
+  | 'classNotation'
+  | 'flagState'
+  | 'registeredOwner'
+  | 'status'
+  | 'certAlerts'
+  | 'complianceReadinessScore';
 
 function vesselHasExpiringCert(vessel: VesselParticulars): boolean {
   return vessel.statutoryCertificates.some((cert) => {
@@ -26,12 +35,19 @@ interface VesselTableProps {
   filterMode?: 'all' | 'chartered';
 }
 
+/**
+  what: renders master fleet registry table with search filters, column sorting, and export/register actions.
+  how: filters and sorts base vessels by persona and sortField, rendering interactive table rows and header controls.
+  with what file: src/components/tables/VesselTable.tsx loaded by FleetRegistryView.tsx.
+*/
 export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegisterVessel, filterMode }) => {
   const { vessels, assuranceSets, setActiveVesselId, activePersona } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [flagFilter, setFlagFilter] = useState('ALL');
   const [classFilter, setClassFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sortField, setSortField] = useState<VesselSortField>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   // BR-4: Client Admin (C Admin) or Inspector cannot register new vessels
@@ -57,8 +73,47 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
     return matchesSearch && matchesFlag && matchesClass && matchesStatus;
   });
 
+  const handleSort = (field: VesselSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIndicator = (field: VesselSortField) => {
+    if (sortField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{sortDirection === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const sortedVessels = [...filteredVessels].sort((a, b) => {
+    let valA: any = '';
+    let valB: any = '';
+
+    if (sortField === 'certAlerts') {
+      valA = vesselHasExpiringCert(a) ? 1 : 0;
+      valB = vesselHasExpiringCert(b) ? 1 : 0;
+    } else if (sortField === 'complianceReadinessScore') {
+      valA = Number(a.complianceReadinessScore) || 0;
+      valB = Number(b.complianceReadinessScore) || 0;
+    } else {
+      valA = a[sortField] ?? '';
+      valB = b[sortField] ?? '';
+    }
+
+    if (typeof valA === 'string') {
+      valA = valA.toLowerCase();
+      valB = (valB as string).toLowerCase();
+    }
+
+    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   const handleExportCsv = () => {
-    const exportData = filteredVessels.map((v) => ({
+    const exportData = sortedVessels.map((v) => ({
       VesselName: v.name,
       ImoNumber: v.imoNumber,
       OfficialRegNumber: v.officialRegNumber,
@@ -75,7 +130,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
 
   const handleExportPdf = () => {
     const headers = ['Vessel Name', 'IMO Number', 'Reg Number', 'Flag State', 'Class', 'Status', 'Readiness'];
-    const rows = filteredVessels.map((v) => [
+    const rows = sortedVessels.map((v) => [
       v.name,
       v.imoNumber,
       v.officialRegNumber,
@@ -174,7 +229,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
               className="btn btn-sm btn-primary"
               onClick={onRegisterVessel}
             >
-              + Register Vessel
+              Register Vessel
             </button>
           )}
         </div>
@@ -185,18 +240,32 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th>Vessel Name & IMO</th>
-              <th>Class Notation / Type</th>
-              <th>Flag State / Port</th>
-              <th>Registered Owner & ISM</th>
-              <th>Status</th>
-              <th>Cert Alerts</th>
-              <th>Assurance Readiness</th>
+              <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Vessel Name &amp; IMO {renderSortIndicator('name')}
+              </th>
+              <th onClick={() => handleSort('classNotation')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Class Notation / Type {renderSortIndicator('classNotation')}
+              </th>
+              <th onClick={() => handleSort('flagState')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Flag State / Port {renderSortIndicator('flagState')}
+              </th>
+              <th onClick={() => handleSort('registeredOwner')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Registered Owner &amp; ISM {renderSortIndicator('registeredOwner')}
+              </th>
+              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Status {renderSortIndicator('status')}
+              </th>
+              <th onClick={() => handleSort('certAlerts')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Cert Alerts {renderSortIndicator('certAlerts')}
+              </th>
+              <th onClick={() => handleSort('complianceReadinessScore')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Assurance Readiness {renderSortIndicator('complianceReadinessScore')}
+              </th>
               <th className="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredVessels.length === 0 ? (
+            {sortedVessels.length === 0 ? (
               <tr>
                 <td colSpan={8} className="text-center py-5">
                   <div className="map-vessel-empty-state">
@@ -208,7 +277,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
                 </td>
               </tr>
             ) : (
-              filteredVessels.map((v) => (
+              sortedVessels.map((v) => (
                 <tr
                   key={v.id}
                   onClick={() => {
@@ -231,7 +300,6 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
                   </td>
                   <td className="small">
                     <div className="fw-semibold text-dark">{v.registeredOwner}</div>
-
                   </td>
                   <td>
                     <span className="badge bg-primary text-uppercase">{v.status}</span>

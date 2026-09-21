@@ -1,6 +1,6 @@
 /* 
   file summary: inspector workspace page displaying physical survey queue and survey checklist triggers in light theme.
-  responsibilities: presents inspector role KPI summary cards, vessel survey inspection items assigned to active persona, and routes to full-page InspectionChecklistView.
+  responsibilities: presents inspector role KPI summary cards, vessel survey inspection items assigned to active persona with column sorting, and routes to full-page InspectionChecklistView.
   role in system: primary operational workspace for Inspectors (/inspector).
 */
 
@@ -10,14 +10,18 @@ import { VesselParticulars } from '../types/vessel';
 import { filterVesselsForPersona } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 
+type InspectorSortField = 'name' | 'imoNumber' | 'campaignTitle' | 'status';
+
 /**
-  what: renders inspector operational workspace view in light theme with inspector-specific KPI summary metrics and survey schedule export capabilities.
-  how: aggregates inspector stats and lists assigned vessels with export functionality and navigation to InspectionChecklistView page.
+  what: renders inspector operational workspace view in light theme with inspector-specific KPI summary metrics, column sorting, and survey schedule export capabilities.
+  how: aggregates inspector stats, filters and sorts assigned vessels by sortField, and lists survey schedule with export functionality.
   with what file: src/views/InspectorWorkspaceView.tsx loaded by App.tsx.
 */
 export const InspectorWorkspaceView: React.FC = () => {
   const { vessels, assuranceSets, capaItems, activePersona, setCurrentHashView } = useMapStore();
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [sortField, setSortField] = useState<InspectorSortField>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const assignedVessels = filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
@@ -28,8 +32,46 @@ export const InspectorWorkspaceView: React.FC = () => {
   const openCapaCount = capaItems ? capaItems.filter((c) => c.status !== 'Verified & Closed').length : 1;
   const completedCount = assuranceSets.filter((s) => s.stage === 'Certified').length || 2;
 
+  const handleSort = (field: InspectorSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIndicator = (field: InspectorSortField) => {
+    if (sortField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{sortDirection === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const sortedAssignedVessels = [...assignedVessels].sort((a, b) => {
+    let valA: any = '';
+    let valB: any = '';
+
+    if (sortField === 'campaignTitle') {
+      const linkedSetA = assuranceSets.find((s) => s.vesselId === a.id || s.vesselName === a.name);
+      const linkedSetB = assuranceSets.find((s) => s.vesselId === b.id || s.vesselName === b.name);
+      valA = linkedSetA ? linkedSetA.title : '';
+      valB = linkedSetB ? linkedSetB.title : '';
+    } else {
+      valA = a[sortField] ?? '';
+      valB = b[sortField] ?? '';
+    }
+
+    if (typeof valA === 'string') {
+      valA = valA.toLowerCase();
+      valB = (valB as string).toLowerCase();
+    }
+
+    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   const handleExportCsv = () => {
-    const exportData = assignedVessels.map((v) => {
+    const exportData = sortedAssignedVessels.map((v) => {
       const linkedSet = assuranceSets.find((s) => s.vesselId === v.id || s.vesselName === v.name);
       return {
         VesselName: v.name,
@@ -47,7 +89,7 @@ export const InspectorWorkspaceView: React.FC = () => {
 
   const handleExportPdf = () => {
     const headers = ['Vessel Name', 'IMO Number', 'Flag State', 'Assurance Campaign', 'Stage', 'Status'];
-    const rows = assignedVessels.map((v) => {
+    const rows = sortedAssignedVessels.map((v) => {
       const linkedSet = assuranceSets.find((s) => s.vesselId === v.id || s.vesselName === v.name);
       return [
         v.name,
@@ -155,15 +197,23 @@ export const InspectorWorkspaceView: React.FC = () => {
           <table className="table map-table-custom align-middle mb-0">
             <thead>
               <tr>
-                <th>Vessel Name</th>
-                <th>IMO Number</th>
-                <th>Assurance Campaign</th>
-                <th>Status</th>
+                <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Vessel Name {renderSortIndicator('name')}
+                </th>
+                <th onClick={() => handleSort('imoNumber')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  IMO Number {renderSortIndicator('imoNumber')}
+                </th>
+                <th onClick={() => handleSort('campaignTitle')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Assurance Campaign {renderSortIndicator('campaignTitle')}
+                </th>
+                <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Status {renderSortIndicator('status')}
+                </th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {assignedVessels.map((v: VesselParticulars) => {
+              {sortedAssignedVessels.map((v: VesselParticulars) => {
                 const linkedSet = assuranceSets.find((s) => s.vesselId === v.id || s.vesselName === v.name);
                 const openCapaCountForVessel = capaItems.filter(
                   (c) => (c.vesselName.toLowerCase() === v.name.toLowerCase() || c.vesselId === v.id) && c.status !== 'Verified & Closed'
@@ -229,3 +279,4 @@ export const InspectorWorkspaceView: React.FC = () => {
     </div>
   );
 };
+

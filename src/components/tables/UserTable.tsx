@@ -14,14 +14,22 @@ import { EditUserModal } from '../drawers/EditUserModal';
 import { filterUsersForPersona } from '../../utils/rbacHelpers';
 import { formatUserRoles, userHasRole, userMatchesAnyRole } from '../../utils/userRoleHelpers';
 
+type UserSortField =
+  | 'name'
+  | 'roles'
+  | 'userType'
+  | 'organization'
+  | 'status'
+  | 'lastActive';
+
 interface UserTableProps {
   onAddUser?: () => void;
   roleCategoryTab?: 'ALL' | 'Inspector' | 'Verifier' | 'AdminApprover';
 }
 
 /**
-  what: renders master user directory table matching assurance sets table layout.
-  how: filters users array by search query, persona isolation rules, role category tabs, and classification, with export to CSV/PDF.
+  what: renders master user directory table matching assurance sets table layout with column sorting.
+  how: filters users array by search query, persona isolation rules, role category tabs, and classification, with column sorting and export to CSV/PDF.
   with what file: src/components/tables/UserTable.tsx loaded by UserManagementView.tsx.
 */
 export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab = 'ALL' }) => {
@@ -30,6 +38,8 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [sortField, setSortField] = useState<UserSortField>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
 
@@ -62,6 +72,42 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
     return matchesSearch && matchesRole && matchesType && matchesStatus && matchesRoleTab;
   });
 
+  const handleSort = (field: UserSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIndicator = (field: UserSortField) => {
+    if (sortField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{sortDirection === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    let valA: any = '';
+    let valB: any = '';
+
+    if (sortField === 'roles') {
+      valA = formatUserRoles(a.roles);
+      valB = formatUserRoles(b.roles);
+    } else {
+      valA = a[sortField] ?? '';
+      valB = b[sortField] ?? '';
+    }
+
+    if (typeof valA === 'string') {
+      valA = valA.toLowerCase();
+      valB = (valB as string).toLowerCase();
+    }
+
+    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   const getRoleBadgeClass = (role: UserRolePersona) => {
     switch (role) {
       case 'Administrator': return 'bg-dark text-white';
@@ -84,7 +130,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
   };
 
   const handleExportCsv = () => {
-    const exportData = filteredUsers.map((u) => ({
+    const exportData = sortedUsers.map((u) => ({
       Name: u.name,
       Email: u.email,
       AssignedRole: formatUserRoles(u.roles),
@@ -100,7 +146,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
 
   const handleExportPdf = () => {
     const headers = ['Name & Email', 'Role', 'Classification', 'Organization & Scope', 'Status'];
-    const rows = filteredUsers.map((u) => [
+    const rows = sortedUsers.map((u) => [
       `${u.name}\n(${u.email})`,
       formatUserRoles(u.roles),
       u.userType,
@@ -210,24 +256,36 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th>User Name & Email</th>
-              <th>Assigned Role</th>
-              <th>Classification</th>
-              <th>Organization & Scope</th>
-              <th>Status</th>
-              <th>Last Active</th>
+              <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                User Name &amp; Email {renderSortIndicator('name')}
+              </th>
+              <th onClick={() => handleSort('roles')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Assigned Role {renderSortIndicator('roles')}
+              </th>
+              <th onClick={() => handleSort('userType')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Classification {renderSortIndicator('userType')}
+              </th>
+              <th onClick={() => handleSort('organization')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Organization &amp; Scope {renderSortIndicator('organization')}
+              </th>
+              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Status {renderSortIndicator('status')}
+              </th>
+              <th onClick={() => handleSort('lastActive')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Last Active {renderSortIndicator('lastActive')}
+              </th>
               <th className="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.length === 0 ? (
+            {sortedUsers.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-4 text-muted">
+                <td colSpan={7} className="text-center py-4 text-muted">
                   No user accounts match your search or filter criteria.
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((u) => (
+              sortedUsers.map((u) => (
                 <tr key={u.id}>
                   <td>
                     <div className="fw-semibold text-dark">{u.name}</div>

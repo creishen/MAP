@@ -468,63 +468,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                 </div>
               </div>
 
-              {/* 3. Document Preview & User Verification Gate */}
-              {isPendingVerification && (
-                <div className="p-3 mb-3 bg-light border border-primary rounded shadow-2xs">
-                  <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
-                    <span className="fw-bold text-dark small d-flex align-items-center gap-2">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="16" y1="13" x2="8" y2="13" />
-                        <line x1="16" y1="17" x2="8" y2="17" />
-                      </svg>
-                      <span>Document Preview &amp; User Verification Required</span>
-                    </span>
-                    <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-mono-code" style={{ fontSize: '0.7rem' }}>
-                      Verification Gate
-                    </span>
-                  </div>
 
-                  {/* Visual Document Scan Wireframe Preview */}
-                  <div className="bg-white border rounded p-3 mb-3">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="badge bg-danger text-white font-mono-code" style={{ fontSize: '0.7rem' }}>PDF SCAN</span>
-                        <span className="fw-bold text-dark small font-mono-code">{fileName}</span>
-                      </div>
-                      <span className="text-secondary small font-mono-code" style={{ fontSize: '0.75rem' }}>2.4 MB · Page 1 of 1</span>
-                    </div>
-
-                    <div className="bg-light p-3 border rounded text-start" style={{ fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: '1.4' }}>
-                      <div className="text-uppercase fw-bold text-primary border-bottom pb-1 mb-2 d-flex justify-content-between">
-                        <span>STATUTORY CERTIFICATE PREVIEW SCAN</span>
-                        <span className="text-success fw-bold">LEGIBILITY: 100% CLEAR</span>
-                      </div>
-                      <div className="text-dark fw-semibold">DOCUMENT TITLE: {title || 'MARITIME STATUTORY CERTIFICATE'}</div>
-                      <div className="text-secondary mt-1">ENTITY TYPE: {entityType}</div>
-                      <div className="text-secondary">FILE ATTACHED: {fileName}</div>
-                      <div className="text-muted border-top pt-1.5 mt-2 text-center" style={{ fontSize: '0.7rem' }}>
-                        [ Preview Mode: Review document scan for accuracy before authorizing AI OCR extraction ]
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* User Verification Confirmation Controls */}
-                  <div className="d-flex align-items-center justify-content-between bg-white p-2.5 border rounded">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-success fw-bold px-3 d-inline-flex align-items-center gap-1.5"
-                      onClick={handleConfirmVerifyAndExtract}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Verify Document &amp; Run AI Extraction
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {/* 4. Simulated AI Extraction Progress Indicator */}
               {isExtractingAi && (
@@ -640,13 +584,114 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                 ) : existingDocument ? (
                   'Submit Replacement Revision'
                 ) : (
-                  'Upload Master Document'
+                  ' Upload Document'
                 )}
               </button>
             </div>
           </form>
         </div>
       </div>
+
+      {/* Document File Preview & Verification Gate Popup Modal */}
+      {isPendingVerification && (
+        <div
+          className="modal show d-block map-modal-backdrop"
+          tabIndex={-1}
+          style={{ zIndex: 1070 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsPendingVerification(false);
+          }}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content bg-white text-dark border shadow-lg">
+              {/* Header */}
+              <div className="modal-header border-bottom bg-light d-flex align-items-center justify-content-between p-3">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="p-2 rounded bg-primary-subtle text-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark m-0">
+                      Document Preview &amp; AI Extraction Verification Gate
+                    </h5>
+                    <div className="text-secondary small mt-0.5">
+                      Verify document file scanning clarity before authorizing AI metadata extraction
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setIsPendingVerification(false)}
+                  aria-label="Close"
+                />
+              </div>
+
+              {/* Body */}
+              <div className="modal-body p-4">
+                <div className="bg-light border rounded p-3 mb-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="badge bg-danger text-white font-mono-code" style={{ fontSize: '0.7rem' }}>PDF SCAN</span>
+                      <span className="fw-bold text-dark font-mono-code">{fileName}</span>
+                    </div>
+                    <span className="badge bg-success text-white font-mono-code" style={{ fontSize: '0.7rem' }}>OCR LEGIBILITY: 100% CLEAR</span>
+                  </div>
+
+                  {/* Document Wireframe Scan Graphic */}
+                  <div className="bg-white p-3 border rounded font-mono-code text-start" style={{ fontSize: '0.775rem', lineHeight: '1.5' }}>
+                    <div className="text-uppercase fw-bold text-primary border-bottom pb-1 mb-2 d-flex justify-content-between">
+                      <span>STATUTORY CERTIFICATE SCAN PREVIEW</span>
+                      <span className="text-muted">PAGE 1 OF 1</span>
+                    </div>
+                    <div className="text-dark fw-bold">DOCUMENT TITLE: {title || 'MARITIME STATUTORY CERTIFICATE'}</div>
+                    <div className="text-secondary mt-1">ENTITY TYPE: {entityType}</div>
+
+                    <div className="p-2.5 bg-light border rounded mt-2.5 text-muted text-center" style={{ fontSize: '0.725rem' }}>
+                      [ High resolution scan ready for automated AI OCR parsing &amp; metadata extraction ]
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-primary-subtle border border-primary-subtle rounded text-primary small d-flex align-items-center gap-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  <span>Click <strong>Extract Specs &amp; Verify Document</strong> below to run AI OCR extraction and populate certificate attributes automatically.</span>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="modal-footer border-top bg-light d-flex justify-content-between">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setIsPendingVerification(false)}
+                >
+                  Cancel / Back to Form
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-success fw-bold px-3 d-inline-flex align-items-center gap-1.5"
+                  onClick={handleConfirmVerifyAndExtract}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Extract Specs &amp; Verify Document &rarr;
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

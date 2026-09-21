@@ -1,6 +1,6 @@
 /* 
-  file summary: assurance sets data table component with grouped search box/filters on left and grouped export/initiate buttons on right.
-  responsibilities: presents set ids, target vessels, stage badges, readiness gauges, and action controls on opposite side of search.
+  file summary: assurance sets data table component with grouped search box/filters on left, interactive column sorting, and grouped export/initiate buttons on right.
+  responsibilities: presents set ids, target vessels, stage badges, readiness gauges, multi-column sorting by header clicks, and action controls.
   role in system: main data table for AssuranceSetsView.tsx.
 */
 
@@ -13,20 +13,30 @@ import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 
 import { isAssuranceSetAssignedToPersona } from '../../utils/rbacHelpers';
 
+type AssuranceSortField =
+  | 'id'
+  | 'title'
+  | 'vesselName'
+  | 'initiatorOrg'
+  | 'stage'
+  | 'readinessScore';
+
 interface AssuranceTableProps {
   onSelectSet: (set: AssuranceSet) => void;
   onInitiateSet?: () => void;
 }
 
 /**
-  what: renders assurance projects data table with search filters and export/initiate actions.
-  how: filters assuranceSets array by active persona role assignment and search parameters.
+  what: renders assurance projects data table with search filters, column sorting, and export/initiate actions.
+  how: filters assuranceSets array by active persona role assignment and search parameters, then sorts by sortField.
   with what file: src/components/tables/AssuranceTable.tsx loaded by AssuranceSetsView.tsx.
 */
 export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onInitiateSet }) => {
   const { assuranceSets, activePersona } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('ALL');
+  const [sortField, setSortField] = useState<AssuranceSortField>('id');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   const canInitiate = activePersona === 'Administrator' || activePersona === 'C Admin';
@@ -39,6 +49,37 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
       s.vesselName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStage = stageFilter === 'ALL' || s.stage === stageFilter;
     return isAssigned && matchesSearch && matchesStage;
+  });
+
+  const handleSort = (field: AssuranceSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIndicator = (field: AssuranceSortField) => {
+    if (sortField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{sortDirection === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const sortedSets = [...filteredSets].sort((a, b) => {
+    let valA: any = a[sortField] ?? '';
+    let valB: any = b[sortField] ?? '';
+
+    if (sortField === 'readinessScore') {
+      valA = Number(valA) || 0;
+      valB = Number(valB) || 0;
+    } else if (typeof valA === 'string') {
+      valA = valA.toLowerCase();
+      valB = (valB as string).toLowerCase();
+    }
+
+    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const getStageBadgeClass = (stage: AssuranceStage) => {
@@ -54,7 +95,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
   };
 
   const handleExportCsv = () => {
-    const exportData = filteredSets.map((s) => ({
+    const exportData = sortedSets.map((s) => ({
       SetID: s.id,
       CampaignTitle: s.title,
       VesselName: s.vesselName,
@@ -71,7 +112,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
 
   const handleExportPdf = () => {
     const headers = ['Set ID', 'Campaign Title', 'Vessel Name', 'Initiator Org', 'Stage', 'Readiness'];
-    const rows = filteredSets.map((s) => [
+    const rows = sortedSets.map((s) => [
       s.id,
       s.title,
       s.vesselName,
@@ -157,17 +198,29 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th>Set ID</th>
-              <th>Campaign / Set Title</th>
-              <th>Vessel Name</th>
-              <th>Initiating Organization</th>
-              <th>Stage</th>
-              <th>Readiness Score</th>
+              <th onClick={() => handleSort('id')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Set ID {renderSortIndicator('id')}
+              </th>
+              <th onClick={() => handleSort('title')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Campaign / Set Title {renderSortIndicator('title')}
+              </th>
+              <th onClick={() => handleSort('vesselName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Vessel Name {renderSortIndicator('vesselName')}
+              </th>
+              <th onClick={() => handleSort('initiatorOrg')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Initiating Organization {renderSortIndicator('initiatorOrg')}
+              </th>
+              <th onClick={() => handleSort('stage')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Stage {renderSortIndicator('stage')}
+              </th>
+              <th onClick={() => handleSort('readinessScore')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Readiness Score {renderSortIndicator('readinessScore')}
+              </th>
               <th className="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredSets.map((s) => (
+            {sortedSets.map((s) => (
               <tr
                 key={s.id}
                 onClick={() => onSelectSet(s)}
@@ -207,3 +260,4 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
     </div>
   );
 };
+

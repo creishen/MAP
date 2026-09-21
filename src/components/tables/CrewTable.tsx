@@ -1,6 +1,6 @@
 /* 
-  file summary: master crew directory table component matching exact assurance sets table format and header controls layout.
-  responsibilities: presents crew ids, full names, ranks, current vessel assignments, stcw compliance badges, export controls, and registration triggers.
+  file summary: master crew directory table component matching exact assurance sets table format, header controls layout, and interactive column sorting.
+  responsibilities: presents crew ids, full names, ranks, current vessel assignments, stcw compliance badges, multi-column sorting by header clicks, export controls, and registration triggers.
   role in system: main data table component for CrewView.tsx.
 */
 
@@ -10,6 +10,14 @@ import { CrewMember, CrewComplianceStatus } from '../../types/crew';
 import { formatMaritimeDate } from '../../utils/formatters';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 
+type CrewSortField =
+  | 'id'
+  | 'fullName'
+  | 'currentVesselName'
+  | 'nationality'
+  | 'complianceStatus'
+  | 'lastAuditedDate';
+
 interface CrewTableProps {
   onSelectCrew: (crew: CrewMember) => void;
   onRegisterCrew?: () => void;
@@ -17,8 +25,8 @@ interface CrewTableProps {
 }
 
 /**
-  what: renders master crew directory table matching assurance sets table layout.
-  how: filters crew array by search query, rank position, and STCW compliance status badge, with export to CSV/PDF.
+  what: renders master crew directory table matching assurance sets table layout with column sorting.
+  how: filters crew array by search query, rank position, and STCW compliance status badge, then sorts by sortField.
   with what file: src/components/tables/CrewTable.tsx loaded by CrewView.tsx.
 */
 export const CrewTable: React.FC<CrewTableProps> = ({
@@ -30,6 +38,8 @@ export const CrewTable: React.FC<CrewTableProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [rankFilter, setRankFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [sortField, setSortField] = useState<CrewSortField>('id');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   const canManageCrew = activePersona === 'Administrator' || activePersona === 'Submitter';
@@ -49,6 +59,42 @@ export const CrewTable: React.FC<CrewTableProps> = ({
     return matchesSearch && matchesRank && matchesStatus;
   });
 
+  const handleSort = (field: CrewSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIndicator = (field: CrewSortField) => {
+    if (sortField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{sortDirection === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const sortedCrew = [...filteredCrew].sort((a, b) => {
+    let valA: any = '';
+    let valB: any = '';
+
+    if (sortField === 'lastAuditedDate') {
+      valA = new Date(a.lastAuditedDate).getTime() || 0;
+      valB = new Date(b.lastAuditedDate).getTime() || 0;
+    } else {
+      valA = a[sortField] ?? '';
+      valB = b[sortField] ?? '';
+    }
+
+    if (typeof valA === 'string') {
+      valA = valA.toLowerCase();
+      valB = (valB as string).toLowerCase();
+    }
+
+    if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   const getComplianceBadgeClass = (status: CrewComplianceStatus) => {
     switch (status) {
       case 'Fully Compliant': return 'bg-success text-white';
@@ -59,7 +105,7 @@ export const CrewTable: React.FC<CrewTableProps> = ({
   };
 
   const handleExportCsv = () => {
-    const exportData = filteredCrew.map((c) => ({
+    const exportData = sortedCrew.map((c) => ({
       CrewID: c.id,
       FullName: c.fullName,
       Rank: c.rank,
@@ -77,7 +123,7 @@ export const CrewTable: React.FC<CrewTableProps> = ({
 
   const handleExportPdf = () => {
     const headers = ['Crew ID', 'Full Name & Rank', 'Current Vessel', 'Seaman Book', 'Status', 'Score'];
-    const rows = filteredCrew.map((c) => [
+    const rows = sortedCrew.map((c) => [
       c.id,
       `${c.fullName}\n(${c.rank})`,
       c.currentVesselName || 'Unassigned',
@@ -175,24 +221,36 @@ export const CrewTable: React.FC<CrewTableProps> = ({
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th>Crew ID</th>
-              <th>Full Name & Rank</th>
-              <th>Current Vessel Assignment</th>
-              <th>Nationality & Seaman Book</th>
-              <th>STCW Compliance Status</th>
-              <th>Last Audited</th>
+              <th onClick={() => handleSort('id')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Crew ID {renderSortIndicator('id')}
+              </th>
+              <th onClick={() => handleSort('fullName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Full Name &amp; Rank {renderSortIndicator('fullName')}
+              </th>
+              <th onClick={() => handleSort('currentVesselName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Current Vessel Assignment {renderSortIndicator('currentVesselName')}
+              </th>
+              <th onClick={() => handleSort('nationality')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Nationality &amp; Seaman Book {renderSortIndicator('nationality')}
+              </th>
+              <th onClick={() => handleSort('complianceStatus')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                STCW Compliance Status {renderSortIndicator('complianceStatus')}
+              </th>
+              <th onClick={() => handleSort('lastAuditedDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Last Audited {renderSortIndicator('lastAuditedDate')}
+              </th>
               <th className="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredCrew.length === 0 ? (
+            {sortedCrew.length === 0 ? (
               <tr>
                 <td colSpan={7} className="text-center py-4 text-muted">
                   No registered crew members match your search or filter criteria.
                 </td>
               </tr>
             ) : (
-              filteredCrew.map((c) => (
+              sortedCrew.map((c) => (
                 <tr
                   key={c.id}
                   onClick={() => onSelectCrew(c)}
@@ -258,3 +316,4 @@ export const CrewTable: React.FC<CrewTableProps> = ({
     </div>
   );
 };
+
