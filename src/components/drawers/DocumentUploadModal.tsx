@@ -621,7 +621,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             <div className="modal-footer border-top bg-light">
               <button
                 type="button"
-                className="btn btn-sm btn-outline-primary"
+                className="btn btn-sm btn-secondary"
                 onClick={onClose}
                 disabled={isUploading || isExtractingAi}
               >
@@ -629,7 +629,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
               </button>
               <button
                 type="submit"
-                className={`btn btn-sm ${existingDocument ? 'btn-warning text-dark' : 'btn-success'} fw-bold px-4 d-inline-flex align-items-center gap-2`}
+                className="btn btn-sm btn-primary fw-bold px-4 d-inline-flex align-items-center gap-2"
                 disabled={isUploading || isExtractingAi || !title.trim()}
               >
                 {isUploading ? (

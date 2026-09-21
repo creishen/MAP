@@ -177,7 +177,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
             <div className="d-flex flex-column gap-2">
               <button
                 type="button"
-                className="btn btn-outline-success text-start p-3 d-flex align-items-center justify-content-between"
+                className="btn btn-outline-primary text-start p-3 d-flex align-items-center justify-content-between"
                 onClick={() => {
                   const target = registeredCrew;
                   setRegisteredCrew(null);
@@ -191,12 +191,12 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
                   <div className="fw-bold">+ Upload Layer 1 — Universal Core Certificate</div>
                   <div className="small text-muted">Universal Core (Passport, Seaman's Book, BST, ENG1 Medical, Security Awareness)</div>
                 </div>
-                <span className="btn btn-sm btn-success ms-2 flex-shrink-0">Add Layer 1</span>
+                <span className="btn btn-sm btn-primary ms-2 flex-shrink-0">Add Layer 1</span>
               </button>
 
               <button
                 type="button"
-                className="btn btn-outline-success text-start p-3 d-flex align-items-center justify-content-between"
+                className="btn btn-outline-info text-dark text-start p-3 d-flex align-items-center justify-content-between"
                 onClick={() => {
                   const target = registeredCrew;
                   setRegisteredCrew(null);
@@ -210,7 +210,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
                   <div className="fw-bold">+ Upload Layer 2 — Vessel Specific Endorsement</div>
                   <div className="small text-muted">Vessel & Cargo Specific (CoC, Flag Endorsement, Advanced Tanker, IGF, DP Operator)</div>
                 </div>
-                <span className="btn btn-sm btn-success ms-2 flex-shrink-0">Add Layer 2</span>
+                <span className="btn btn-sm btn-info text-dark ms-2 flex-shrink-0">Add Layer 2</span>
               </button>
             </div>
           </div>
@@ -218,7 +218,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
             {onViewCrewDetail && (
               <button
                 type="button"
-                className="btn btn-sm btn-outline-primary"
+                className="btn btn-sm btn-outline-secondary"
                 onClick={() => {
                   const targetId = registeredCrew.id;
                   setRegisteredCrew(null);
@@ -397,14 +397,14 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
           <div className="card-footer d-flex align-items-center justify-content-end gap-2 p-3 border-top bg-light">
             <button
               type="button"
-              className="btn btn-sm btn-outline-primary"
+              className="btn btn-sm btn-outline-secondary"
               onClick={onClose}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="btn btn-sm btn-success"
+              className="btn btn-sm btn-primary"
               disabled={!canManage}
             >
               Register Crew Profile

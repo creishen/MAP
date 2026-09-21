@@ -130,7 +130,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
           <div className="dropdown position-relative">
             <button
               type="button"
-              className="btn btn-sm btn-outline-primary text-dark dropdown-toggle"
+              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
               onClick={() => setIsExportOpen(!isExportOpen)}
             >
               Export Data
@@ -155,7 +155,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
           {canUpload && onUploadDocument && (
             <button
               type="button"
-              className="btn btn-sm btn-success"
+              className="btn btn-sm btn-primary"
               onClick={onUploadDocument}
             >
               Upload Master Document

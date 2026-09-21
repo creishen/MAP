@@ -332,10 +332,10 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
             </div>
 
             <div className="modal-footer border-top bg-light px-4 py-3">
-              <button type="button" className="btn btn-sm btn-outline-primary px-3" onClick={onClose}>
+              <button type="button" className="btn btn-sm btn-outline-secondary px-3" onClick={onClose}>
                 Cancel
               </button>
-              <button type="submit" className="btn btn-sm btn-success px-4 fw-semibold">
+              <button type="submit" className="btn btn-sm btn-primary px-4 fw-semibold" style={{ backgroundColor: 'rgb(11, 27, 43)', borderColor: 'rgb(11, 27, 43)' }}>
                 Initiate Assurance Set
               </button>
             </div>

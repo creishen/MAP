@@ -147,7 +147,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
           <div className="dropdown position-relative">
             <button
               type="button"
-              className="btn btn-sm btn-outline-primary text-dark dropdown-toggle"
+              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
               onClick={() => setIsExportOpen(!isExportOpen)}
             >
               Export Data
@@ -171,7 +171,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
           {canRegister && onRegisterVessel && (
             <button
               type="button"
-              className="btn btn-sm btn-success"
+              className="btn btn-sm btn-primary"
               onClick={onRegisterVessel}
             >
               + Register Vessel

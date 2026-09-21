@@ -368,7 +368,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                 {canSubmit && (
                   <button
                     type="button"
-                    className="btn btn-success text-white px-3.5 py-2 fw-bold shadow-sm"
+                    className="btn btn-primary text-white px-3.5 py-2 fw-bold shadow-sm"
                     style={{ fontSize: '0.8rem' }}
                     onClick={() => setIsUploadModalOpen(true)}
                   >
@@ -387,8 +387,8 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                     </button>
                     <button
                       type="button"
-                      className="btn btn-warning text-dark px-3.5 py-2 fw-bold shadow-sm"
-                      style={{ fontSize: '0.8rem' }}
+                      className="btn text-dark px-3.5 py-2 fw-bold shadow-sm"
+                      style={{ fontSize: '0.8rem', backgroundColor: '#fef3c7', borderColor: '#fde68a' }}
                       onClick={handleCorrection}
                     >
                       Return for Correction
@@ -396,10 +396,10 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                     <button
                       type="button"
                       className="btn btn-success text-white px-3.5 py-2 fw-bold shadow-sm"
-                      style={{ fontSize: '0.8rem' }}
+                      style={{ fontSize: '0.8rem', backgroundColor: '#059669', borderColor: '#059669' }}
                       onClick={handleVerify}
                     >
-                      Verify &amp; Route Forward
+                      Verify & Route Forward
                     </button>
                   </>
                 )}

@@ -119,7 +119,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
           <div className="dropdown position-relative">
             <button
               type="button"
-              className="btn btn-sm btn-outline-primary text-dark dropdown-toggle"
+              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
               onClick={() => setIsExportOpen(!isExportOpen)}
             >
               Export Data
@@ -144,7 +144,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
           {canInitiate && onInitiateSet && (
             <button
               type="button"
-              className="btn btn-sm btn-success"
+              className="btn btn-sm btn-primary"
               onClick={onInitiateSet}
             >
               Create Assurance Set

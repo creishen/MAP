@@ -295,14 +295,14 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
           <div className="card-footer d-flex align-items-center justify-content-end gap-2 p-3 border-top bg-light">
             <button
               type="button"
-              className="btn btn-sm btn-outline-primary"
+              className="btn btn-sm btn-outline-secondary"
               onClick={onClose}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className={`btn btn-sm ${isEditing ? 'btn-warning text-dark' : 'btn-success'}`}
+              className="btn btn-sm btn-primary"
               disabled={!canManage}
             >
               {isEditing ? 'Save & Update Certificate' : 'Upload & Register Certificate'}

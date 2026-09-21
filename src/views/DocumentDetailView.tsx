@@ -145,7 +145,7 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
           <div className="dropdown position-relative ms-auto">
             <button
               type="button"
-              className="btn btn-sm btn-outline-primary text-dark dropdown-toggle"
+              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
               onClick={() => setIsExportOpen(!isExportOpen)}
             >
               Export Data
@@ -258,7 +258,7 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
           {canUpload && (
             <button
               type="button"
-              className="btn btn-sm btn-success text-white font-mono-code ms-auto"
+              className="btn btn-sm btn-primary text-white font-mono-code ms-auto"
               onClick={() => setIsUploadModalOpen(true)}
             >
               + Upload New Version
