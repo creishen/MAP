@@ -569,7 +569,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       organization: 'Northwind Marine Pty Ltd',
       action: `Provisioned New User Profile (${newUser.userType})`,
       targetAsset: `${newUser.name} (${newUser.email})`,
-      justificationNotes: `Added ${newUser.userType} user assigned as ${newUser.role} for ${newUser.organization}.`,
+      justificationNotes: `Added ${newUser.userType} user assigned as ${newUser.roles.join(', ')} for ${newUser.organization}.`,
     });
   },
   updateUser: (updatedUser) => {
@@ -582,7 +582,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       organization: 'Northwind Marine Pty Ltd',
       action: 'Updated User Profile',
       targetAsset: `${updatedUser.name} (${updatedUser.email})`,
-      justificationNotes: `Updated user profile for ${updatedUser.name} (${updatedUser.role}, ${updatedUser.userType}).`,
+      justificationNotes: `Updated user profile for ${updatedUser.name} (${updatedUser.roles.join(', ')}, ${updatedUser.userType}).`,
     });
   },
   updateUserStatus: (userId, status) => {

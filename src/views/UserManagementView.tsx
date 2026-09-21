@@ -9,6 +9,7 @@ import { useMapStore } from '../store/useMapStore';
 import { UserTable } from '../components/tables/UserTable';
 import { AddUserModal } from '../components/drawers/AddUserModal';
 import { filterUsersForPersona } from '../utils/rbacHelpers';
+import { userHasRole } from '../utils/userRoleHelpers';
 
 /**
   what: renders user management view for organization and third-party users in light theme.
@@ -24,8 +25,8 @@ export const UserManagementView: React.FC = () => {
 
   const orgUsersCount = visibleUsers.filter((u) => u.userType === 'Organization').length;
   const thirdPartyUsersCount = visibleUsers.filter((u) => u.userType === 'Third-Party').length;
-  const inspectorsCount = visibleUsers.filter((u) => u.role === 'Inspector').length;
-  const verifiersCount = visibleUsers.filter((u) => u.role === 'Verifier').length;
+  const inspectorsCount = visibleUsers.filter((u) => userHasRole(u, 'Inspector')).length;
+  const verifiersCount = visibleUsers.filter((u) => userHasRole(u, 'Verifier')).length;
 
   const isCAdmin = activePersona === 'C Admin';
 

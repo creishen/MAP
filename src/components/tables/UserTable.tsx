@@ -12,6 +12,7 @@ import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 import { EditUserModal } from '../drawers/EditUserModal';
 
 import { filterUsersForPersona } from '../../utils/rbacHelpers';
+import { formatUserRoles, userHasRole, userMatchesAnyRole } from '../../utils/userRoleHelpers';
 
 interface UserTableProps {
   onAddUser?: () => void;
@@ -44,17 +45,18 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
       u.organization.toLowerCase().includes(term) ||
       u.departmentOrScope.toLowerCase().includes(term);
 
-    const matchesRole = roleFilter === 'ALL' || u.role === roleFilter;
+    const matchesRole =
+      roleFilter === 'ALL' || userHasRole(u, roleFilter as UserRolePersona);
     const matchesType = typeFilter === 'ALL' || u.userType === typeFilter;
     const matchesStatus = statusFilter === 'ALL' || u.status === statusFilter;
 
     let matchesRoleTab = true;
     if (roleCategoryTab === 'Inspector') {
-      matchesRoleTab = u.role === 'Inspector';
+      matchesRoleTab = userHasRole(u, 'Inspector');
     } else if (roleCategoryTab === 'Verifier') {
-      matchesRoleTab = u.role === 'Verifier';
+      matchesRoleTab = userHasRole(u, 'Verifier');
     } else if (roleCategoryTab === 'AdminApprover') {
-      matchesRoleTab = u.role === 'C Admin' || u.role === 'Administrator' || u.role === 'Approver';
+      matchesRoleTab = userMatchesAnyRole(u, ['C Admin', 'Administrator', 'Approver']);
     }
 
     return matchesSearch && matchesRole && matchesType && matchesStatus && matchesRoleTab;
@@ -85,7 +87,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
     const exportData = filteredUsers.map((u) => ({
       Name: u.name,
       Email: u.email,
-      AssignedRole: u.role,
+      AssignedRole: formatUserRoles(u.roles),
       Classification: u.userType,
       Organization: u.organization,
       Scope: u.departmentOrScope,
@@ -100,7 +102,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
     const headers = ['Name & Email', 'Role', 'Classification', 'Organization & Scope', 'Status'];
     const rows = filteredUsers.map((u) => [
       `${u.name}\n(${u.email})`,
-      u.role,
+      formatUserRoles(u.roles),
       u.userType,
       `${u.organization}\n${u.departmentOrScope}`,
       u.status,
@@ -232,9 +234,13 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
                     <div className="small font-mono-code text-muted">{u.email}</div>
                   </td>
                   <td>
-                    <span className={`badge ${getRoleBadgeClass(u.role)}`}>
-                      {u.role}
-                    </span>
+                    <div className="d-flex flex-wrap gap-1">
+                      {u.roles.map((role) => (
+                        <span key={role} className={`badge ${getRoleBadgeClass(role)}`}>
+                          {role}
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td>
                     <span className={`badge ${u.userType === 'Organization' ? 'bg-light text-dark border' : 'bg-info text-dark'}`}>

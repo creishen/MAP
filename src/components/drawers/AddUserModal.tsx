@@ -6,8 +6,10 @@
 
 import React, { useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
-import { UserRolePersona } from '../../types/audit';
 import { UserType, UserProfile } from '../../types/user';
+import { UserRolePersona } from '../../types/audit';
+import { UserRoleChecklist } from '../common/UserRoleChecklist';
+import { buildRolesFromForm } from '../../utils/userRoleHelpers';
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -24,7 +26,8 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [userType, setUserType] = useState<UserType>('Third-Party');
-  const [role, setRole] = useState<UserRolePersona>('Verifier');
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [operationalRoles, setOperationalRoles] = useState<UserRolePersona[]>(['Verifier']);
   const [organization, setOrganization] = useState('');
   const [departmentOrScope, setDepartmentOrScope] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -40,6 +43,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       return;
     }
 
+    const roles = buildRolesFromForm(isPlatformAdmin, operationalRoles);
+    if (roles.length === 0) {
+      setErrorMessage('Select at least one platform or operational role for this user.');
+      return;
+    }
+
     /* check duplicate email validation */
     const existingUser = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
     if (existingUser) {
@@ -51,7 +60,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       id: `USR-${Math.floor(300 + Math.random() * 600)}`,
       name: name.trim(),
       email: email.trim(),
-      role,
+      roles,
       userType,
       organization: organization.trim(),
       departmentOrScope: departmentOrScope.trim() || (userType === 'Organization' ? 'Internal Operations' : 'External Stakeholder Scope'),
@@ -65,7 +74,8 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
     setName('');
     setEmail('');
     setUserType('Third-Party');
-    setRole('Verifier');
+    setIsPlatformAdmin(false);
+    setOperationalRoles(['Verifier']);
     setOrganization('');
     setDepartmentOrScope('');
     setErrorMessage('');
@@ -165,23 +175,15 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
               </div>
             </div>
 
-            {/* Persona Role & Organization Name */}
+            {/* Role Entitlements & Organization Name */}
             <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="user-role">Assigned System Role / Persona *</label>
-                <select
-                  id="user-role"
-                  className="form-select form-select-sm bg-white text-dark border-secondary"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRolePersona)}
-                >
-                  <option value="Administrator">Administrator</option>
-                  <option value="Submitter">Submitter</option>
-                  <option value="Verifier">Verifier</option>
-                  <option value="Inspector">Inspector</option>
-                  <option value="Approver">Approver</option>
-                  <option value="C Admin">C Admin (Client Admin)</option>
-                </select>
+              <div className="col-12">
+                <UserRoleChecklist
+                  isPlatformAdmin={isPlatformAdmin}
+                  operationalRoles={operationalRoles}
+                  onPlatformAdminChange={setIsPlatformAdmin}
+                  onOperationalRolesChange={setOperationalRoles}
+                />
               </div>
 
               <div className="col-md-6">

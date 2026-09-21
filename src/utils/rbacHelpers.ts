@@ -8,6 +8,7 @@ import { AssuranceSet } from "../types/assurance";
 import { AuditTrailEvent, UserRolePersona } from "../types/audit";
 import { MasterDocument } from "../types/document";
 import { VesselParticulars } from "../types/vessel";
+import { userMatchesAnyRole } from "./userRoleHelpers";
 
 /**
   what: checks if an assurance set is assigned to the specified user persona role.
@@ -109,9 +110,7 @@ export function filterUsersForPersona(
   if (persona === "C Admin") {
     return users.filter(
       (u) =>
-        u.role === "C Admin" ||
-        u.role === "Inspector" ||
-        u.role === "Verifier" ||
+        userMatchesAnyRole(u, ["C Admin", "Inspector", "Verifier"]) ||
         u.organization.includes("Southern Basin") ||
         u.organization.includes("Chevron") ||
         u.organization.includes("Woodside")

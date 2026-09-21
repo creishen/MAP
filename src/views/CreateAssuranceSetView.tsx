@@ -9,6 +9,7 @@ import { useMapStore } from '../store/useMapStore';
 import { AssuranceSet, AssuranceRequirement } from '../types/assurance';
 import { UserProfile } from '../types/user';
 import { getBackButtonInfo } from '../utils/rbacHelpers';
+import { usersWithRole, getAssuranceAssignmentWarnings, hasBlockingAssuranceAssignmentConflict } from '../utils/userRoleHelpers';
 
 interface MasterDocItem {
   id: string;
@@ -58,16 +59,17 @@ export const CreateAssuranceSetView: React.FC = () => {
   const [approvalRequired, setApprovalRequired] = useState(true);
 
   /* filter users by role */
-  const submitterUsers = users.filter((u: UserProfile) => u.role === 'Submitter');
-  const verifierUsers = users.filter((u: UserProfile) => u.role === 'Verifier');
-  const inspectorUsers = users.filter((u: UserProfile) => u.role === 'Inspector');
-  const approverUsers = users.filter((u: UserProfile) => u.role === 'Approver');
+  const submitterUsers = usersWithRole(users, 'Submitter');
+  const verifierUsers = usersWithRole(users, 'Verifier');
+  const inspectorUsers = usersWithRole(users, 'Inspector');
+  const approverUsers = usersWithRole(users, 'Approver');
 
   /* stakeholder assignment state */
   const [assignedSubmitter, setAssignedSubmitter] = useState(submitterUsers[0]?.id || '');
   const [assignedVerifier, setAssignedVerifier] = useState(verifierUsers[0]?.id || '');
   const [assignedInspector, setAssignedInspector] = useState(inspectorUsers[0]?.id || '');
   const [assignedApprover, setAssignedApprover] = useState(approverUsers[0]?.id || '');
+  const [assignmentError, setAssignmentError] = useState('');
 
   const selectedVessel = vessels.find((v) => v.id === vesselId) || vessels[0];
   const tempSetId = 'AS-2041';
@@ -127,9 +129,28 @@ export const CreateAssuranceSetView: React.FC = () => {
   const selectedInspector = users.find((u: UserProfile) => u.id === assignedInspector);
   const selectedApprover = users.find((u: UserProfile) => u.id === assignedApprover);
 
+  const assignmentWarnings = getAssuranceAssignmentWarnings({
+    submitterId: assignedSubmitter,
+    verifierId: verificationRequired ? assignedVerifier : undefined,
+    approverId: approvalRequired ? assignedApprover : undefined,
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !selectedVessel) return;
+
+    if (
+      hasBlockingAssuranceAssignmentConflict({
+        verifierId: verificationRequired ? assignedVerifier : undefined,
+        approverId: approvalRequired ? assignedApprover : undefined,
+      })
+    ) {
+      setAssignmentError(
+        'Cannot create assurance set: Verifier and Approver must be different users on the same campaign.',
+      );
+      return;
+    }
+    setAssignmentError('');
 
     const isClientAdmin = activePersona === 'C Admin';
 
@@ -324,6 +345,19 @@ export const CreateAssuranceSetView: React.FC = () => {
                   </div>
                 </div>
                 <div className="card-body p-4">
+                  {assignmentError && (
+                    <div className="alert alert-danger py-2 small mb-3">{assignmentError}</div>
+                  )}
+                  {assignmentWarnings.length > 0 && (
+                    <div className="alert alert-warning py-2 small mb-3">
+                      <div className="fw-semibold mb-1">Segregation-of-Duty Notice</div>
+                      <ul className="mb-0 ps-3">
+                        {assignmentWarnings.map((warning) => (
+                          <li key={warning}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   <div className="d-flex flex-column gap-3">
                     {/* submitter assignment (always required) */}
                     <div className="p-3 border rounded-3 bg-light-subtle">

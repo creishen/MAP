@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useMapStore } from '../store/useMapStore';
+import { UserRolePersona } from '../types/audit';
 import { isViewAccessibleToPersona, filterDocumentsForVerifierQueue } from '../utils/rbacHelpers';
 
 describe('Map Store State Management', () => {
@@ -164,14 +165,14 @@ describe('Map Store State Management', () => {
     const updatedUser = {
       ...targetUser,
       name: 'Captain Updated Name',
-      role: 'Approver' as const,
+      roles: ['Approver'] as UserRolePersona[],
     };
 
     store.updateUser(updatedUser);
 
     const userInStore = useMapStore.getState().users.find((u) => u.id === targetUser.id);
     expect(userInStore?.name).toBe('Captain Updated Name');
-    expect(userInStore?.role).toBe('Approver');
+    expect(userInStore?.roles).toEqual(['Approver']);
 
     const latestAudit = useMapStore.getState().auditEvents[0];
     expect(latestAudit.action).toBe('Updated User Profile');

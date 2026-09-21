@@ -17,6 +17,7 @@ import { AssuranceRequirement } from '../types/assurance';
 import { VersionHistoryDrawer } from '../components/drawers/VersionHistoryDrawer';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { DocumentUploadModal } from '../components/drawers/DocumentUploadModal';
+import { userHasRole } from '../utils/userRoleHelpers';
 
 interface AssuranceDetailViewProps {
   setId: string;
@@ -227,7 +228,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                         >
                           <option value="">Select Inspector...</option>
                           {users
-                            .filter((u) => u.role === 'Inspector')
+                            .filter((u) => userHasRole(u, 'Inspector'))
                             .map((u) => (
                               <option key={u.id} value={`${u.name} (${u.organization})`}>
                                 {u.name} - {u.organization}

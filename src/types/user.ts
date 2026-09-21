@@ -12,7 +12,7 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  role: UserRolePersona;
+  roles: UserRolePersona[];
   userType: UserType;
   organization: string;
   departmentOrScope: string;

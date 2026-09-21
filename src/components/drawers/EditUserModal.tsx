@@ -8,6 +8,8 @@ import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { UserRolePersona } from '../../types/audit';
 import { UserType, UserProfile } from '../../types/user';
+import { UserRoleChecklist } from '../common/UserRoleChecklist';
+import { buildRolesFromForm, splitRolesForForm } from '../../utils/userRoleHelpers';
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -25,7 +27,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [userType, setUserType] = useState<UserType>('Organization');
-  const [role, setRole] = useState<UserRolePersona>('Submitter');
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [operationalRoles, setOperationalRoles] = useState<UserRolePersona[]>(['Submitter']);
   const [organization, setOrganization] = useState('');
   const [departmentOrScope, setDepartmentOrScope] = useState('');
   const [status, setStatus] = useState<UserProfile['status']>('Active');
@@ -36,7 +39,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       setName(user.name);
       setEmail(user.email);
       setUserType(user.userType);
-      setRole(user.role);
+      const { isPlatformAdmin: admin, operationalRoles: ops } = splitRolesForForm(user.roles);
+      setIsPlatformAdmin(admin);
+      setOperationalRoles(ops);
       setOrganization(user.organization);
       setDepartmentOrScope(user.departmentOrScope);
       setStatus(user.status);
@@ -55,6 +60,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       return;
     }
 
+    const roles = buildRolesFromForm(isPlatformAdmin, operationalRoles);
+    if (roles.length === 0) {
+      setErrorMessage('Select at least one platform or operational role for this user.');
+      return;
+    }
+
     /* check duplicate email validation excluding current user being edited */
     const existingUser = users.find(
       (u) => u.id !== user.id && u.email.toLowerCase() === email.trim().toLowerCase()
@@ -68,7 +79,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       ...user,
       name: name.trim(),
       email: email.trim(),
-      role,
+      roles,
       userType,
       organization: organization.trim(),
       departmentOrScope: departmentOrScope.trim() || (userType === 'Organization' ? 'Internal Operations' : 'External Stakeholder Scope'),
@@ -166,23 +177,15 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
               </div>
             </div>
 
-            {/* Persona Role & Organization Name */}
+            {/* Role Entitlements & Organization Name */}
             <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="edit-user-role">Assigned System Role / Persona *</label>
-                <select
-                  id="edit-user-role"
-                  className="form-select form-select-sm bg-white text-dark border-secondary"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRolePersona)}
-                >
-                  <option value="Administrator">Administrator</option>
-                  <option value="Submitter">Submitter</option>
-                  <option value="Verifier">Verifier</option>
-                  <option value="Inspector">Inspector</option>
-                  <option value="Approver">Approver</option>
-                  <option value="C Admin">C Admin (Client Admin)</option>
-                </select>
+              <div className="col-12">
+                <UserRoleChecklist
+                  isPlatformAdmin={isPlatformAdmin}
+                  operationalRoles={operationalRoles}
+                  onPlatformAdminChange={setIsPlatformAdmin}
+                  onOperationalRolesChange={setOperationalRoles}
+                />
               </div>
 
               <div className="col-md-6">
