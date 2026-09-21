@@ -221,25 +221,25 @@ export const CrewTable: React.FC<CrewTableProps> = ({
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th onClick={() => handleSort('id')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('id')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Crew ID {renderSortIndicator('id')}
               </th>
-              <th onClick={() => handleSort('fullName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('fullName')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Full Name &amp; Rank {renderSortIndicator('fullName')}
               </th>
-              <th onClick={() => handleSort('currentVesselName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('currentVesselName')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Current Vessel Assignment {renderSortIndicator('currentVesselName')}
               </th>
-              <th onClick={() => handleSort('nationality')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('nationality')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Nationality &amp; Seaman Book {renderSortIndicator('nationality')}
               </th>
-              <th onClick={() => handleSort('complianceStatus')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('complianceStatus')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 STCW Compliance Status {renderSortIndicator('complianceStatus')}
               </th>
-              <th onClick={() => handleSort('lastAuditedDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('lastAuditedDate')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Last Audited {renderSortIndicator('lastAuditedDate')}
               </th>
-              <th className="text-end">Actions</th>
+              <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
             </tr>
           </thead>
           <tbody>

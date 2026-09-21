@@ -240,28 +240,28 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                Vessel Name &amp; IMO {renderSortIndicator('name')}
+              <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                Vessel Name {renderSortIndicator('name')}
               </th>
-              <th onClick={() => handleSort('classNotation')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('classNotation')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Class Notation / Type {renderSortIndicator('classNotation')}
               </th>
-              <th onClick={() => handleSort('flagState')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                Flag State / Port {renderSortIndicator('flagState')}
+              <th onClick={() => handleSort('flagState')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                Flag State {renderSortIndicator('flagState')}
               </th>
-              <th onClick={() => handleSort('registeredOwner')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                Registered Owner &amp; ISM {renderSortIndicator('registeredOwner')}
+              <th onClick={() => handleSort('registeredOwner')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                Registered Owner {renderSortIndicator('registeredOwner')}
               </th>
-              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Status {renderSortIndicator('status')}
               </th>
-              <th onClick={() => handleSort('certAlerts')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('certAlerts')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Cert Alerts {renderSortIndicator('certAlerts')}
               </th>
-              <th onClick={() => handleSort('complianceReadinessScore')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('complianceReadinessScore')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Assurance Readiness {renderSortIndicator('complianceReadinessScore')}
               </th>
-              <th className="text-end">Actions</th>
+              <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -288,7 +288,6 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
                 >
                   <td>
                     <div className="fw-semibold text-primary">{v.name}</div>
-                    <div className="small font-mono-code text-muted">IMO {v.imoNumber}</div>
                   </td>
                   <td className="small">
                     <div>{v.classNotation}</div>

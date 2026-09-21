@@ -197,19 +197,19 @@ export const InspectorWorkspaceView: React.FC = () => {
           <table className="table map-table-custom align-middle mb-0">
             <thead>
               <tr>
-                <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                   Vessel Name {renderSortIndicator('name')}
                 </th>
-                <th onClick={() => handleSort('imoNumber')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <th onClick={() => handleSort('imoNumber')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                   IMO Number {renderSortIndicator('imoNumber')}
                 </th>
-                <th onClick={() => handleSort('campaignTitle')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <th onClick={() => handleSort('campaignTitle')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                   Assurance Campaign {renderSortIndicator('campaignTitle')}
                 </th>
-                <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                   Status {renderSortIndicator('status')}
                 </th>
-                <th className="text-end">Actions</th>
+                <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
               </tr>
             </thead>
             <tbody>

@@ -198,25 +198,25 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th onClick={() => handleSort('id')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('id')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Set ID {renderSortIndicator('id')}
               </th>
-              <th onClick={() => handleSort('title')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('title')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Campaign / Set Title {renderSortIndicator('title')}
               </th>
-              <th onClick={() => handleSort('vesselName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('vesselName')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Vessel Name {renderSortIndicator('vesselName')}
               </th>
-              <th onClick={() => handleSort('initiatorOrg')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('initiatorOrg')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Initiating Organization {renderSortIndicator('initiatorOrg')}
               </th>
-              <th onClick={() => handleSort('stage')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('stage')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Stage {renderSortIndicator('stage')}
               </th>
-              <th onClick={() => handleSort('readinessScore')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('readinessScore')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Readiness Score {renderSortIndicator('readinessScore')}
               </th>
-              <th className="text-end">Actions</th>
+              <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
             </tr>
           </thead>
           <tbody>

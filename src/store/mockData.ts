@@ -876,7 +876,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
 export const MOCK_DOCUMENTS: MasterDocument[] = [
   {
     id: 'DOC-2026-099',
-    title: 'Certificate of Class — MV Pacific Pioneer',
+    title: 'Certificate of Class',
     entityType: 'Vessel Certificate',
     vesselId: '',
     certificateNo: 'DNV-STAT-2026-8810',

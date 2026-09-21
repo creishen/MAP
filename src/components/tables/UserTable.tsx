@@ -256,25 +256,25 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 User Name &amp; Email {renderSortIndicator('name')}
               </th>
-              <th onClick={() => handleSort('roles')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('roles')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Assigned Role {renderSortIndicator('roles')}
               </th>
-              <th onClick={() => handleSort('userType')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('userType')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Classification {renderSortIndicator('userType')}
               </th>
-              <th onClick={() => handleSort('organization')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('organization')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Organization &amp; Scope {renderSortIndicator('organization')}
               </th>
-              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Status {renderSortIndicator('status')}
               </th>
-              <th onClick={() => handleSort('lastActive')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('lastActive')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Last Active {renderSortIndicator('lastActive')}
               </th>
-              <th className="text-end">Actions</th>
+              <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
             </tr>
           </thead>
           <tbody>

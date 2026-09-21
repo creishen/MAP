@@ -213,28 +213,28 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
         <table className="table map-table-custom align-middle mb-0">
           <thead>
             <tr>
-              <th onClick={() => handleSort('title')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('title')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Document Title {renderSortIndicator('title')}
               </th>
-              <th onClick={() => handleSort('entityType')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('entityType')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Type {renderSortIndicator('entityType')}
               </th>
-              <th onClick={() => handleSort('issuingAuthority')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('issuingAuthority')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Issuing Authority {renderSortIndicator('issuingAuthority')}
               </th>
-              <th onClick={() => handleSort('expiryDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('expiryDate')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Expiry Date {renderSortIndicator('expiryDate')}
               </th>
-              <th onClick={() => handleSort('ocrConfidence')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('ocrConfidence')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 OCR Confidence {renderSortIndicator('ocrConfidence')}
               </th>
-              <th onClick={() => handleSort('complianceState')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('complianceState')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Compliance State {renderSortIndicator('complianceState')}
               </th>
-              <th onClick={() => handleSort('currentVersion')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+              <th onClick={() => handleSort('currentVersion')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Version {renderSortIndicator('currentVersion')}
               </th>
-              <th className="text-end">Actions</th>
+              <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
             </tr>
           </thead>
           <tbody>

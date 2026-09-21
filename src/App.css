@@ -137,13 +137,14 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid #e2e8f0 !important;
-  padding: 0.85rem 1.25rem !important;
+  padding: 0.75rem 0.85rem !important;
+  white-space: nowrap !important;
 }
 
 .map-table-custom td {
   border-bottom: 1px solid #f1f5f9 !important;
   vertical-align: middle;
-  padding: 0.95rem 1.25rem !important;
+  padding: 0.85rem 0.85rem !important;
   font-size: 0.875rem;
 }
 
