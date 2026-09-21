@@ -39,6 +39,8 @@ export const HeaderBanner: React.FC = () => {
         return getBackButtonInfo('crew', 'Crew Directory', previousHashView, activePersona, previousEntityId);
       case 'inspection':
         return getBackButtonInfo('inspector', 'Inspections', previousHashView, activePersona, previousEntityId);
+      case 'approver':
+        return getBackButtonInfo('approver', 'Approval Gate', previousHashView, activePersona, previousEntityId);
       case 'create-assurance-set':
       case 'assurance-sets':
       default:

@@ -321,12 +321,13 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set((state) => ({
       assuranceSets: state.assuranceSets.map((s) => {
         if (s.id !== setId) return s;
-        const newStage = decision === 'Approved' ? 'Certified' : 'Verification';
+        const newStage = decision === 'Approved' ? 'Approved & Certified' : 'Verification';
         return {
           ...s,
           stage: newStage,
           approverDecision: decision,
           approverNotes: notes,
+          readinessScore: decision === 'Approved' ? 100 : s.readinessScore,
         };
       }),
     }));

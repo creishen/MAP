@@ -184,7 +184,7 @@ describe('Map Store State Management', () => {
     expect(isViewAccessibleToPersona('users', undefined, 'Verifier')).toBe(false);
     expect(isViewAccessibleToPersona('users', undefined, 'Inspector')).toBe(false);
     expect(isViewAccessibleToPersona('users', undefined, 'Approver')).toBe(false);
-    expect(isViewAccessibleToPersona('users', undefined, 'C Admin')).toBe(false);
+    expect(isViewAccessibleToPersona('users', undefined, 'C Admin')).toBe(true);
   });
 
   it('should add STCW Layer 1 and Layer 2 certificates to crew members and record audit log', () => {
@@ -227,6 +227,46 @@ describe('Map Store State Management', () => {
 
     const latestAudit = useMapStore.getState().auditEvents[0];
     expect(latestAudit.action).toContain('Uploaded Crew STCW Document');
+  });
+
+  it('should allow Approver to access approver gate view', () => {
+    expect(isViewAccessibleToPersona('approver', undefined, 'Approver')).toBe(true);
+    expect(isViewAccessibleToPersona('approver', undefined, 'Administrator')).toBe(true);
+    expect(isViewAccessibleToPersona('approver', undefined, 'Submitter')).toBe(false);
+    expect(isViewAccessibleToPersona('approver', undefined, 'C Admin')).toBe(false);
+  });
+
+  it('should certify assurance set when approver approves campaign', () => {
+    const store = useMapStore.getState();
+    store.setActivePersona('Approver');
+
+    const targetSet = store.assuranceSets.find(
+      (s) => s.stage === 'Approval' || s.approverDecision === 'Pending',
+    ) || store.assuranceSets[0];
+
+    const fulfilledSet = {
+      ...targetSet,
+      requirements: targetSet.requirements.map((r) => ({
+        ...r,
+        isFulfilled: true,
+        verifierStatus: 'Verified' as const,
+      })),
+      stage: 'Approval' as const,
+      approverDecision: 'Pending' as const,
+    };
+
+    useMapStore.setState({
+      assuranceSets: store.assuranceSets.map((s) =>
+        s.id === targetSet.id ? fulfilledSet : s,
+      ),
+    });
+
+    useMapStore.getState().setApproverDecision(targetSet.id, 'Approved', 'Demo charter sign-off');
+
+    const updated = useMapStore.getState().assuranceSets.find((s) => s.id === targetSet.id);
+    expect(updated?.stage).toBe('Approved & Certified');
+    expect(updated?.approverDecision).toBe('Approved');
+    expect(updated?.readinessScore).toBe(100);
   });
 
   it('should allow C Admin (Client Admin) to access create-assurance-set view', () => {

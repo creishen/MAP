@@ -26,6 +26,7 @@ import { UserManagementView } from './views/UserManagementView';
 import { CrewView } from './views/CrewView';
 import { CrewDetailView } from './views/CrewDetailView';
 import { CapaManagementView } from './views/CapaManagementView';
+import { ApproverDashboardView } from './views/ApproverDashboardView';
 import './App.css';
 
 import { isViewAccessibleToPersona } from './utils/rbacHelpers';
@@ -82,6 +83,8 @@ export const App: React.FC = () => {
         return currentEntityId ? <DocumentDetailView documentId={currentEntityId} /> : <DocumentLibraryView />;
       case 'verifier':
         return <VerifierWorkspaceView />;
+      case 'approver':
+        return <ApproverDashboardView />;
       case 'inspection':
       case 'inspector':
         return currentEntityId ? <InspectionChecklistView vesselName={currentEntityId} /> : <InspectorWorkspaceView />;

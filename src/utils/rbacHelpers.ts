@@ -194,7 +194,7 @@ export function filterAuditTrailForPersona(
   with what file: src/utils/rbacHelpers.ts consumed by HeaderBanner, VesselDetailView, DocumentDetailView, InspectionChecklistView, and CreateAssuranceSetView.
 */
 export function getBackButtonInfo(
-  parentView: "assurance-sets" | "vessels" | "documents" | "inspector" | "crew" | "capa",
+  parentView: "assurance-sets" | "vessels" | "documents" | "inspector" | "crew" | "capa" | "approver",
   parentLabel: string,
   previousHashView: string | undefined,
   activePersona: UserRolePersona,
@@ -231,6 +231,8 @@ export function getBackButtonInfo(
       "Verifier",
       "Approver",
     ].includes(activePersona);
+  } else if (parentView === "approver") {
+    isParentAllowedInSidepanel = ["Administrator", "Approver"].includes(activePersona);
   }
 
   if (previousHashView === "dashboard" || !isParentAllowedInSidepanel) {
@@ -312,7 +314,7 @@ export function isViewAccessibleToPersona(
   if (view === "dashboard" || view === "audit" || view === "capa" || view === "capas") return true;
 
   if (persona === "C Admin") {
-    if (["documents", "verifier"].includes(view)) {
+    if (["documents", "verifier", "approver"].includes(view)) {
       return false;
     }
     return true;
@@ -320,7 +322,7 @@ export function isViewAccessibleToPersona(
 
   if (persona === "Submitter") {
     if (
-      ["verifier", "inspector", "inspection", "create-assurance-set"].includes(
+      ["verifier", "inspector", "inspection", "create-assurance-set", "approver"].includes(
         view,
       )
     ) {
@@ -337,6 +339,7 @@ export function isViewAccessibleToPersona(
         "inspector",
         "inspection",
         "create-assurance-set",
+        "approver",
       ].includes(view)
     ) {
       return false;
@@ -355,6 +358,7 @@ export function isViewAccessibleToPersona(
         "documents",
         "verifier",
         "create-assurance-set",
+        "approver",
       ].includes(view)
     ) {
       return false;

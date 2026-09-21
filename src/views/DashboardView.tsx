@@ -10,8 +10,8 @@ import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { formatMaritimeDate } from '../utils/formatters';
 import { VerifierWorkspaceView } from './VerifierWorkspaceView';
 import { InspectorWorkspaceView } from './InspectorWorkspaceView';
+import { ApproverDashboardView } from './ApproverDashboardView';
 import { isAssuranceSetAssignedToPersona, filterAuditTrailForPersona } from '../utils/rbacHelpers';
-import { AssuranceTable } from '../components/tables/AssuranceTable';
 
 /**
   what: renders the executive dashboard workspace view in light theme.
@@ -29,6 +29,10 @@ export const DashboardView: React.FC = () => {
     return <InspectorWorkspaceView />;
   }
 
+  if (activePersona === 'Approver') {
+    return <ApproverDashboardView />;
+  }
+
   const visibleAuditEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
 
   const totalVessels = vessels.length;
@@ -39,66 +43,6 @@ export const DashboardView: React.FC = () => {
 
   /* compute role-specific top summary metrics for activePersona */
   const renderDashboardCards = () => {
-    if (activePersona === 'Approver') {
-      const assignedSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, 'Approver'));
-      const pendingApprovalCount = assuranceSets.filter(
-        (s) => s.stage === 'Approval' || s.approverDecision === 'Pending'
-      ).length;
-      const avgScore = assignedSets.length
-        ? Math.round(assignedSets.reduce((acc, s) => acc + s.readinessScore, 0) / assignedSets.length)
-        : 85;
-      const returnedCount = assignedSets.filter(
-        (s) => s.approverDecision === 'Returned for Correction' || s.stage === 'Validation'
-      ).length;
-      const certifiedCount = assignedSets.filter(
-        (s) => s.stage === 'Certified' || s.stage === 'Approved & Certified'
-      ).length;
-
-      return (
-        <div className="row g-3">
-          <div className="col-md-3">
-            <div className="card map-card-custom p-3">
-              <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
-                Campaigns Pending Approval
-              </div>
-              <div className="display-6 fw-bold text-warning font-mono-code mt-1">{pendingApprovalCount}</div>
-              <div className="text-muted small mt-1">Vetting Packages Awaiting Sign-Off</div>
-            </div>
-          </div>
-
-          <div className="col-md-3">
-            <div className="card map-card-custom p-3">
-              <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
-                Charter Readiness Avg
-              </div>
-              <div className="display-6 fw-bold text-success font-mono-code mt-1">{avgScore}%</div>
-              <div className="text-muted small mt-1">Executive Compliance Rating</div>
-            </div>
-          </div>
-
-          <div className="col-md-3">
-            <div className="card map-card-custom p-3">
-              <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
-                Returned / Action Required
-              </div>
-              <div className="display-6 fw-bold text-danger font-mono-code mt-1">{returnedCount}</div>
-              <div className="text-muted small mt-1">Campaigns Pending Revision</div>
-            </div>
-          </div>
-
-          <div className="col-md-3">
-            <div className="card map-card-custom p-3">
-              <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
-                Certified Charters
-              </div>
-              <div className="display-6 fw-bold text-primary font-mono-code mt-1">{certifiedCount}</div>
-              <div className="text-muted small mt-1">Approved & Certified Fleet</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     if (activePersona === 'Submitter') {
       const assignedSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, 'Submitter'));
       const pendingUploads = documents.filter((d) => d.verificationStatus === 'Pending').length;
@@ -200,15 +144,10 @@ export const DashboardView: React.FC = () => {
       {/* Top Banner KPI summary cards */}
       {renderDashboardCards()}
 
-      {/* Main Grid: Fleet Compliance Status or Assurance Sets Table */}
+      {/* Main Grid: Fleet Compliance Status */}
       <div className="row g-4">
-        {activePersona === 'Approver' ? (
-          <div className="col-12">
-            <AssuranceTable onSelectSet={(set) => setCurrentHashView('assurance-sets', set.id)} />
-          </div>
-        ) : (
-          <>
-            <div className="col-lg-8">
+        <>
+          <div className="col-lg-8">
               <div className="card map-card-custom">
                 <div className="card-header d-flex align-items-center justify-between">
                   <span>Fleet Assurance Overview</span>
@@ -281,7 +220,6 @@ export const DashboardView: React.FC = () => {
               </div>
             </div>
           </>
-        )}
       </div>
     </div>
   );
