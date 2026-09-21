@@ -620,6 +620,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         documentId: 'DOC-2026-001',
         verifierStatus: 'Verified',
         notes: 'DNV Certificate verified against class registry database.',
+        linkedDocumentId: ''
       },
       {
         id: 'REQ-102',
@@ -631,6 +632,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         documentId: 'DOC-2026-002',
         verifierStatus: 'Verified',
         notes: 'Safety equipment annual survey completed.',
+        linkedDocumentId: ''
       },
       {
         id: 'REQ-103',
@@ -642,6 +644,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         documentId: 'DOC-2026-004',
         verifierStatus: 'Verified',
         notes: 'AMSA Master Unlimited endorsement verified.',
+        linkedDocumentId: ''
       },
       {
         id: 'REQ-104',
@@ -653,6 +656,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         documentId: 'DOC-2026-003',
         verifierStatus: 'Correction Requested',
         notes: 'OWS 15ppm calibration seal photo requires higher resolution.',
+        linkedDocumentId: ''
       },
     ],
   },
@@ -683,6 +687,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         ocrConfidence: 97,
         documentId: 'DOC-2026-005',
         verifierStatus: 'Pending',
+        linkedDocumentId: ''
       },
     ],
   },
@@ -714,6 +719,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         ocrConfidence: 95,
         documentId: 'DOC-2026-006',
         verifierStatus: 'Pending',
+        linkedDocumentId: ''
       },
     ],
   },
@@ -745,6 +751,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         ocrConfidence: 99,
         verifierStatus: 'Verified',
         notes: 'DNV class notation verified for subsea ROV operations.',
+        linkedDocumentId: ''
       },
       {
         id: 'REQ-402',
@@ -755,6 +762,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         ocrConfidence: 98,
         verifierStatus: 'Verified',
         notes: 'Safety construction certificate valid through 2028.',
+        linkedDocumentId: ''
       },
     ],
   },
@@ -786,6 +794,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         ocrConfidence: 96,
         verifierStatus: 'Verified',
         notes: 'ABS Class endorsement verified.',
+        linkedDocumentId: ''
       },
       {
         id: 'REQ-502',
@@ -796,6 +805,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         ocrConfidence: 95,
         verifierStatus: 'Verified',
         notes: 'Physical survey completed with 1 deficiency logged for liferaft HRU.',
+        linkedDocumentId: ''
       },
     ],
   },
@@ -826,6 +836,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         isFulfilled: true,
         ocrConfidence: 94,
         verifierStatus: 'Pending',
+        linkedDocumentId: ''
       },
     ],
   },
@@ -856,6 +867,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         isFulfilled: true,
         ocrConfidence: 92,
         verifierStatus: 'Pending',
+        linkedDocumentId: ''
       },
     ],
   },

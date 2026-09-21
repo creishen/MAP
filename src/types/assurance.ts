@@ -16,6 +16,7 @@ export interface AssuranceRequirement {
   isFulfilled: boolean;
   ocrConfidence: number; // 0 - 100%
   documentId?: string;
+  linkedDocumentId?: string;
   documentVersion?: string;
   verifierStatus: 'Pending' | 'Verified' | 'Correction Requested' | 'Rejected';
   verificationRoute?: 'Inspector' | 'Approver';
