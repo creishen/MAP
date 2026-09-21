@@ -1,6 +1,6 @@
 /* 
   file summary: dedicated vessel capa tracking and re-inspection management table view in light theme.
-  responsibilities: presents vessel corrective actions (capa) queue as a sortable, filterable master table and launches CapaReinspectionDrawer for detailed re-inspections.
+  responsibilities: presents vessel corrective actions (capa) queue as a clean, neat, sortable master table and launches CapaReinspectionDrawer for detailed findings and evidence.
   role in system: full-page view rendered when clicking capa tracker in sidebar or inspector workspace (/capa or /capa/vesselName).
 */
 
@@ -18,8 +18,8 @@ interface CapaManagementViewProps {
 type CapaSortField = 'id' | 'vesselName' | 'title' | 'owner' | 'dueDate' | 'status';
 
 /**
-  what: renders dedicated vessel capa items table with search, filters, column sorting, and inspector re-inspection drawer.
-  how: aggregates capaItems into a clean sortable table with status/vessel dropdown filters and launches CapaReinspectionDrawer.
+  what: renders clean, un-cramped vessel capa master table displaying essential columns and offloading detailed findings to CapaReinspectionDrawer.
+  how: aggregates capaItems into a neat sortable table with status/vessel dropdown filters and launches CapaReinspectionDrawer on click.
   with what file: src/views/CapaManagementView.tsx loaded by App.tsx when currentHashView is capa or capas.
 */
 export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselName }) => {
@@ -329,10 +329,9 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
               <tr>
                 {renderSortHeader('CAPA ID', 'id')}
                 {renderSortHeader('Vessel Name', 'vesselName')}
-                {renderSortHeader('Title & Finding', 'title')}
+                {renderSortHeader('Title', 'title')}
                 {renderSortHeader('Owner / Dept', 'owner')}
                 {renderSortHeader('Due Date', 'dueDate')}
-                <th>Evidence</th>
                 {renderSortHeader('Status', 'status')}
                 <th className="text-end">Actions</th>
               </tr>
@@ -341,7 +340,7 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
               {sortedCapas.map((capa) => (
                 <tr key={capa.id} onClick={() => setActiveCapa(capa)} style={{ cursor: 'pointer' }}>
                   <td>
-                    <span className="font-mono-code fw-bold text-primary small me-1">{capa.id}</span>
+                    <span className="font-mono-code fw-bold text-primary small me-1.5">{capa.id}</span>
                     {capa.flaggedForReinspection && (
                       <span className="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle font-mono-code" style={{ fontSize: '0.65rem' }}>
                         Flagged
@@ -352,18 +351,10 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
                     <span className="fw-semibold text-dark font-mono-code small">{capa.vesselName}</span>
                   </td>
                   <td>
-                    <div className="fw-bold text-dark" style={{ fontSize: '0.875rem' }}>{capa.title}</div>
-                    <div className="text-muted small text-truncate" style={{ maxWidth: '300px', fontSize: '0.75rem' }}>
-                      {capa.findingDescription}
-                    </div>
+                    <span className="fw-bold text-dark" style={{ fontSize: '0.875rem' }}>{capa.title}</span>
                   </td>
                   <td className="small text-secondary">{capa.owner}</td>
                   <td className="font-mono-code small">{capa.dueDate}</td>
-                  <td>
-                    <span className="badge bg-light text-dark border font-mono-code" style={{ fontSize: '0.725rem' }}>
-                      📷 {capa.evidences?.length || 0} Files
-                    </span>
-                  </td>
                   <td>
                     <span className={`badge ${getStatusBadgeClass(capa.status)}`}>
                       {capa.status}
@@ -386,7 +377,7 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
 
               {sortedCapas.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center text-muted py-4 fst-italic">
+                  <td colSpan={7} className="text-center text-muted py-4 fst-italic">
                     No corrective action items match the selected search filters.
                   </td>
                 </tr>
