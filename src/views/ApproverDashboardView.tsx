@@ -36,8 +36,20 @@ export const ApproverDashboardView: React.FC = () => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [selectedDocForReview, setSelectedDocForReview] = useState<{ doc: MasterDocument; notes?: string } | null>(null);
 
-  /* filter assigned sets based on rbac persona permissions */
-  const assignedSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, activePersona));
+  /* filter assigned sets that are verified and awaiting approval */
+  const assignedSets = assuranceSets.filter((s) => {
+    const isAssigned = isAssuranceSetAssignedToPersona(s, activePersona);
+    if (activePersona === 'Approver') {
+      const isVerifiedAndReady =
+        s.stage === 'Approval' ||
+        s.stage === 'Approved & Certified' ||
+        s.approverDecision !== 'Pending' ||
+        (s.requirements.length > 0 &&
+          s.requirements.every((r) => !r.isMandatory || r.verifierStatus === 'Verified' || r.isFulfilled));
+      return isAssigned && isVerifiedAndReady;
+    }
+    return isAssigned;
+  });
 
   /* active selected set from currentEntityId route parameter or state fallback */
   const selectedSet = assignedSets.find((s) => s.id === currentEntityId);
@@ -102,10 +114,10 @@ export const ApproverDashboardView: React.FC = () => {
             {selectedSet.approverDecision && (
               <span
                 className={`badge font-mono-code ${selectedSet.approverDecision === 'Approved'
-                    ? 'bg-success text-white'
-                    : selectedSet.approverDecision === 'Returned for Correction'
-                      ? 'bg-warning text-dark'
-                      : 'bg-danger text-white'
+                  ? 'bg-success text-white'
+                  : selectedSet.approverDecision === 'Returned for Correction'
+                    ? 'bg-warning text-dark'
+                    : 'bg-danger text-white'
                   }`}
               >
                 {selectedSet.approverDecision}
@@ -191,66 +203,80 @@ export const ApproverDashboardView: React.FC = () => {
                 </div>
               </div>
 
-              {/* statutory requirements register table */}
-              <div className="card map-card-custom">
-                <div className="card-header fw-bold text-dark">
-                  Statutory Requirements Register ({selectedSet.requirements.length} Items)
-                </div>
-                <div className="table-responsive">
-                  <table className="table map-table-custom align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>Category</th>
-                        <th>Requirement Title</th>
-                        <th>OCR Conf</th>
-                        <th>Status</th>
-                        <th className="text-end">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedSet.requirements.map((req) => {
-                        const linkedDoc = documents.find((d) => d.id === req.documentId);
-                        return (
-                          <tr key={req.id}>
-                            <td>
-                              <span className="badge bg-light text-dark border small">{req.category}</span>
-                            </td>
-                            <td className="fw-semibold text-dark">
-                              {req.title}
-                              {req.isMandatory && <span className="text-danger ms-1">*</span>}
-                            </td>
-                            <td>
-                              <ConfidenceBadge score={req.ocrConfidence} />
-                            </td>
-                            <td>
-                              {req.verifierStatus === 'Verified' || req.isFulfilled ? (
-                                <span className="badge bg-success text-white font-mono-code">Verified</span>
-                              ) : req.verifierStatus === 'Correction Requested' ? (
-                                <span className="badge bg-warning text-dark font-mono-code">Correction</span>
-                              ) : (
-                                <span className="badge bg-info text-dark font-mono-code">Pending</span>
-                              )}
-                            </td>
-                            <td className="text-end">
-                              {linkedDoc ? (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-primary font-mono-code"
-                                  onClick={() => setSelectedDocForReview({ doc: linkedDoc, notes: req.notes })}
-                                >
-                                  Review
-                                </button>
-                              ) : (
-                                <span className="text-secondary small font-mono-code">No Document</span>
-                              )}
-                            </td>
+              {/* statutory requirements register table displaying verified documents only */}
+              {(() => {
+                const verifiedRequirements = selectedSet.requirements.filter(
+                  (req) => req.verifierStatus === 'Verified' || req.isFulfilled
+                );
+
+                return (
+                  <div className="card map-card-custom">
+                    <div className="table-responsive">
+                      <table className="table map-table-custom align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th>Category</th>
+                            <th>Requirement Title</th>
+                            <th>OCR Conf</th>
+                            <th>Status</th>
+                            <th className="text-end">Actions</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                        </thead>
+                        <tbody>
+                          {verifiedRequirements.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="text-center text-secondary py-4 font-mono-code">
+                                No verified documents available for executive approval yet.
+                              </td>
+                            </tr>
+                          ) : (
+                            verifiedRequirements.map((req) => {
+                              const linkedDoc = documents.find((d) => d.id === req.documentId);
+                              return (
+                                <tr key={req.id}>
+                                  <td>
+                                    <span className="badge bg-light text-dark border small">{req.category}</span>
+                                  </td>
+                                  <td className="fw-semibold text-dark">
+                                    {req.title}
+                                    {req.isMandatory && <span className="text-danger ms-1">*</span>}
+                                  </td>
+                                  <td>
+                                    <ConfidenceBadge score={req.ocrConfidence} />
+                                  </td>
+                                  <td>
+                                    {(() => {
+                                      const isSetApproved = selectedSet.stage === 'Approved & Certified' || selectedSet.approverDecision === 'Approved';
+                                      return (
+                                        <span className={`badge font-mono-code ${isSetApproved ? 'bg-success text-white' : 'bg-info text-dark'}`}>
+                                          {isSetApproved ? 'Approved' : 'Verified'}
+                                        </span>
+                                      );
+                                    })()}
+                                  </td>
+                                  <td className="text-end">
+                                    {linkedDoc ? (
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-primary font-mono-code"
+                                        onClick={() => setSelectedDocForReview({ doc: linkedDoc, notes: req.notes })}
+                                      >
+                                        Review
+                                      </button>
+                                    ) : (
+                                      <span className="text-secondary small font-mono-code">No Document</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

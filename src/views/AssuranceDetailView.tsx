@@ -56,8 +56,13 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
         </span>
       );
     }
+    const isSetApproved = assuranceSet.stage === 'Approved & Certified' || assuranceSet.approverDecision === 'Approved';
+
     if (req.verifierStatus === 'Verified' || req.isFulfilled) {
-      return <span className="badge bg-success text-white font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>Approved</span>;
+      if (isSetApproved) {
+        return <span className="badge bg-success text-white font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>Approved</span>;
+      }
+      return <span className="badge bg-info text-dark font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>Verified</span>;
     }
     if (req.verifierStatus === 'Correction Requested') {
       return <span className="badge bg-warning text-dark font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>Correction Requested</span>;
@@ -75,15 +80,11 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
       return <span className="badge bg-warning text-dark font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>To Inspect</span>;
     }
 
-    if (req.verifierStatus === 'Pending') {
-      return (
-        <span className="badge bg-info text-dark font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>
-          Pending Verification
-        </span>
-      );
-    }
-
-    return <span className="badge bg-primary text-white font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>To Verify</span>;
+    return (
+      <span className="badge bg-primary text-white font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>
+        Submitted
+      </span>
+    );
   };
 
   const closeUploadModal = () => {
@@ -133,29 +134,40 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
           <div className="card map-card-custom p-4 h-100">
             <div className="d-flex flex-wrap align-items-center justify-between gap-3 mb-3">
               <h3 className="fw-bold mb-0 text-primary">{assuranceSet.title}</h3>
-              {/* Export Data button in opposite corner of campaign title */}
-              <div className="dropdown position-relative ms-auto">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
-                  onClick={() => setIsExportOpen(!isExportOpen)}
-                >
-                  Export Data
-                </button>
-                {isExportOpen && (
-                  <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border" style={{ zIndex: 1050 }}>
-                    <li>
-                      <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
-                        Export as CSV (.csv)
-                      </button>
-                    </li>
-                    <li>
-                      <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
-                        Export as PDF (.pdf)
-                      </button>
-                    </li>
-                  </ul>
+              {/* Top header action controls: Use as Template button & Export Data dropdown */}
+              <div className="d-flex align-items-center gap-2 ms-auto">
+                {(isCAdmin || activePersona === 'Administrator') && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => setCurrentHashView('create-assurance-set', assuranceSet.id)}
+                  >
+                    Use as Template for C Admin
+                  </button>
                 )}
+                <div className="dropdown position-relative">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
+                    onClick={() => setIsExportOpen(!isExportOpen)}
+                  >
+                    Export Data
+                  </button>
+                  {isExportOpen && (
+                    <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border" style={{ zIndex: 1050 }}>
+                      <li>
+                        <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
+                          Export as CSV (.csv)
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
+                          Export as PDF (.pdf)
+                        </button>
+                      </li>
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
 

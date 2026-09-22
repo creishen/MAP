@@ -54,12 +54,14 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const [isAiExtracted, setIsAiExtracted] = useState(false);
   const [aiOcrConfidence, setAiOcrConfidence] = useState(99.2);
 
-  /* per-field reveal state for staggered ai animation */
+  /* manual inline field editing state */
+  const [isManualEditActive, setIsManualEditActive] = useState(false);
+  const [correctedFields, setCorrectedFields] = useState<Set<string>>(new Set());
   const [revealedFields, setRevealedFields] = useState<{ certNo: boolean; authority: boolean; expiry: boolean; summary: boolean }>({
-    certNo: false,
-    authority: false,
-    expiry: false,
-    summary: false,
+    certNo: true,
+    authority: true,
+    expiry: true,
+    summary: true,
   });
 
   /* simulated upload state */
@@ -519,87 +521,233 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                 </div>
               )}
 
-              {/* 5. AI Extracted Information Display */}
+              {/* 5. AI Extracted Information Display & Preview Screen matching mockup */}
               {isAiExtracted && (
-                <div className="p-3 bg-light border rounded mb-3">
-                  <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
-                    <span className="fw-bold text-dark small d-flex align-items-center gap-2">
-                      <span>AI Extracted Document Metadata</span>
-                      <span className="badge bg-success-subtle text-success-emphasis border border-success-subtle font-mono-code" style={{ fontSize: '0.7rem' }}>
-                        Auto-Extracted &amp; Verified ({aiOcrConfidence}% Confidence)
-                      </span>
-                    </span>
+                <div className="map-extraction-preview-container p-4 mb-3">
+                  {/* header accent and title */}
+                  <div className="d-flex flex-wrap align-items-start justify-content-between border-bottom pb-3 mb-3">
+                    <div>
+                      <div className="map-extraction-header-accent" />
+                      <h5 className="fw-bold text-dark m-0 mb-1">{title || 'Crew Medical Fitness (ENG1)'}</h5>
+                      <div className="font-mono-code text-muted small" style={{ fontSize: '0.775rem' }}>
+                        {(fileName || 'eng1-mendoza-scan.jpg')} · 640 KB · 1 page
+                      </div>
+                    </div>
+                    <div className="text-end">
+                      <div className="fw-bold lh-1" style={{ fontSize: '1.75rem', color: correctedFields.size > 0 ? '#059669' : aiOcrConfidence >= 90 ? '#059669' : '#c2410c' }}>
+                        {correctedFields.size > 0 ? '100%' : `${aiOcrConfidence || 74}%`}
+                      </div>
+                      <div className="small lh-sm text-muted" style={{ fontSize: '0.675rem' }}>
+                        overall confidence<br />threshold 90%
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="row g-2">
-                    {/* certificate number — stagger 1 */}
-                    <div className={`col-6 ${revealedFields.certNo ? 'ai-field-reveal ai-field-highlight' : ''}`}
-                      style={{ opacity: revealedFields.certNo ? 1 : 0 }}>
-                      <label className="form-label text-secondary small fw-semibold" htmlFor="cert-no">
-                        Certificate Number (Extracted) *
-                      </label>
-                      <input
-                        id="cert-no"
-                        type="text"
-                        className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
-                        placeholder="e.g. DNV-STAT-2026-99"
-                        value={certificateNo}
-                        onChange={(e) => setCertificateNo(e.target.value)}
-                        disabled={isUploading}
-                        required
-                      />
+                  {/* 2-column preview layout */}
+                  <div className="row g-4 mb-3">
+                    {/* left column: scan thumbnail & quality checks */}
+                    <div className="col-md-4 col-lg-3 d-flex flex-column gap-3">
+                      <div
+                        className="p-4 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-white shadow-2xs"
+                        style={{ borderStyle: 'dashed', borderColor: '#cbd5e1', minHeight: '220px' }}
+                      >
+                        <div className="font-mono-code text-uppercase text-muted small fw-bold" style={{ fontSize: '0.725rem', letterSpacing: '0.08em' }}>
+                          SCANNED PAGE
+                        </div>
+                        <div className="font-mono-code text-muted small mt-1" style={{ fontSize: '0.725rem' }}>
+                          1 of 1
+                        </div>
+                      </div>
+
+                      <div className="d-flex flex-column gap-2">
+                        <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
+                          <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '18px', height: '18px', backgroundColor: '#059669', fontSize: '0.65rem' }}>✓</span>
+                          <span>Resolution 240 DPI</span>
+                        </div>
+                        <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
+                          <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '18px', height: '18px', backgroundColor: '#c2410c', fontSize: '0.65rem' }}>!</span>
+                          <span>Full page captured</span>
+                        </div>
+                        <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
+                          <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '18px', height: '18px', backgroundColor: '#c2410c', fontSize: '0.65rem' }}>!</span>
+                          <span>Signature / stamp present</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* issuing authority — stagger 2 */}
-                    <div className={`col-6 ${revealedFields.authority ? 'ai-field-reveal ai-field-highlight' : ''}`}
-                      style={{ opacity: revealedFields.authority ? 1 : 0 }}>
-                      <label className="form-label text-secondary small fw-semibold" htmlFor="issuing-auth">
-                        Issuing Authority (Extracted) *
-                      </label>
-                      <input
-                        id="issuing-auth"
-                        type="text"
-                        className="form-control form-control-sm bg-white text-dark border-secondary"
-                        placeholder="e.g. DNV Classification Society"
-                        value={issuingAuthority}
-                        onChange={(e) => setIssuingAuthority(e.target.value)}
-                        disabled={isUploading}
-                        required
-                      />
+                    {/* right column: extracted fields with confidence bars & manual edit mode */}
+                    <div className="col-md-8 col-lg-9 d-flex flex-column gap-1">
+                      {/* cert number field */}
+                      <div className={`map-extraction-field-row ${revealedFields.certNo ? 'ai-field-reveal ai-field-highlight' : ''}`} style={{ opacity: revealedFields.certNo ? 1 : 0 }}>
+                        <div className="d-flex flex-column flex-grow-1 me-3">
+                          <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                            CERTIFICATE NUMBER / CREW ID
+                          </div>
+                          {isManualEditActive ? (
+                            <input
+                              type="text"
+                              className="map-extraction-field-input"
+                              value={certificateNo}
+                              onChange={(e) => {
+                                setCertificateNo(e.target.value);
+                                setCorrectedFields((prev) => new Set(prev).add('certNo'));
+                              }}
+                              placeholder="Enter certificate number..."
+                            />
+                          ) : (
+                            <div
+                              className="font-mono-code fw-bold text-dark"
+                              style={{ fontSize: '0.875rem', cursor: 'pointer' }}
+                              onClick={() => setIsManualEditActive(true)}
+                              title="Click to edit field manually"
+                            >
+                              {certificateNo || 'DNV-STAT-2026-99 (partially legible)'}
+                            </div>
+                          )}
+                          {correctedFields.has('certNo') ? (
+                            <div className="small mt-0.5 fw-bold text-success" style={{ fontSize: '0.7rem' }}>
+                              ✓ Manually Corrected (100% Verified)
+                            </div>
+                          ) : (
+                            <div className="small mt-0.5" style={{ fontSize: '0.7rem', color: '#b45309' }}>
+                              Below 90% threshold — human review required
+                            </div>
+                          )}
+                        </div>
+                        <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '140px' }}>
+                          <div className="w-100 bg-light rounded-pill overflow-hidden" style={{ height: '6px' }}>
+                            <div className="h-100 rounded-pill transition-all" style={{ width: correctedFields.has('certNo') ? '100%' : '61%', backgroundColor: correctedFields.has('certNo') ? '#059669' : '#c2410c' }} />
+                          </div>
+                          <div className="font-mono-code small text-muted mt-1" style={{ fontSize: '0.725rem' }}>
+                            {correctedFields.has('certNo') ? '100%' : '61%'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* issuing authority field */}
+                      <div className={`map-extraction-field-row ${revealedFields.authority ? 'ai-field-reveal ai-field-highlight' : ''}`} style={{ opacity: revealedFields.authority ? 1 : 0 }}>
+                        <div className="d-flex flex-column flex-grow-1 me-3">
+                          <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                            ISSUING AUTHORITY
+                          </div>
+                          {isManualEditActive ? (
+                            <input
+                              type="text"
+                              className="map-extraction-field-input"
+                              value={issuingAuthority}
+                              onChange={(e) => {
+                                setIssuingAuthority(e.target.value);
+                                setCorrectedFields((prev) => new Set(prev).add('authority'));
+                              }}
+                              placeholder="Enter issuing authority..."
+                            />
+                          ) : (
+                            <div
+                              className="font-mono-code fw-bold text-dark"
+                              style={{ fontSize: '0.875rem', cursor: 'pointer' }}
+                              onClick={() => setIsManualEditActive(true)}
+                              title="Click to edit field manually"
+                            >
+                              {issuingAuthority || 'illegible stamp'}
+                            </div>
+                          )}
+                          {correctedFields.has('authority') ? (
+                            <div className="small mt-0.5 fw-bold text-success" style={{ fontSize: '0.7rem' }}>
+                              ✓ Manually Corrected (100% Verified)
+                            </div>
+                          ) : (
+                            <div className="small mt-0.5" style={{ fontSize: '0.7rem', color: '#b45309' }}>
+                              Below 90% threshold — human review required
+                            </div>
+                          )}
+                        </div>
+                        <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '140px' }}>
+                          <div className="w-100 bg-light rounded-pill overflow-hidden" style={{ height: '6px' }}>
+                            <div className="h-100 rounded-pill transition-all" style={{ width: correctedFields.has('authority') ? '100%' : '44%', backgroundColor: correctedFields.has('authority') ? '#059669' : '#c2410c' }} />
+                          </div>
+                          <div className="font-mono-code small text-muted mt-1" style={{ fontSize: '0.725rem' }}>
+                            {correctedFields.has('authority') ? '100%' : '44%'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* expiry date field */}
+                      <div className={`map-extraction-field-row ${revealedFields.expiry ? 'ai-field-reveal ai-field-highlight' : ''}`} style={{ opacity: revealedFields.expiry ? 1 : 0 }}>
+                        <div className="d-flex flex-column flex-grow-1 me-3">
+                          <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                            EXPIRY DATE
+                          </div>
+                          {isManualEditActive ? (
+                            <input
+                              type="date"
+                              className="map-extraction-field-input"
+                              value={expiryDate}
+                              onChange={(e) => {
+                                setExpiryDate(e.target.value);
+                                setCorrectedFields((prev) => new Set(prev).add('expiry'));
+                              }}
+                            />
+                          ) : (
+                            <div
+                              className="font-mono-code fw-bold text-dark"
+                              style={{ fontSize: '0.875rem', cursor: 'pointer' }}
+                              onClick={() => setIsManualEditActive(true)}
+                              title="Click to edit field manually"
+                            >
+                              {expiryDate || '2029-06-30'}
+                            </div>
+                          )}
+                          {correctedFields.has('expiry') ? (
+                            <div className="small mt-0.5 fw-bold text-success" style={{ fontSize: '0.7rem' }}>
+                              ✓ Manually Corrected (100% Verified)
+                            </div>
+                          ) : (
+                            <div className="small mt-0.5" style={{ fontSize: '0.7rem', color: '#b45309' }}>
+                              Below 90% threshold — human review required
+                            </div>
+                          )}
+                        </div>
+                        <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '140px' }}>
+                          <div className="w-100 bg-light rounded-pill overflow-hidden" style={{ height: '6px' }}>
+                            <div className="h-100 rounded-pill transition-all" style={{ width: correctedFields.has('expiry') ? '100%' : '79%', backgroundColor: correctedFields.has('expiry') ? '#059669' : '#c2410c' }} />
+                          </div>
+                          <div className="font-mono-code small text-muted mt-1" style={{ fontSize: '0.725rem' }}>
+                            {correctedFields.has('expiry') ? '100%' : '79%'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Exception Action Banner matching mockup */}
+                  <div className="map-exception-banner">
+                    <div>
+                      <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.875rem', color: '#92400e' }}>
+                        Exception identified — Submitter action required
+                      </div>
+                      <div className="small" style={{ fontSize: '0.775rem', color: '#b45309' }}>
+                        Issuing authority illegible, crew ID partially legible, training completion date absent. Replace with a clearer scan or provide a renewed certificate.
+                      </div>
                     </div>
 
-                    {/* expiry date — stagger 3 */}
-                    <div className={`col-6 ${revealedFields.expiry ? 'ai-field-reveal ai-field-highlight' : ''}`}
-                      style={{ opacity: revealedFields.expiry ? 1 : 0 }}>
-                      <label className="form-label text-secondary small fw-semibold" htmlFor="expiry-date">
-                        Expiry Date (Extracted) *
-                      </label>
-                      <input
-                        id="expiry-date"
-                        type="date"
-                        className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
-                        value={expiryDate}
-                        onChange={(e) => setExpiryDate(e.target.value)}
-                        disabled={isUploading}
-                        required
-                      />
-                    </div>
-
-                    {/* revision summary — stagger 4 */}
-                    <div className={`col-6 ${revealedFields.summary ? 'ai-field-reveal' : ''}`}
-                      style={{ opacity: revealedFields.summary ? 1 : 0 }}>
-                      <label className="form-label text-secondary small fw-semibold" htmlFor="change-summary">
-                        Revision Summary / Notes
-                      </label>
-                      <input
-                        id="change-summary"
-                        type="text"
-                        className="form-control form-control-sm bg-white text-dark border-secondary"
-                        placeholder="e.g. Initial AI extracted upload"
-                        value={changeSummary}
-                        onChange={(e) => setChangeSummary(e.target.value)}
-                        disabled={isUploading}
-                      />
+                    <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                      <button
+                        type="button"
+                        className="btn btn-sm map-btn-outline-manual"
+                        onClick={() => setIsManualEditActive(!isManualEditActive)}
+                      >
+                        {isManualEditActive ? 'Done Editing Fields' : 'Correct field manually'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm map-btn-orange-action"
+                        onClick={() => {
+                          setFileName('');
+                          setIsAiExtracted(false);
+                        }}
+                      >
+                        Upload replacement version
+                      </button>
                     </div>
                   </div>
                 </div>

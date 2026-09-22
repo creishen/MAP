@@ -32,7 +32,10 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
   const { verifyDocument, activePersona, assuranceSets } = useMapStore();
   const [comment, setComment] = useState('');
   const [commentError, setCommentError] = useState('');
-  const [showManualEdit, setShowManualEdit] = useState(false);
+  /* manual inline field editing state */
+  const [isManualEditActive, setIsManualEditActive] = useState(false);
+  const [editedValues, setEditedValues] = useState<Record<string, string>>({});
+  const [correctedFieldIds, setCorrectedFieldIds] = useState<Set<string>>(new Set());
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [routeTarget, setRouteTarget] = useState<'Inspector' | 'Approver'>('Approver');
 
@@ -44,6 +47,9 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
     if (!document) return;
     setComment('');
     setCommentError('');
+    setIsManualEditActive(false);
+    setEditedValues({});
+    setCorrectedFieldIds(new Set());
     setRouteTarget(linkedSet?.mandatoryInspectionRequired ? 'Inspector' : 'Approver');
   }, [document?.id, linkedSet?.mandatoryInspectionRequired]);
 
@@ -62,7 +68,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
     return true;
   };
 
-  const isReuploaded = document.versions.length > 1 || document.currentVersion !== 'v1.0' || (document.ocrConfidence && document.ocrConfidence >= 90);
+  const isReuploaded = document.versions.length > 1 || document.currentVersion !== 'v1.0' || (document.ocrConfidence && document.ocrConfidence >= 90) || correctedFieldIds.size > 0;
   const activeNotes = requirementNotes || document.verificationNotes || (document.versions.length > 0 ? document.versions[0].changeSummary : undefined);
 
   /* mock extracted attributes matching design screenshot */
@@ -87,7 +93,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
       { id: '5', label: 'EXPIRY DATE', value: document.expiryDate || '2026-10-29', confidence: isReuploaded ? 98 : 79 },
     ];
 
-  const overallConfidence = isReuploaded ? 98 : (document.ocrConfidence || 74);
+  const overallConfidence = correctedFieldIds.size > 0 ? 100 : isReuploaded ? 98 : (document.ocrConfidence || 74);
 
   const handleVerify = () => {
     verifyDocument(
@@ -111,6 +117,8 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
     onClose();
   };
 
+
+
   return (
     <>
       <div className="map-modal-backdrop" onClick={onClose} style={{ zIndex: 1040 }} />
@@ -119,14 +127,15 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
         style={{ width: '92vw', maxWidth: '1240px', visibility: 'visible', zIndex: 1050 }}
         tabIndex={-1}
       >
-        {/* drawer header: document title and overall confidence score */}
+        {/* drawer header: red category accent bar, document title, and overall confidence score */}
         <div className="offcanvas-header border-bottom p-4 bg-white d-flex align-items-start justify-content-between">
           <div>
+            <div className="map-extraction-header-accent" />
             <h4 className="offcanvas-title fw-bold text-dark m-0 mb-1" style={{ fontSize: '1.25rem', letterSpacing: '-0.01em' }}>
               {document.title}
             </h4>
             <div className="font-mono-code small" style={{ fontSize: '0.775rem', color: '#94a3b8' }}>
-              {document.title.toLowerCase().replace(/\s+/g, '-')}-scan.jpg · 640 KB · {document.currentVersion}
+              {document.title.toLowerCase().replace(/\s+/g, '-')}-scan.jpg · 640 KB · 1 page · {document.currentVersion}
             </div>
           </div>
 
@@ -221,32 +230,54 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
               )}
 
               {extractedAttributes.map((attr) => {
-                const isBelowThreshold = attr.confidence < 90 && attr.confidence > 0;
-                const isMissing = attr.isMandatoryMissing;
-                const barColor = isMissing ? '#e2e8f0' : attr.confidence >= 90 ? '#059669' : '#c2410c';
+                const isFieldCorrected = correctedFieldIds.has(attr.id);
+                const currentValue = editedValues[attr.id] !== undefined ? editedValues[attr.id] : attr.value;
+                const isBelowThreshold = !isFieldCorrected && attr.confidence < 90 && attr.confidence > 0;
+                const isMissing = !isFieldCorrected && attr.isMandatoryMissing;
+                const effectiveConfidence = isFieldCorrected ? 100 : attr.confidence;
+                const barColor = isMissing ? '#e2e8f0' : effectiveConfidence >= 90 ? '#059669' : '#c2410c';
 
                 return (
-                  <div key={attr.id} className="py-2.5 border-bottom d-flex align-items-center justify-between gap-3">
-                    <div className="d-flex flex-column">
+                  <div key={attr.id} className="map-extraction-field-row">
+                    <div className="d-flex flex-column flex-grow-1 me-3">
                       <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.65rem', color: '#64748b', letterSpacing: '0.06em' }}>
                         {attr.label}
                       </div>
-                      <div
-                        className={`font-mono-code fw-bold ${isMissing ? 'text-danger' : 'text-dark'}`}
-                        style={{ fontSize: '0.875rem' }}
-                      >
-                        {attr.value}
-                      </div>
-                      {isBelowThreshold && (
+                      {isManualEditActive ? (
+                        <input
+                          type="text"
+                          className="map-extraction-field-input"
+                          value={currentValue}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditedValues((prev) => ({ ...prev, [attr.id]: val }));
+                            setCorrectedFieldIds((prev) => new Set(prev).add(attr.id));
+                          }}
+                          placeholder={`Enter ${attr.label.toLowerCase()}...`}
+                        />
+                      ) : (
+                        <div
+                          className={`font-mono-code fw-bold ${isMissing ? 'text-danger' : 'text-dark'}`}
+                          style={{ fontSize: '0.875rem', cursor: 'pointer' }}
+                          title="Click to edit field manually"
+                          onClick={() => setIsManualEditActive(true)}
+                        >
+                          {currentValue}
+                        </div>
+                      )}
+                      {isFieldCorrected ? (
+                        <div className="small mt-0.5 fw-bold text-success" style={{ fontSize: '0.7rem' }}>
+                          ✓ Manually Corrected (100% Verified)
+                        </div>
+                      ) : isBelowThreshold ? (
                         <div className="small mt-0.5" style={{ fontSize: '0.7rem', color: '#b45309' }}>
                           Below 90% threshold — human review required
                         </div>
-                      )}
-                      {isMissing && (
+                      ) : isMissing ? (
                         <div className="small mt-0.5 fw-semibold" style={{ fontSize: '0.7rem', color: '#dc2626' }}>
                           Mandatory field missing
                         </div>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* ocr confidence bar */}
@@ -255,51 +286,112 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                         <div
                           className="h-100 rounded-pill transition-all"
                           style={{
-                            width: `${attr.confidence}%`,
+                            width: `${effectiveConfidence}%`,
                             backgroundColor: barColor,
                           }}
                         />
                       </div>
                       <div className="font-mono-code small text-muted mt-1" style={{ fontSize: '0.725rem' }}>
-                        {attr.confidence}%
+                        {effectiveConfidence}%
                       </div>
                     </div>
                   </div>
                 );
               })}
+
+              {/* Exception Action Banner matching design screenshot */}
+              <div className="map-exception-banner mt-3">
+                <div>
+                  <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.875rem', color: '#92400e' }}>
+                    Exception identified — Submitter action required
+                  </div>
+                  <div className="small" style={{ fontSize: '0.775rem', color: '#b45309' }}>
+                    Issuing authority illegible, crew ID partially legible, training completion date absent. Replace with a clearer scan or provide a renewed certificate.
+                  </div>
+                </div>
+
+                <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    className="btn btn-sm map-btn-outline-manual"
+                    onClick={() => setIsManualEditActive(!isManualEditActive)}
+                  >
+                    {isManualEditActive ? 'Done Editing Fields' : 'Correct field manually'}
+                  </button>
+                  {canSubmit && (
+                    <button
+                      type="button"
+                      className="btn btn-sm map-btn-orange-action"
+                      onClick={() => setIsUploadModalOpen(true)}
+                    >
+                      Upload replacement version
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Locked Notice if Verified / Approved */}
+          {/* locked notice if verified / approved */}
           {isVerified ? (
-            <div
-              className="p-4 rounded-3 d-flex flex-column gap-3 border shadow-2xs my-3"
-              style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}
-            >
-              <div className="d-flex align-items-center justify-content-between">
-                <div>
-                  <div className="fw-bold text-success-emphasis mb-1" style={{ fontSize: '0.95rem' }}>
-                    Approvals & Readiness Review — Document Approved & Certified
+            (() => {
+              const isSetApproved = linkedSet?.stage === 'Approval' || linkedSet?.approverDecision === 'Approved';
+              return (
+                <div
+                  className="p-4 rounded-3 d-flex flex-column gap-3 border shadow-2xs my-3"
+                  style={{
+                    backgroundColor: isSetApproved ? '#f0fdf4' : '#f0f9ff',
+                    borderColor: isSetApproved ? '#bbf7d0' : '#bae6fd',
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div>
+                      <div
+                        className={`fw-bold mb-1 ${isSetApproved ? 'text-success-emphasis' : 'text-primary-emphasis'}`}
+                        style={{ fontSize: '0.95rem' }}
+                      >
+                        {isSetApproved
+                          ? 'Approvals & Readiness Review'
+                          : 'Document Verification Review'}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.8rem',
+                          color: isSetApproved ? '#166534' : '#0369a1',
+                          lineHeight: '1.4',
+                        }}
+                      >
+                        {isSetApproved
+                          ? 'This statutory document has been approved and verified for compliance readiness.'
+                          : 'This statutory document has been verified by the verifier and is awaiting final approver sign-off.'}
+                      </div>
+                    </div>
+                    <span
+                      className={`badge font-mono-code px-3 py-2 ${isSetApproved ? 'bg-success text-white' : 'bg-info text-dark'}`}
+                      style={{ fontSize: '0.8rem' }}
+                    >
+                      {isSetApproved ? 'Approved & Certified' : 'Verified'}
+                    </span>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#166534', lineHeight: '1.4' }}>
-                    This statutory document has been approved and verified for compliance readiness.
-                  </div>
+                  {document.verificationNotes && (
+                    <div
+                      className={`p-3 rounded-3 bg-white border text-dark small shadow-2xs ${isSetApproved ? 'border-success-subtle' : 'border-info-subtle'}`}
+                      style={{ fontSize: '0.8rem' }}
+                    >
+                      <div
+                        className={`fw-bold mb-1 ${isSetApproved ? 'text-success-emphasis' : 'text-info-emphasis'}`}
+                        style={{ fontSize: '0.725rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}
+                      >
+                        Notes
+                      </div>
+                      <div className="text-dark">{document.verificationNotes}</div>
+                    </div>
+                  )}
                 </div>
-                <span className="badge bg-success text-white font-mono-code px-3 py-2" style={{ fontSize: '0.8rem' }}>
-                  Approved & Certified
-                </span>
-              </div>
-              {document.verificationNotes && (
-                <div className="p-3 rounded-3 bg-white border border-success-subtle text-dark small shadow-2xs" style={{ fontSize: '0.8rem' }}>
-                  <div className="fw-bold text-success-emphasis mb-1" style={{ fontSize: '0.725rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    Approval & Verification Notes
-                  </div>
-                  <div className="text-dark">{document.verificationNotes}</div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Bottom sticky compact Approvals & Readiness Review section */
+              );
+            })()
+          ) : canVerify ? (
+            /* bottom sticky compact approvals & readiness review section - verifier role only */
             <div
               className="p-4 rounded-3 border shadow-sm my-3"
               style={{
@@ -310,10 +402,10 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <div>
                   <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.95rem' }}>
-                    Approvals & Readiness Review
+                    Document Verification & Readiness Review
                   </div>
                   <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                    Review extracted attributes and record executive justification notes before approval or returning for correction.
+                    Review extracted attributes and record verification notes before verifying or returning for correction.
                   </div>
                 </div>
                 <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle font-mono-code px-2.5 py-1.5" style={{ fontSize: '0.75rem' }}>
@@ -321,7 +413,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                 </span>
               </div>
 
-              {/* Justification & Feedback Notes Field */}
+              {/* justification & feedback notes field */}
               <div className="mb-3.5">
                 <label className="form-label text-dark small fw-semibold mb-1.5" style={{ fontSize: '0.8rem' }}>
                   Verifier Defect / Justification Notes
@@ -329,7 +421,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                 <textarea
                   className={`form-control bg-white text-dark border p-3 ${commentError ? 'border-danger' : ''}`}
                   rows={2}
-                  placeholder="Required when returning for correction or rejecting. Optional for verification approval."
+                  placeholder="Required when returning for correction or rejecting. Optional for verification sign-off."
                   value={comment}
                   onChange={(e) => {
                     setComment(e.target.value);
@@ -342,27 +434,25 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                 )}
               </div>
 
-              {canVerify && (
-                <div className="mb-3.5">
-                  <label className="form-label text-dark small fw-semibold mb-1.5" style={{ fontSize: '0.8rem' }}>
-                    Next Stage Routing
-                  </label>
-                  <select
-                    className="form-select bg-white text-dark border"
-                    value={routeTarget}
-                    onChange={(e) => setRouteTarget(e.target.value as 'Inspector' | 'Approver')}
-                    style={{ fontSize: '0.825rem', borderRadius: '6px', maxWidth: '420px' }}
-                  >
-                    <option value="Inspector">Forward to Inspector for Visual Survey</option>
-                    <option value="Approver">Forward to Approver Gate</option>
-                  </select>
-                  {linkedSet?.mandatoryInspectionRequired && (
-                    <div className="text-secondary small mt-1">
-                      Visual inspection is mandated for this assurance set.
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="mb-3.5">
+                <label className="form-label text-dark small fw-semibold mb-1.5" style={{ fontSize: '0.8rem' }}>
+                  Next Stage Routing
+                </label>
+                <select
+                  className="form-select bg-white text-dark border"
+                  value={routeTarget}
+                  onChange={(e) => setRouteTarget(e.target.value as 'Inspector' | 'Approver')}
+                  style={{ fontSize: '0.825rem', borderRadius: '6px', maxWidth: '420px' }}
+                >
+                  <option value="Inspector">Forward to Inspector for Visual Survey</option>
+                  <option value="Approver">Forward to Approver Gate</option>
+                </select>
+                {linkedSet?.mandatoryInspectionRequired && (
+                  <div className="text-secondary small mt-1">
+                    Visual inspection is mandated for this assurance set.
+                  </div>
+                )}
+              </div>
 
               <div className="d-flex align-items-center justify-content-end gap-2 pt-3 border-top flex-wrap">
                 {canSubmit && (
@@ -375,37 +465,33 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                     Upload Replacement Revision
                   </button>
                 )}
-                {canVerify && (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-outline-danger px-3.5 py-2 fw-bold shadow-sm"
-                      style={{ fontSize: '0.8rem' }}
-                      onClick={handleReject}
-                    >
-                      Reject Document
-                    </button>
-                    <button
-                      type="button"
-                      className="btn text-dark px-3.5 py-2 fw-bold shadow-sm"
-                      style={{ fontSize: '0.8rem', backgroundColor: '#fef3c7', borderColor: '#fde68a' }}
-                      onClick={handleCorrection}
-                    >
-                      Return for Correction
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-success text-white px-3.5 py-2 fw-bold shadow-sm"
-                      style={{ fontSize: '0.8rem', backgroundColor: '#059669', borderColor: '#059669' }}
-                      onClick={handleVerify}
-                    >
-                      Verify & Route Forward
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  className="btn btn-outline-danger px-3.5 py-2 fw-bold shadow-sm"
+                  style={{ fontSize: '0.8rem' }}
+                  onClick={handleReject}
+                >
+                  Reject Document
+                </button>
+                <button
+                  type="button"
+                  className="btn text-dark px-3.5 py-2 fw-bold shadow-sm"
+                  style={{ fontSize: '0.8rem', backgroundColor: '#fef3c7', borderColor: '#fde68a' }}
+                  onClick={handleCorrection}
+                >
+                  Return for Correction
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-success text-white px-3.5 py-2 fw-bold shadow-sm"
+                  style={{ fontSize: '0.8rem', backgroundColor: '#059669', borderColor: '#059669' }}
+                  onClick={handleVerify}
+                >
+                  Verify & Route Forward
+                </button>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -422,3 +508,4 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
     </>
   );
 };
+

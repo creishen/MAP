@@ -586,4 +586,108 @@
   background-color: #0f172a;
 }
 
+/* template auto-fill alert banner and selector styles */
+.map-template-autofill-banner {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 0.85rem 1.15rem;
+  color: #1e40af;
+  margin-bottom: 1.25rem;
+}
+
+.map-template-select-box {
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* extracted attributes preview & manual field correction screen styles */
+.map-extraction-preview-container {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.map-extraction-header-accent {
+  width: 140px;
+  height: 10px;
+  background-color: #b91c1c;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+}
+
+.map-extraction-field-row {
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.map-extraction-field-row:hover {
+  background-color: #f8fafc;
+}
+
+.map-extraction-field-input {
+  background-color: #ffffff;
+  border: 1.5px solid #0284c7;
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-family: monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+  width: 100%;
+}
+
+.map-extraction-field-input:focus {
+  outline: none;
+  border-color: #0369a1;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.map-exception-banner {
+  background-color: #fffbe3;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 1.15rem 1.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.map-btn-orange-action {
+  background-color: #c2410c !important;
+  border-color: #c2410c !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+.map-btn-orange-action:hover {
+  background-color: #9a3412 !important;
+  border-color: #9a3412 !important;
+}
+
+.map-btn-outline-manual {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #1e293b !important;
+  font-weight: 600 !important;
+}
+
+.map-btn-outline-manual:hover {
+  background-color: #f1f5f9 !important;
+}
+
+
 

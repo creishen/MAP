@@ -33,7 +33,16 @@ export function isAssuranceSetAssignedToPersona(
     return Boolean(set.mandatoryInspectionRequired && set.assignedInspector);
   }
   if (persona === "Approver") {
-    return Boolean(set.assignedApprover);
+    /* approver persona can only see assurance sets that are already verified and awaiting approval or certified */
+    const isVerifiedAndAwaitingApproval =
+      set.stage === "Approval" ||
+      set.stage === "Approved & Certified" ||
+      set.approverDecision !== "Pending" ||
+      (set.requirements.length > 0 &&
+        set.requirements.every(
+          (r) => !r.isMandatory || r.verifierStatus === "Verified" || r.isFulfilled,
+        ));
+    return Boolean(set.assignedApprover && isVerifiedAndAwaitingApproval);
   }
   if (persona === "C Admin") {
     return set.initiatorRole === "C Admin · Client Created";

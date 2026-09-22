@@ -84,7 +84,7 @@ export const App: React.FC = () => {
       case 'assurance-sets':
         return currentEntityId ? <AssuranceDetailView setId={currentEntityId} /> : <AssuranceSetsView />;
       case 'create-assurance-set':
-        return <CreateAssuranceSetView />;
+        return <CreateAssuranceSetView templateSetId={currentEntityId} />;
       case 'documents':
         return currentEntityId ? <DocumentDetailView documentId={currentEntityId} /> : <DocumentLibraryView />;
       case 'verifier':

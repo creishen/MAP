@@ -28,7 +28,7 @@ export const PipelineStepper: React.FC<PipelineStepperProps> = ({
     { stage: 'Validation', label: '2. Validation', num: 2 },
     { stage: 'Verification', label: '3. Verification', num: 3 },
     { stage: 'Inspection', label: '4. Inspection', num: 4 },
-    { stage: 'Certified', label: '5. Approved & Certified', num: 5 },
+    { stage: 'Certified', label: '5. Approval', num: 5 },
   ];
 
   const getStageIndex = (stage: AssuranceStage): number => {

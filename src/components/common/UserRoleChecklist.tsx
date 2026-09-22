@@ -5,6 +5,7 @@
 */
 
 import React from 'react';
+import { useMapStore } from '../../store/useMapStore';
 import { UserRolePersona } from '../../types/audit';
 import {
   OPERATIONAL_ROLE_OPTIONS,
@@ -24,6 +25,13 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
   onPlatformAdminChange,
   onOperationalRolesChange,
 }) => {
+  const { activePersona } = useMapStore();
+  const isCAdmin = activePersona === 'C Admin';
+
+  const visibleRoleOptions = isCAdmin
+    ? OPERATIONAL_ROLE_OPTIONS.filter((o) => o.role !== 'C Admin')
+    : OPERATIONAL_ROLE_OPTIONS;
+
   const toggleOperationalRole = (role: UserRolePersona) => {
     if (operationalRoles.includes(role)) {
       onOperationalRolesChange(operationalRoles.filter((r) => r !== role));
@@ -33,37 +41,39 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
   };
 
   const previewRoles = [
-    ...(isPlatformAdmin ? (['Administrator'] as UserRolePersona[]) : []),
+    ...(!isCAdmin && isPlatformAdmin ? (['Administrator'] as UserRolePersona[]) : []),
     ...operationalRoles,
   ];
   const sodWarnings = getSegregationWarnings(previewRoles);
 
   return (
     <div className="d-flex flex-column gap-3">
-      <div>
-        <label className="form-label small fw-semibold text-secondary mb-2">
-          Platform Access
-        </label>
-        <div className="form-check">
-          <input
-            className="form-check-input"
-            type="checkbox"
-            id="role-platform-admin"
-            checked={isPlatformAdmin}
-            onChange={(e) => onPlatformAdminChange(e.target.checked)}
-          />
-          <label className="form-check-label small text-dark fw-semibold" htmlFor="role-platform-admin">
-            Platform Administrator (full MAP governance access)
+      {!isCAdmin && (
+        <div>
+          <label className="form-label small fw-semibold text-secondary mb-2">
+            Platform Access
           </label>
+          <div className="form-check">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id="role-platform-admin"
+              checked={isPlatformAdmin}
+              onChange={(e) => onPlatformAdminChange(e.target.checked)}
+            />
+            <label className="form-check-label small text-dark fw-semibold" htmlFor="role-platform-admin">
+              Platform Administrator (full MAP governance access)
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       <div>
         <label className="form-label small fw-semibold text-secondary mb-2">
           Operational Roles *
         </label>
         <div className="row g-2">
-          {OPERATIONAL_ROLE_OPTIONS.map(({ role, label }) => (
+          {visibleRoleOptions.map(({ role, label }) => (
             <div key={role} className="col-md-6">
               <div className="form-check">
                 <input

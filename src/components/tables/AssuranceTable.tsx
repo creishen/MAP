@@ -32,7 +32,7 @@ interface AssuranceTableProps {
   with what file: src/components/tables/AssuranceTable.tsx loaded by AssuranceSetsView.tsx.
 */
 export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onInitiateSet }) => {
-  const { assuranceSets, activePersona } = useMapStore();
+  const { assuranceSets, activePersona, setCurrentHashView } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('ALL');
   const [sortField, setSortField] = useState<AssuranceSortField>('id');
@@ -241,16 +241,31 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
                   <ReadinessGauge score={s.readinessScore} size="sm" />
                 </td>
                 <td className="text-end">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectSet(s);
-                    }}
-                  >
-                    View Details
-                  </button>
+                  <div className="d-flex align-items-center justify-content-end gap-1">
+                    {canInitiate && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        title="Use this Assurance Set as template to auto-fill new campaign"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentHashView('create-assurance-set', s.id);
+                        }}
+                      >
+                        Use as Template
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectSet(s);
+                      }}
+                    >
+                      View Details
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

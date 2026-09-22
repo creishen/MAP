@@ -32,13 +32,18 @@ const INITIAL_MASTER_DOCS: MasterDocItem[] = [
 ];
 
 /**
-  what: renders dedicated create assurance set page with 2-column layout and automatic vessel stakeholder pre-population.
-  how: checks recent vessel campaigns to pre-fill stakeholders, allows admin editing, and creates new AssuranceSet model in store.
+  what: renders dedicated create assurance set page with 2-column layout, template selection, and automatic vessel stakeholder pre-population.
+  how: checks selected template or recent vessel campaigns to pre-fill stakeholders, allows admin editing, and creates new AssuranceSet model in store.
   with what file: src/views/CreateAssuranceSetView.tsx rendered by App.tsx.
 */
-export const CreateAssuranceSetView: React.FC = () => {
+interface CreateAssuranceSetViewProps {
+  templateSetId?: string;
+}
+
+export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ templateSetId }) => {
   const { vessels, assuranceSets, addAssuranceSet, activePersona, setCurrentHashView, previousHashView, previousEntityId, users } = useMapStore();
 
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(templateSetId || '');
   const [title, setTitle] = useState('');
   const [vesselId, setVesselId] = useState(vessels[0]?.id || '');
   const [startDate, setStartDate] = useState('2026-11-01');
@@ -79,9 +84,82 @@ export const CreateAssuranceSetView: React.FC = () => {
     (s) => s.vesselId === vesselId && (s.assignedSubmitter || s.assignedVerifier)
   );
 
-  /* pre-populate stakeholder selections whenever target vessel changes */
+  /* apply template auto-fill data */
+  const applyTemplateData = (targetSet: AssuranceSet) => {
+    setVesselId(targetSet.vesselId);
+    setTitle(`${targetSet.title} (C Admin Charter Vetting)`);
+    if (targetSet.charterWindowStart) setStartDate(targetSet.charterWindowStart);
+    if (targetSet.charterWindowEnd) setEndDate(targetSet.charterWindowEnd);
+    setInspectionRequired(targetSet.mandatoryInspectionRequired);
+
+    /* map master document toggles based on existing template requirements */
+    const updatedToggles: Record<string, boolean> = {};
+    INITIAL_MASTER_DOCS.forEach((d) => {
+      const isMatched = targetSet.requirements.some(
+        (r) =>
+          r.title.toLowerCase().includes(d.title.toLowerCase()) ||
+          d.title.toLowerCase().includes(r.title.toLowerCase()) ||
+          r.category.toLowerCase().includes(d.category.toLowerCase())
+      );
+      updatedToggles[d.id] = isMatched;
+    });
+    setDocToggles(updatedToggles);
+
+    /* pre-populate stakeholder selections matching user profiles */
+    if (targetSet.assignedSubmitter) {
+      const matchSub = submitterUsers.find(
+        (u: UserProfile) =>
+          targetSet.assignedSubmitter?.includes(u.name) ||
+          targetSet.assignedSubmitter?.includes(u.organization)
+      );
+      if (matchSub) setAssignedSubmitter(matchSub.id);
+    }
+    if (targetSet.assignedVerifier) {
+      const matchVer = verifierUsers.find(
+        (u: UserProfile) =>
+          targetSet.assignedVerifier?.includes(u.name) ||
+          targetSet.assignedVerifier?.includes(u.organization)
+      );
+      if (matchVer) setAssignedVerifier(matchVer.id);
+    }
+    if (targetSet.assignedInspector) {
+      const matchIns = inspectorUsers.find(
+        (u: UserProfile) =>
+          targetSet.assignedInspector?.includes(u.name) ||
+          targetSet.assignedInspector?.includes(u.organization)
+      );
+      if (matchIns) setAssignedInspector(matchIns.id);
+    }
+    if (targetSet.assignedApprover) {
+      const matchApp = approverUsers.find(
+        (u: UserProfile) =>
+          targetSet.assignedApprover?.includes(u.name) ||
+          targetSet.assignedApprover?.includes(u.organization)
+      );
+      if (matchApp) setAssignedApprover(matchApp.id);
+    }
+  };
+
+  /* template selection change handler */
+  const handleSelectTemplate = (tId: string) => {
+    setSelectedTemplateId(tId);
+    if (!tId) return;
+    const targetSet = assuranceSets.find((s) => s.id === tId);
+    if (targetSet) {
+      applyTemplateData(targetSet);
+    }
+  };
+
+  /* trigger auto-fill on mount or when templateSetId prop changes */
   useEffect(() => {
-    if (recentVesselSet) {
+    if (templateSetId) {
+      handleSelectTemplate(templateSetId);
+    }
+  }, [templateSetId]);
+
+  /* pre-populate stakeholder selections whenever target vessel changes (if not using template) */
+  useEffect(() => {
+    if (!selectedTemplateId && recentVesselSet) {
       if (recentVesselSet.assignedSubmitter) {
         const matchSub = submitterUsers.find(
           (u: UserProfile) =>
@@ -115,7 +193,7 @@ export const CreateAssuranceSetView: React.FC = () => {
         if (matchApp) setAssignedApprover(matchApp.id);
       }
     }
-  }, [vesselId]);
+  }, [vesselId, selectedTemplateId]);
 
   const handleToggleDoc = (docId: string) => {
     setDocToggles((prev) => ({
@@ -235,6 +313,51 @@ export const CreateAssuranceSetView: React.FC = () => {
               </div>
               <div className="card-body p-4">
                 <div className="row g-3">
+                  {/* template selection dropdown */}
+                  <div className="col-12">
+                    <label className="form-label text-secondary small fw-semibold" htmlFor="grid-template-set">
+                      Use Existing Assurance Set as Template (Auto-Fill for C Admin)
+                    </label>
+                    <select
+                      id="grid-template-set"
+                      className="form-select map-template-select-box text-dark border-secondary-subtle"
+                      value={selectedTemplateId}
+                      onChange={(e) => handleSelectTemplate(e.target.value)}
+                    >
+                      <option value="">-- Select an existing Assurance Set to auto-fill --</option>
+                      {assuranceSets.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.id}: {s.title} ({s.vesselName} · {s.initiatorRole})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="form-text text-muted small mt-1">
+                      Selecting an existing set (e.g. created by Vessel Admin) auto-fills vessel, campaign title, charter window, document toggles, and stakeholders.
+                    </div>
+                  </div>
+
+                  {selectedTemplateId && (
+                    <div className="col-12">
+                      <div className="map-template-autofill-banner d-flex align-items-center justify-content-between p-3 rounded-2">
+                        <div>
+                          <div className="fw-bold fs-7 text-primary mb-1">
+                            Auto-filled from Template: {assuranceSets.find((s) => s.id === selectedTemplateId)?.title}
+                          </div>
+                          <div className="text-secondary small">
+                            Vessel, Charter Window, Master Document Toggles, and Role Assignments loaded from template.
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => setSelectedTemplateId('')}
+                        >
+                          Clear Template
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="col-12">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="grid-campaign-title">
                       Campaign / Set Title *

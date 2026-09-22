@@ -210,7 +210,7 @@ export const VerifierWorkspaceView: React.FC = () => {
               style={{ width: '170px' }}
             >
               <option value="ALL">All Statuses</option>
-              <option value="Pending">Pending</option>
+              <option value="Pending">Submitted</option>
               <option value="Correction Requested">Correction Requested</option>
               <option value="Verified">Verified</option>
             </select>
@@ -258,6 +258,9 @@ export const VerifierWorkspaceView: React.FC = () => {
             <tbody>
               {sortedDocs.map((doc) => {
                 const info = getAssuranceSetInfo(doc.id);
+                const linkedSet = info ? assuranceSets.find((s) => s.id === info.setId) : undefined;
+                const isSetApproved = linkedSet?.stage === 'Approved & Certified' || linkedSet?.approverDecision === 'Approved';
+
                 return (
                   <tr key={doc.id} onClick={() => setSelectedDoc(doc)} style={{ cursor: 'pointer' }}>
                     <td>
@@ -283,9 +286,21 @@ export const VerifierWorkspaceView: React.FC = () => {
                       <ConfidenceBadge score={doc.ocrConfidence} />
                     </td>
                     <td>
-                      <span className={`badge ${getStatusBadgeClass(doc.verificationStatus)}`}>
-                        {doc.verificationStatus}
-                      </span>
+                      {(() => {
+                        if (doc.verificationStatus === 'Verified') {
+                          if (isSetApproved) {
+                            return <span className="badge bg-success text-white">Approved</span>;
+                          }
+                          return <span className="badge bg-info text-dark">Verified</span>;
+                        }
+                        if (doc.verificationStatus === 'Correction Requested') {
+                          return <span className="badge bg-warning text-dark">Correction Requested</span>;
+                        }
+                        if (doc.verificationStatus === 'Rejected') {
+                          return <span className="badge bg-danger text-white">Rejected</span>;
+                        }
+                        return <span className="badge bg-primary text-white">Submitted</span>;
+                      })()}
                     </td>
                     <td className="text-end">
                       <button
