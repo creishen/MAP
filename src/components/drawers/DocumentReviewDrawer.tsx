@@ -333,7 +333,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                   <div className="d-flex align-items-center gap-2 flex-shrink-0">
                     <button
                       type="button"
-                      className="btn btn-sm map-btn-outline-manual"
+                      className={`btn btn-sm map-btn-outline-manual ${isManualEditActive ? 'is-active' : ''}`}
                       onClick={() => setIsManualEditActive(!isManualEditActive)}
                     >
                       {isManualEditActive ? 'Done Editing Fields' : 'Correct field manually'}

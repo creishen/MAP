@@ -21,16 +21,19 @@
     border-color: #e2e8f0;
     box-shadow: none;
   }
+
   18% {
     background-color: #eff8ff;
     border-color: #60a5fa;
     box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
   }
+
   55% {
     background-color: #f0fdf4;
     border-color: #4ade80;
     box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.14);
   }
+
   100% {
     background-color: #ffffff;
     border-color: #e2e8f0;
@@ -43,14 +46,17 @@
     background-color: transparent;
     box-shadow: none;
   }
+
   18% {
     background-color: #dbeafe;
     box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.2);
   }
+
   55% {
     background-color: #dcfce7;
     box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
   }
+
   100% {
     background-color: transparent;
     box-shadow: none;
@@ -343,6 +349,211 @@ div.map-autofill-animate {
   z-index: 1040;
 }
 
+/* ============================================================
+   modal and drawer button contrast and visual hierarchy rules
+   enforces high contrast, clear state distinctions, and accessible
+   colors across all modal dialogs, drawers, and confirmation gates.
+   ============================================================ */
+
+.map-modal-backdrop .btn,
+.modal-content .btn,
+.map-card-custom .card-footer .btn,
+.map-camera-modal-dialog .btn,
+.map-photo-lightbox-content .btn {
+  font-weight: 600;
+  transition: all 0.15s ease-in-out;
+}
+
+/* primary confirm and submit buttons */
+.map-modal-backdrop .btn-primary,
+.modal-content .btn-primary,
+.map-card-custom .card-footer .btn-primary,
+.map-camera-modal-dialog .btn-primary {
+  background-color: #0b1b2b !important;
+  border-color: #0b1b2b !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px 0 rgba(11, 27, 43, 0.15);
+}
+
+.map-modal-backdrop .btn-primary:hover:not(:disabled),
+.modal-content .btn-primary:hover:not(:disabled),
+.map-card-custom .card-footer .btn-primary:hover:not(:disabled),
+.map-camera-modal-dialog .btn-primary:hover:not(:disabled) {
+  background-color: #1a365d !important;
+  border-color: #1a365d !important;
+  color: #ffffff !important;
+}
+
+/* success, verification, and extraction buttons */
+.map-modal-backdrop .btn-success,
+.modal-content .btn-success,
+.map-card-custom .card-footer .btn-success,
+.map-camera-modal-dialog .btn-success {
+  background-color: #15803d !important;
+  border-color: #15803d !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px 0 rgba(21, 128, 61, 0.2);
+}
+
+.map-modal-backdrop .btn-success:hover:not(:disabled),
+.modal-content .btn-success:hover:not(:disabled),
+.map-card-custom .card-footer .btn-success:hover:not(:disabled),
+.map-camera-modal-dialog .btn-success:hover:not(:disabled) {
+  background-color: #166534 !important;
+  border-color: #166534 !important;
+  color: #ffffff !important;
+}
+
+/* secondary cancel, dismiss, and outline buttons */
+.map-modal-backdrop .btn-secondary,
+.modal-content .btn-secondary,
+.map-card-custom .card-footer .btn-secondary,
+.map-camera-modal-dialog .btn-secondary,
+.map-photo-lightbox-content .btn-secondary {
+  background-color: #ffffff !important;
+  border: 1px solid #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+.map-modal-backdrop .btn-secondary:hover:not(:disabled),
+.modal-content .btn-secondary:hover:not(:disabled),
+.map-card-custom .card-footer .btn-secondary:hover:not(:disabled),
+.map-camera-modal-dialog .btn-secondary:hover:not(:disabled),
+.map-photo-lightbox-content .btn-secondary:hover:not(:disabled) {
+  background-color: #f1f5f9 !important;
+  border-color: #64748b !important;
+  color: #0f172a !important;
+}
+
+.map-modal-backdrop .btn-outline-secondary,
+.modal-content .btn-outline-secondary,
+.map-card-custom .card-footer .btn-outline-secondary,
+.map-camera-modal-dialog .btn-outline-secondary {
+  background-color: #ffffff !important;
+  border: 1px solid #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+.map-modal-backdrop .btn-outline-secondary:hover:not(:disabled),
+.modal-content .btn-outline-secondary:hover:not(:disabled),
+.map-card-custom .card-footer .btn-outline-secondary:hover:not(:disabled),
+.map-camera-modal-dialog .btn-outline-secondary:hover:not(:disabled) {
+  background-color: #f1f5f9 !important;
+  border-color: #64748b !important;
+  color: #0f172a !important;
+}
+
+/* danger, delete, and reject buttons */
+.map-modal-backdrop .btn-danger,
+.modal-content .btn-danger,
+.map-card-custom .card-footer .btn-danger {
+  background-color: #b91c1c !important;
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+
+.map-modal-backdrop .btn-danger:hover:not(:disabled),
+.modal-content .btn-danger:hover:not(:disabled),
+.map-card-custom .card-footer .btn-danger:hover:not(:disabled) {
+  background-color: #991b1b !important;
+  border-color: #991b1b !important;
+  color: #ffffff !important;
+}
+
+/* close button sharp visibility */
+.map-modal-backdrop .btn-close,
+.modal-content .btn-close {
+  opacity: 0.75;
+  transition: opacity 0.15s ease;
+}
+
+.map-modal-backdrop .btn-close:hover,
+.modal-content .btn-close:hover {
+  opacity: 1;
+}
+
+/* ============================================================
+   exception and action banner button styling
+   ensures colored, high-contrast, professional action buttons
+   inside exception callouts, warning banners, and ocr reviews.
+   ============================================================ */
+
+.map-exception-banner {
+  background-color: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 576px) {
+  .map-exception-banner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.map-btn-outline-manual {
+  background-color: #0b1b2b !important;
+  border: 1px solid #0b1b2b !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 0.8125rem !important;
+  border-radius: 6px !important;
+  padding: 0.375rem 0.85rem !important;
+  box-shadow: 0 1px 2px 0 rgba(11, 27, 43, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.map-btn-outline-manual:hover:not(:disabled) {
+  background-color: #1a365d !important;
+  border-color: #1a365d !important;
+  color: #ffffff !important;
+}
+
+.map-btn-outline-manual.is-active {
+  background-color: #15803d !important;
+  border-color: #15803d !important;
+  color: #ffffff !important;
+}
+
+.map-btn-outline-manual.is-active:hover:not(:disabled) {
+  background-color: #166534 !important;
+  border-color: #166534 !important;
+  color: #ffffff !important;
+}
+
+.map-btn-orange-action {
+  background-color: #d97706 !important;
+  border: 1px solid #b45309 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 0.8125rem !important;
+  border-radius: 6px !important;
+  padding: 0.375rem 0.85rem !important;
+  box-shadow: 0 1px 2px 0 rgba(180, 83, 9, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.map-btn-orange-action:hover:not(:disabled) {
+  background-color: #b45309 !important;
+  border-color: #92400e !important;
+  color: #ffffff !important;
+}
+
 /* Vessels tab — registration wizard & fleet table */
 .map-vessel-upload-zone {
   border-color: #e2e8f0 !important;
@@ -590,7 +801,7 @@ div.map-autofill-animate {
   color: #475569;
 }
 
-.map-perm-locked-rules li + li {
+.map-perm-locked-rules li+li {
   margin-top: 0.3rem;
 }
 
@@ -691,11 +902,11 @@ div.map-autofill-animate {
   .map-content-area {
     padding: 1rem 0.85rem;
   }
-  
+
   .map-checklist-card {
     padding: 0.85rem !important;
   }
-  
+
   .map-checklist-item-container {
     padding: 0.95rem;
     margin-bottom: 0.75rem;
