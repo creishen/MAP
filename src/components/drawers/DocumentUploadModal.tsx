@@ -733,31 +733,31 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             </div>
 
             <div className="modal-footer border-top bg-light">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary"
-                  onClick={onClose}
-                  disabled={isUploading || isExtractingAi}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-sm btn-primary fw-bold px-4 d-inline-flex align-items-center gap-2"
-                  disabled={isUploading || isExtractingAi || !title.trim()}
-                >
-                  {isUploading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                      Uploading...
-                    </>
-                  ) : existingDocument ? (
-                    'Submit Replacement Revision'
-                  ) : (
-                    ' Upload Document'
-                  )}
-                </button>
-              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary"
+                onClick={onClose}
+                disabled={isUploading || isExtractingAi}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-sm btn-primary fw-bold px-4 d-inline-flex align-items-center gap-2"
+                disabled={isUploading || isExtractingAi || !title.trim()}
+              >
+                {isUploading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                    Uploading...
+                  </>
+                ) : existingDocument ? (
+                  'Submit Replacement Revision'
+                ) : (
+                  ' Upload Document'
+                )}
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -777,17 +777,9 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
               {/* Header */}
               <div className="modal-header border-bottom bg-light d-flex align-items-center justify-content-between p-3">
                 <div className="d-flex align-items-center gap-2">
-                  <div className="p-2 rounded bg-primary-subtle text-primary">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="16" y1="13" x2="8" y2="13" />
-                      <line x1="16" y1="17" x2="8" y2="17" />
-                    </svg>
-                  </div>
                   <div>
                     <h5 className="modal-title fw-bold text-dark m-0">
-                      Document Preview &amp; AI Extraction Verification Gate
+                      Document Preview
                     </h5>
                     <div className="text-secondary small mt-0.5">
                       Verify document file scanning clarity before authorizing AI metadata extraction
@@ -816,25 +808,13 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                   {/* Document Wireframe Scan Graphic */}
                   <div className="bg-white p-3 border rounded font-mono-code text-start" style={{ fontSize: '0.775rem', lineHeight: '1.5' }}>
                     <div className="text-uppercase fw-bold text-primary border-bottom pb-1 mb-2 d-flex justify-content-between">
-                      <span>STATUTORY CERTIFICATE SCAN PREVIEW</span>
                       <span className="text-muted">PAGE 1 OF 1</span>
                     </div>
-                    <div className="text-dark fw-bold">DOCUMENT TITLE: {title || 'MARITIME STATUTORY CERTIFICATE'}</div>
-                    <div className="text-secondary mt-1">ENTITY TYPE: {entityType}</div>
 
                     <div className="p-2.5 bg-light border rounded mt-2.5 text-muted text-center" style={{ fontSize: '0.725rem' }}>
                       [ High resolution scan ready for automated AI OCR parsing &amp; metadata extraction ]
                     </div>
                   </div>
-                </div>
-
-                <div className="p-3 bg-primary-subtle border border-primary-subtle rounded text-primary small d-flex align-items-center gap-2">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="16" x2="12" y2="12" />
-                    <line x1="12" y1="8" x2="12.01" y2="8" />
-                  </svg>
-                  <span>Click <strong>Extract Specs &amp; Verify Document</strong> below to run AI OCR extraction and populate certificate attributes automatically.</span>
                 </div>
               </div>
 
@@ -845,17 +825,14 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                   className="btn btn-sm btn-secondary"
                   onClick={() => setIsPendingVerification(false)}
                 >
-                  Cancel / Back to Form
+                  Cancel
                 </button>
                 <button
                   type="button"
                   className="btn btn-sm btn-success fw-bold px-3 d-inline-flex align-items-center gap-1.5"
                   onClick={handleConfirmVerifyAndExtract}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Extract Specs &amp; Verify Document &rarr;
+                  Extract Specs &amp; Verify Document
                 </button>
               </div>
             </div>
