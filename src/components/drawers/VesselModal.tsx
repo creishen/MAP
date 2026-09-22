@@ -382,14 +382,14 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
         setAiNotice(`Found matching document in Document Library ("${existingDoc.title}", Cert: ${existingDoc.certificateNo}). Automatically filled vessel particulars for Stage ${stepNumber}!`);
       } else {
         /* stagger each field reveal by 150ms */
-        setTimeout(() => { setName(extractedVesselName);                                     setRevealedVesselFields((p) => ({ ...p, name: true })); },             0);
-        setTimeout(() => { setImoNumber(extractedImo);                                       setRevealedVesselFields((p) => ({ ...p, imoNumber: true })); },         150);
+        setTimeout(() => { setName(extractedVesselName); setRevealedVesselFields((p) => ({ ...p, name: true })); }, 0);
+        setTimeout(() => { setImoNumber(extractedImo); setRevealedVesselFields((p) => ({ ...p, imoNumber: true })); }, 150);
         setTimeout(() => { setOfficialRegNumber(`OSV-REG-${Math.floor(100 + Math.random() * 900)}`); setRevealedVesselFields((p) => ({ ...p, officialRegNumber: true })); }, 300);
-        setTimeout(() => { setFlagState('Australia');                                         setRevealedVesselFields((p) => ({ ...p, flagState: true })); },         450);
-        setTimeout(() => { setClassificationSociety('DNV');                                   setRevealedVesselFields((p) => ({ ...p, classificationSociety: true })); }, 600);
-        setTimeout(() => { setYearBuilt(2023);                                               setRevealedVesselFields((p) => ({ ...p, yearBuilt: true })); },         750);
-        setTimeout(() => { setGt(3800); setDwt(4600);                                        setRevealedVesselFields((p) => ({ ...p, gt: true, dwt: true })); },    900);
-        setTimeout(() => { setRegisteredOwner('Pacific Ocean Logistics Pty Ltd');             setRevealedVesselFields((p) => ({ ...p, registeredOwner: true })); },  1050);
+        setTimeout(() => { setFlagState('Australia'); setRevealedVesselFields((p) => ({ ...p, flagState: true })); }, 450);
+        setTimeout(() => { setClassificationSociety('DNV'); setRevealedVesselFields((p) => ({ ...p, classificationSociety: true })); }, 600);
+        setTimeout(() => { setYearBuilt(2023); setRevealedVesselFields((p) => ({ ...p, yearBuilt: true })); }, 750);
+        setTimeout(() => { setGt(3800); setDwt(4600); setRevealedVesselFields((p) => ({ ...p, gt: true, dwt: true })); }, 900);
+        setTimeout(() => { setRegisteredOwner('Pacific Ocean Logistics Pty Ltd'); setRevealedVesselFields((p) => ({ ...p, registeredOwner: true })); }, 1050);
 
         const newDocId = `DOC-2026-${Math.floor(100 + Math.random() * 900)}`;
         const newMasterDoc: MasterDocument = {
@@ -1303,15 +1303,6 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                     </div>
                   </div>
                 </div>
-
-                <div className="p-3 bg-primary-subtle border border-primary-subtle rounded text-primary small d-flex align-items-center gap-2">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="16" x2="12" y2="12" />
-                    <line x1="12" y1="8" x2="12.01" y2="8" />
-                  </svg>
-                  <span>Click <strong>Extract Specs &amp; Verify Document</strong> below to run AI OCR processing and apply extracted data for Stage {pendingVerificationState.stepNumber}.</span>
-                </div>
               </div>
 
               {/* Footer */}
@@ -1328,7 +1319,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                   className="btn btn-sm btn-success fw-bold px-3 d-inline-flex align-items-center gap-1.5"
                   onClick={handleConfirmVesselFileVerification}
                 >
-                  Extract &amp; Verify Document
+                  Extract Document
                 </button>
               </div>
             </div>

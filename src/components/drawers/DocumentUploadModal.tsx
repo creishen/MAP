@@ -696,21 +696,23 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Reason for Revision / Change Summary Field */}
-                  <div>
-                    <label className="form-label text-dark fw-semibold small mb-1" htmlFor="revision-summary">
-                      Reason for Revision / Change Summary
-                    </label>
-                    <textarea
-                      id="revision-summary"
-                      className="form-control form-control-sm bg-white text-dark border-secondary"
-                      rows={3}
-                      placeholder="e.g. Uploading renewed IOPP statutory certificate scan with updated issuing authority seal..."
-                      value={changeSummary}
-                      onChange={(e) => setChangeSummary(e.target.value)}
-                      disabled={isUploading || isExtractingAi}
-                    />
-                  </div>
+                  {/* reason for revision / change summary field - only rendered when uploading a revision to an existing document */}
+                  {existingDocument && (
+                    <div>
+                      <label className="form-label text-dark fw-semibold small mb-1" htmlFor="revision-summary">
+                        Reason for Revision / Change Summary
+                      </label>
+                      <textarea
+                        id="revision-summary"
+                        className="form-control form-control-sm bg-white text-dark border-secondary"
+                        rows={3}
+                        placeholder="e.g. Uploading renewed IOPP statutory certificate scan with updated issuing authority seal..."
+                        value={changeSummary}
+                        onChange={(e) => setChangeSummary(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                      />
+                    </div>
+                  )}
 
                   {/* Simulated AI Extraction Progress Indicator */}
                   {isExtractingAi && (
@@ -832,7 +834,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                   className="btn btn-sm btn-success fw-bold px-3 d-inline-flex align-items-center gap-1.5"
                   onClick={handleConfirmVerifyAndExtract}
                 >
-                  Extract Specs &amp; Verify Document
+                  Extract Document
                 </button>
               </div>
             </div>
