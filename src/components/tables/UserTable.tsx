@@ -107,7 +107,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
     return 0;
   });
 
-  const getRoleBadgeClass = (role: UserRolePersona) => {
+  const getRoleBadgeClass = (role: RoleName) => {
     switch (role) {
       case 'Administrator': return 'bg-dark text-white';
       case 'C Admin': return 'bg-info text-dark';
