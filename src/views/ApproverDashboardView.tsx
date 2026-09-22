@@ -321,17 +321,17 @@ export const ApproverDashboardView: React.FC = () => {
                     className="form-control form-control-sm bg-white text-dark border-secondary"
                     rows={3}
                     placeholder={
-                      activePersona === 'Approver' || activePersona === 'Administrator'
+                      activePersona === 'Approver'
                         ? 'Enter justification notes or return feedback...'
-                        : 'Read-only mode for non-approver personas...'
+                        : 'Read-only view for non-approver personas...'
                     }
                     value={approverNotes}
                     onChange={(e) => setApproverNotes(e.target.value)}
-                    disabled={!(activePersona === 'Approver' || activePersona === 'Administrator')}
+                    disabled={activePersona !== 'Approver'}
                   />
                 </div>
 
-                {(activePersona === 'Approver' || activePersona === 'Administrator') && (
+                {activePersona === 'Approver' && (
                   <div className="d-flex flex-column gap-2">
                     <button
                       type="button"

@@ -67,7 +67,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
 
   const isVerified = document.verificationStatus === 'Verified';
   const canSubmit = activePersona === 'Submitter' || activePersona === 'Administrator';
-  const canVerify = activePersona === 'Verifier' || activePersona === 'Administrator';
+  const canVerify = activePersona === 'Verifier';
 
   const requireComment = () => {
     if (!comment.trim()) {
@@ -268,9 +268,9 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                       ) : (
                         <div
                           className={`font-mono-code fw-bold ${isMissing ? 'text-danger' : 'text-dark'}`}
-                          style={{ fontSize: '0.875rem', cursor: 'pointer' }}
-                          title="Click to edit field manually"
-                          onClick={() => setIsManualEditActive(true)}
+                          style={{ fontSize: '0.875rem', cursor: canSubmit ? 'pointer' : 'default' }}
+                          title={canSubmit ? "Click to edit field manually" : undefined}
+                          onClick={() => canSubmit && setIsManualEditActive(true)}
                         >
                           {currentValue}
                         </div>
@@ -309,26 +309,26 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                 );
               })}
 
-              {/* Exception Action Banner matching design screenshot */}
-              <div className="map-exception-banner mt-3">
-                <div>
-                  <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.875rem', color: '#92400e' }}>
-                    Exception identified — Submitter action required
+              {/* Exception Action Banner matching design screenshot - hidden for Verifiers, only shown for Submitter / Vessel Admin roles */}
+              {canSubmit && (
+                <div className="map-exception-banner mt-3">
+                  <div>
+                    <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.875rem', color: '#92400e' }}>
+                      Exception identified — Submitter action required
+                    </div>
+                    <div className="small" style={{ fontSize: '0.775rem', color: '#b45309' }}>
+                      Issuing authority illegible, crew ID partially legible, training completion date absent. Replace with a clearer scan or provide a renewed certificate.
+                    </div>
                   </div>
-                  <div className="small" style={{ fontSize: '0.775rem', color: '#b45309' }}>
-                    Issuing authority illegible, crew ID partially legible, training completion date absent. Replace with a clearer scan or provide a renewed certificate.
-                  </div>
-                </div>
 
-                <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                  <button
-                    type="button"
-                    className="btn btn-sm map-btn-outline-manual"
-                    onClick={() => setIsManualEditActive(!isManualEditActive)}
-                  >
-                    {isManualEditActive ? 'Done Editing Fields' : 'Correct field manually'}
-                  </button>
-                  {canSubmit && (
+                  <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      className="btn btn-sm map-btn-outline-manual"
+                      onClick={() => setIsManualEditActive(!isManualEditActive)}
+                    >
+                      {isManualEditActive ? 'Done Editing Fields' : 'Correct field manually'}
+                    </button>
                     <button
                       type="button"
                       className="btn btn-sm map-btn-orange-action"
@@ -336,9 +336,9 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                     >
                       Upload replacement version
                     </button>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 

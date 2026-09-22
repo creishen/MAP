@@ -144,7 +144,7 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
   const [newCapaDueDate, setNewCapaDueDate] = useState('30 Sep 2026');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
-  const isInspector = activePersona === 'Inspector' || activePersona === 'Administrator';
+  const isInspector = activePersona === 'Inspector';
 
   /* calculate recommended outcome dynamically */
   const observationCount = items.filter((i) => i.status === 'Observation').length;

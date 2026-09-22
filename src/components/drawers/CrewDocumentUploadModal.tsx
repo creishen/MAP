@@ -1,10 +1,10 @@
 /* 
-  file summary: modal dialog component for uploading, renewing, and updating stcw layer 1 core and layer 2 vessel-specific certificates for crew members.
-  responsibilities: captures document title, stcw regulation, certificate number, issuing authority, expiry date, verification status, and file attachment.
-  role in system: launched by CrewDetailView.tsx when admin or submitter clicks upload or reupload/update document.
+  file summary: master crew document upload & replacement modal for submitting stcw certificates in light theme with AI information extraction screen.
+  responsibilities: captures crew document title, stcw layer, regulation, certificate number, issuing authority, expiry date, file attachment, and supports simulated AI OCR metadata extraction.
+  role in system: invoked from CrewView.tsx and CrewDetailView.tsx for uploading or updating STCW seafarer certificates.
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { STCWDocumentItem, STCWLayer } from '../../types/crew';
 
@@ -18,8 +18,8 @@ interface CrewDocumentUploadModalProps {
 }
 
 /**
-  what: renders modal for uploading, reuploading, or updating stcw crew certificates.
-  how: pre-fills form fields if updating existing document, validates inputs, updates zustand store, and logs audit trail event.
+  what: renders STCW crew certificate upload / update modal with file picker and simulated AI metadata extraction.
+  how: pre-populates metadata if existingDocument is passed, simulates AI extraction upon file attach, and populates extracted certificate attributes into form state.
   with what file: src/components/drawers/CrewDocumentUploadModal.tsx loaded by CrewDetailView.tsx and CrewView.tsx.
 */
 export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = ({
@@ -32,6 +32,8 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
 }) => {
   const { addCrewDocument, updateCrewDocument, activePersona } = useMapStore();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [title, setTitle] = useState('');
   const [layer, setLayer] = useState<STCWLayer>(initialLayer || 'Layer 1 - Universal Core');
   const [stcwRegulation, setStcwRegulation] = useState('STCW Reg VI/1');
@@ -42,39 +44,168 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
   const [expiryDate, setExpiryDate] = useState('2031-01-01');
   const [verificationStatus, setVerificationStatus] = useState<'Verified' | 'Pending' | 'Expiring' | 'Expired'>('Verified');
   const [fileName, setFileName] = useState('');
+  const [changeSummary, setChangeSummary] = useState('');
+
+  /* simulated AI extraction states */
+  const [isExtractingAi, setIsExtractingAi] = useState(false);
+  const [isAiExtracted, setIsAiExtracted] = useState(false);
+  const [aiOcrConfidence, setAiOcrConfidence] = useState(99.2);
+
+  /* manual inline field editing state */
+  const [isManualEditActive, setIsManualEditActive] = useState(false);
+  const [correctedFields, setCorrectedFields] = useState<Set<string>>(new Set());
+  const [, setRevealedFields] = useState<{ certNo: boolean; authority: boolean; expiry: boolean; summary: boolean }>({
+    certNo: true,
+    authority: true,
+    expiry: true,
+    summary: true,
+  });
+
+  /* simulated upload state */
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isPendingVerification, setIsPendingVerification] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    if (existingDocument) {
-      setTitle(existingDocument.title);
-      setLayer(existingDocument.layer);
-      setStcwRegulation(existingDocument.stcwRegulation);
-      setCertificateNo(existingDocument.certificateNo);
-      setIssuingAuthority(existingDocument.issuingAuthority);
-      setFlagState(existingDocument.flagState || 'Australia');
-      setIssueDate(existingDocument.issueDate);
-      setExpiryDate(existingDocument.expiryDate);
-      setVerificationStatus(existingDocument.verificationStatus === 'Expired' ? 'Verified' : existingDocument.verificationStatus);
-      setFileName(existingDocument.fileName || `${existingDocument.title.toLowerCase().replace(/\s+/g, '_')}_v2.pdf`);
-    } else {
-      setTitle('');
-      setLayer(initialLayer || 'Layer 1 - Universal Core');
-      setStcwRegulation('STCW Reg VI/1');
-      setCertificateNo('');
-      setIssuingAuthority('Australian Maritime Safety Authority (AMSA)');
-      setFlagState('Australia');
-      setIssueDate('2026-01-01');
-      setExpiryDate('2031-01-01');
-      setVerificationStatus('Verified');
-      setFileName('');
+    if (isOpen) {
+      if (existingDocument) {
+        setTitle(existingDocument.title);
+        setLayer(existingDocument.layer);
+        setStcwRegulation(existingDocument.stcwRegulation);
+        setCertificateNo(existingDocument.certificateNo);
+        setIssuingAuthority(existingDocument.issuingAuthority);
+        setFlagState(existingDocument.flagState || 'Australia');
+        setIssueDate(existingDocument.issueDate);
+        setExpiryDate(existingDocument.expiryDate);
+        setVerificationStatus(existingDocument.verificationStatus === 'Expired' ? 'Verified' : existingDocument.verificationStatus);
+        setFileName(existingDocument.fileName || `${existingDocument.title.toLowerCase().replace(/\s+/g, '_')}_v2.pdf`);
+        setChangeSummary('Replacement STCW certificate scan uploaded by submitter.');
+        setIsAiExtracted(true);
+        setAiOcrConfidence(98.5);
+      } else {
+        setTitle('');
+        setLayer(initialLayer || 'Layer 1 - Universal Core');
+        setStcwRegulation('STCW Reg VI/1');
+        setCertificateNo('');
+        setIssuingAuthority('Australian Maritime Safety Authority (AMSA)');
+        setFlagState('Australia');
+        setIssueDate('2026-01-01');
+        setExpiryDate('2031-01-01');
+        setVerificationStatus('Verified');
+        setFileName('');
+        setChangeSummary('');
+        setIsAiExtracted(false);
+        setAiOcrConfidence(99.2);
+      }
+      setIsExtractingAi(false);
+      setIsUploading(false);
+      setUploadProgress(0);
+      setStatusMessage('');
+      setIsDraggingOver(false);
+      setIsPendingVerification(false);
+      setErrorMessage('');
+      setRevealedFields({ certNo: false, authority: false, expiry: false, summary: false });
     }
-    setErrorMessage('');
-  }, [existingDocument, initialLayer, isOpen]);
+  }, [isOpen, existingDocument, initialLayer]);
 
   if (!isOpen) return null;
 
   const canManage = activePersona === 'Administrator' || activePersona === 'Submitter';
   const isEditing = Boolean(existingDocument);
+
+  /* handles file attachment selection and stages document for user verification before AI extraction */
+  const handleSelectFileForPreview = (selectedName: string) => {
+    setFileName(selectedName);
+    setIsPendingVerification(true);
+    setIsAiExtracted(false);
+    setIsExtractingAi(false);
+  };
+
+  const handleConfirmVerifyAndExtract = () => {
+    setIsPendingVerification(false);
+    triggerAiExtraction(fileName);
+  };
+
+  /* handles drag and drop file interactions */
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isUploading && !isExtractingAi) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    if (isUploading || isExtractingAi) return;
+
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      const droppedFile = droppedFiles[0];
+      handleSelectFileForPreview(droppedFile.name);
+    }
+  };
+
+  /* simulates AI information extraction when a file is uploaded or selected */
+  const triggerAiExtraction = (selectedName: string) => {
+    setFileName(selectedName);
+    setIsExtractingAi(true);
+    setIsAiExtracted(false);
+    setRevealedFields({ certNo: false, authority: false, expiry: false, summary: false });
+
+    const generatedCertNo = `AMSA-STCW-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    setTimeout(() => {
+      setIsExtractingAi(false);
+      setIsAiExtracted(true);
+      setAiOcrConfidence(99.2);
+
+      /* stagger 1: certificate number */
+      setTimeout(() => {
+        setCertificateNo(generatedCertNo);
+        setRevealedFields((prev) => ({ ...prev, certNo: true }));
+      }, 120);
+
+      /* stagger 2: issuing authority */
+      setTimeout(() => {
+        setIssuingAuthority('Australian Maritime Safety Authority (AMSA)');
+        setRevealedFields((prev) => ({ ...prev, authority: true }));
+      }, 420);
+
+      /* stagger 3: expiry date */
+      setTimeout(() => {
+        setExpiryDate('2031-01-01');
+        setRevealedFields((prev) => ({ ...prev, expiry: true }));
+      }, 720);
+
+      /* stagger 4: revision summary */
+      setTimeout(() => {
+        setRevealedFields((prev) => ({ ...prev, summary: true }));
+      }, 980);
+    }, 1100);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      handleSelectFileForPreview(selectedFile.name);
+    }
+  };
+
+  const handleSampleFileClick = (sampleName: string) => {
+    handleSelectFileForPreview(sampleName);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,231 +216,658 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
       return;
     }
 
-    if (!title.trim() || !certificateNo.trim() || !issuingAuthority.trim()) {
-      setErrorMessage('Please fill out all required fields (Document Title, Certificate No, and Issuing Authority).');
+    if (!title.trim()) {
+      setErrorMessage('Please enter a Document Title.');
       return;
     }
 
-    const docToSave: STCWDocumentItem = {
-      id: existingDocument ? existingDocument.id : `DOC-CRW-${Math.floor(600 + Math.random() * 400)}`,
-      title: title.trim(),
-      layer,
-      stcwRegulation: stcwRegulation.trim() || 'STCW Convention Standard',
-      certificateNo: certificateNo.trim(),
-      issuingAuthority: issuingAuthority.trim(),
-      flagState: flagState.trim() || 'Australia',
-      issueDate,
-      expiryDate,
-      verificationStatus,
-      fileName: fileName.trim() || `${title.toLowerCase().replace(/\s+/g, '_')}.pdf`,
-      fileSizeBytes: existingDocument?.fileSizeBytes || 1500000,
-    };
+    const finalCertNo = certificateNo.trim() || `AMSA-STCW-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const finalAuthority = issuingAuthority.trim() || 'Australian Maritime Safety Authority (AMSA)';
 
-    if (isEditing) {
-      updateCrewDocument(crewId, docToSave);
-    } else {
-      addCrewDocument(crewId, docToSave);
-    }
+    setIsUploading(true);
+    setUploadProgress(15);
+    setStatusMessage('Reading STCW document byte stream and preparing secure payload...');
 
-    onClose();
+    setTimeout(() => {
+      setUploadProgress(45);
+      setStatusMessage('Uploading certificate bytes to seafarer compliance vault...');
+    }, 350);
+
+    setTimeout(() => {
+      setUploadProgress(80);
+      setStatusMessage('Verifying AI extracted attributes and validating AMSA / Flag authority...');
+    }, 750);
+
+    setTimeout(() => {
+      setUploadProgress(100);
+      setStatusMessage('Upload complete! Updating crew compliance log...');
+    }, 1150);
+
+    setTimeout(() => {
+      const docToSave: STCWDocumentItem = {
+        id: existingDocument ? existingDocument.id : `DOC-CRW-${Math.floor(600 + Math.random() * 400)}`,
+        title: title.trim(),
+        layer,
+        stcwRegulation: stcwRegulation.trim() || 'STCW Convention Standard',
+        certificateNo: finalCertNo,
+        issuingAuthority: finalAuthority,
+        flagState: flagState.trim() || 'Australia',
+        issueDate,
+        expiryDate,
+        verificationStatus,
+        fileName: fileName.trim() || `${title.toLowerCase().replace(/\s+/g, '_')}.pdf`,
+        fileSizeBytes: existingDocument?.fileSizeBytes || 1500000,
+      };
+
+      if (isEditing) {
+        updateCrewDocument(crewId, docToSave);
+      } else {
+        addCrewDocument(crewId, docToSave);
+      }
+
+      setIsUploading(false);
+      onClose();
+    }, 1500);
   };
 
+  const hasExtractedSpecs = Boolean(isAiExtracted || (existingDocument && fileName));
+
   return (
-    <div className="map-modal-backdrop d-flex align-items-center justify-content-center p-3">
-      <div className="card map-card-custom shadow-lg" style={{ width: '100%', maxWidth: '640px', zIndex: 1100 }}>
-        {/* Modal Header */}
-        <div className="card-header d-flex align-items-center justify-content-between p-3 border-bottom bg-light">
-          <div>
-            <div className="fw-bold text-dark fs-6">
-              {isEditing ? `Reupload / Update STCW Document — ${existingDocument?.title}` : `Upload STCW Certificate / Endorsement — ${crewName}`}
-            </div>
-            <div className="text-secondary small font-mono-code">
-              Seafarer: <strong>{crewName}</strong> {isEditing && `| Existing Ref: ${existingDocument?.certificateNo}`}
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn-close"
-            onClick={onClose}
-            aria-label="Close"
+    <div
+      className="modal show d-block map-modal-backdrop"
+      tabIndex={-1}
+      style={{ zIndex: 1060 }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isUploading && !isExtractingAi) onClose();
+      }}
+    >
+      <div className="modal-dialog modal-dialog-centered transition-all" style={{ maxWidth: hasExtractedSpecs ? '1180px' : '620px', width: '95%' }}>
+        <div className="modal-content bg-white text-dark border shadow-lg">
+          {/* hidden native file input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="d-none"
+            onChange={handleFileChange}
+            accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
           />
-        </div>
 
-        {/* Modal Body Form */}
-        <form onSubmit={handleSubmit}>
-          <div className="card-body p-4 d-flex flex-column gap-3" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
-            {errorMessage && (
-              <div className="alert alert-danger py-2 small mb-0">
-                {errorMessage}
-              </div>
-            )}
-
-            {isEditing && (
-              <div className="alert alert-info py-2 px-3 small mb-0 font-mono-code">
-                <strong>Reuploading/Updating Document:</strong> Updating this record will replace the current certificate file scan, refresh expiry dates, and update compliance logs.
-              </div>
-            )}
-
-            {/* Compliance Layer Selector */}
+          <div className="modal-header border-bottom bg-light d-flex align-items-center justify-content-between p-3 position-relative">
             <div>
-              <label className="form-label small fw-semibold text-secondary mb-1">STCW Compliance Layer *</label>
-              <select
-                className="form-select form-select-sm bg-white text-dark border-secondary"
-                value={layer}
-                onChange={(e) => setLayer(e.target.value as STCWLayer)}
-              >
-                <option value="Layer 1 - Universal Core">Layer 1 — Universal STCW Core (Passport, Seaman Book, BST, ENG1 Medical)</option>
-                <option value="Layer 2 - Vessel Specific & Endorsements">Layer 2 — Vessel Specific & Endorsements (CoC, Tanker, IGF, DP, FSE)</option>
-              </select>
-            </div>
-
-            {/* Document Title & STCW Regulation */}
-            <div className="row g-3">
-              <div className="col-md-7">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="doc-title">Document / Certificate Title *</label>
-                <input
-                  id="doc-title"
-                  type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
-                  placeholder="e.g. Master Unlimited CoC / IGF Code Training"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="col-md-5">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="stcw-reg">STCW Regulation Reference</label>
-                <input
-                  id="stcw-reg"
-                  type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
-                  placeholder="e.g. STCW Reg II/2, VI/1"
-                  value={stcwRegulation}
-                  onChange={(e) => setStcwRegulation(e.target.value)}
-                />
+              <h5 className="modal-title fw-bold text-slate-900 m-0">
+                {existingDocument
+                  ? `Upload Replacement Revision — ${existingDocument.title}`
+                  : `Upload STCW Certificate — ${crewName}`}
+              </h5>
+              <div className="text-secondary small font-mono-code">
+                Seafarer: <strong>{crewName}</strong> ({crewId})
               </div>
             </div>
-
-            {/* Certificate No & Issuing Authority */}
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="cert-no">Certificate / Document Number *</label>
-                <input
-                  id="cert-no"
-                  type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
-                  placeholder="e.g. CoC-II-2-0041"
-                  value={certificateNo}
-                  onChange={(e) => setCertificateNo(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="issuing-auth">Issuing Authority / Body *</label>
-                <input
-                  id="issuing-auth"
-                  type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
-                  placeholder="e.g. AMSA Australia / DNV"
-                  value={issuingAuthority}
-                  onChange={(e) => setIssuingAuthority(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Flag State Jurisdiction */}
-            <div>
-              <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="flag-state">Flag State Jurisdiction / Authority</label>
-              <input
-                id="flag-state"
-                type="text"
-                className="form-control form-control-sm bg-white text-dark border-secondary"
-                placeholder="e.g. Australia / Marshall Islands / Liberia"
-                value={flagState}
-                onChange={(e) => setFlagState(e.target.value)}
-              />
-            </div>
-
-            {/* Issue Date & Expiry Date */}
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="issue-date">Issue Date *</label>
-                <input
-                  id="issue-date"
-                  type="date"
-                  className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
-                  value={issueDate}
-                  onChange={(e) => setIssueDate(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="col-md-4">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="expiry-date">New Expiry Date *</label>
-                <input
-                  id="expiry-date"
-                  type="date"
-                  className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="col-md-4">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="ver-status">Verification Status *</label>
-                <select
-                  id="ver-status"
-                  className="form-select form-select-sm bg-white text-dark border-secondary"
-                  value={verificationStatus}
-                  onChange={(e) => setVerificationStatus(e.target.value as any)}
-                >
-                  <option value="Verified">Verified & Valid</option>
-                  <option value="Pending">Pending Audit</option>
-                  <option value="Expiring">Expiring Soon</option>
-                  <option value="Expired">Expired</option>
-                </select>
-              </div>
-            </div>
-
-            {/* File Upload Attachment */}
-            <div>
-              <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="file-name">
-                {isEditing ? 'Reupload New Scanned File Attachment (PDF / Image)' : 'Scanned Document Attachment (PDF / Image)'}
-              </label>
-              <input
-                id="file-name"
-                type="text"
-                className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
-                placeholder="e.g. stcw_certificate_scan_v2.pdf"
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Modal Footer Controls */}
-          <div className="card-footer d-flex align-items-center justify-content-end gap-2 p-3 border-top bg-light">
             <button
               type="button"
-              className="btn btn-sm btn-outline-secondary"
+              className="btn-close ms-auto"
               onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-sm btn-primary"
-              disabled={!canManage}
-            >
-              {isEditing ? 'Save & Update Certificate' : 'Upload & Register Certificate'}
-            </button>
+              aria-label="Close"
+              disabled={isUploading || isExtractingAi}
+            />
           </div>
-        </form>
+
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body p-4">
+              {errorMessage && (
+                <div className="alert alert-danger py-2 small mb-3">
+                  {errorMessage}
+                </div>
+              )}
+
+              {/* Simulated Upload Progress Bar */}
+              {isUploading && (
+                <div className="p-3 mb-4 bg-light border border-primary rounded shadow-2xs">
+                  <div className="d-flex align-items-center justify-content-between mb-1.5">
+                    <span className="fw-bold text-primary small d-flex align-items-center gap-2">
+                      <span className="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true" />
+                      Simulating STCW Certificate Upload &amp; Re-upload...
+                    </span>
+                    <span className="font-mono-code fw-bold text-primary small">{uploadProgress}%</span>
+                  </div>
+                  <div className="progress mb-2" style={{ height: '8px' }}>
+                    <div
+                      className="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                      role="progressbar"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <div className="font-mono-code text-muted small" style={{ fontSize: '0.75rem' }}>
+                    {statusMessage}
+                  </div>
+                </div>
+              )}
+
+              {/* Dynamic Column Layout Container */}
+              <div className="row g-4">
+                {/* Column 1 (Left): Extraction Review Screen (shown dynamically only when file attached / extracted) */}
+                {hasExtractedSpecs && (
+                  <div className="col-lg-7 col-md-6 border-end pe-md-4">
+                    <div className="map-extraction-preview-container p-4 h-100 d-flex flex-column justify-between">
+                      <div>
+                        {/* Subtitle & Confidence Indicator */}
+                        <div className="d-flex flex-wrap align-items-start justify-content-between mb-3 border-bottom pb-3">
+                          <div>
+                            <div className="font-mono-code text-uppercase text-muted small fw-bold mb-0.5" style={{ fontSize: '0.675rem', letterSpacing: '0.08em' }}>
+                              EXTRACTION REVIEW
+                            </div>
+                            <h5 className="fw-bold text-dark m-0 mb-1" style={{ fontSize: '1.15rem' }}>
+                              {title || existingDocument?.title || 'Master Unlimited Certificate of Competency (CoC)'}
+                            </h5>
+                            <div className="font-mono-code text-muted small" style={{ fontSize: '0.75rem' }}>
+                              {(fileName || 'stcw_coc_scan.pdf')} · 1.5 MB · 1 page
+                            </div>
+                          </div>
+
+                          <div className="text-end">
+                            <div className="fw-bold lh-1" style={{ fontSize: '1.65rem', color: correctedFields.size > 0 ? '#059669' : aiOcrConfidence >= 90 ? '#059669' : '#c2410c' }}>
+                              {correctedFields.size > 0 ? '100%' : `${aiOcrConfidence || 74}%`}
+                            </div>
+                            <div className="small lh-sm text-muted" style={{ fontSize: '0.65rem' }}>
+                              overall confidence<br />threshold 90%
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2 Sub-Columns inside Left Side: Scanned page preview on left, Extracted attributes on right */}
+                        <div className="row g-3 mb-3">
+                          {/* Thumbnail + Quality Checks */}
+                          <div className="col-md-4 d-flex flex-column gap-2">
+                            <div
+                              className="p-3 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-white shadow-2xs"
+                              style={{ borderStyle: 'dashed', borderColor: '#cbd5e1', minHeight: '180px' }}
+                            >
+                              <div className="font-mono-code text-uppercase text-muted small fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}>
+                                SCANNED PAGE
+                              </div>
+                              <div className="font-mono-code text-muted small mt-1" style={{ fontSize: '0.7rem' }}>
+                                1 of 1
+                              </div>
+                            </div>
+
+                            <div className="d-flex flex-column gap-1.5">
+                              <div className="d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success" style={{ width: '16px', height: '16px', fontSize: '0.6rem' }}>✓</span>
+                                <span>Resolution 240 DPI</span>
+                              </div>
+                              <div className="d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '16px', height: '16px', backgroundColor: '#c2410c', fontSize: '0.6rem' }}>!</span>
+                                <span>Full page captured</span>
+                              </div>
+                              <div className="d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '16px', height: '16px', backgroundColor: '#c2410c', fontSize: '0.6rem' }}>!</span>
+                                <span>Signature / stamp present</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Extracted Attributes List */}
+                          <div className="col-md-8 d-flex flex-column gap-1">
+                            {/* Crew Member Name */}
+                            <div className="map-extraction-field-row py-1">
+                              <div className="d-flex flex-column flex-grow-1 me-2">
+                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                  CREW MEMBER NAME
+                                </div>
+                                <div className="font-mono-code fw-bold text-dark small">
+                                  {crewName}
+                                </div>
+                              </div>
+                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                <div className="font-mono-code small text-success fw-bold" style={{ fontSize: '0.7rem' }}>95%</div>
+                              </div>
+                            </div>
+
+                            {/* Certificate Number */}
+                            <div className="map-extraction-field-row py-1">
+                              <div className="d-flex flex-column flex-grow-1 me-2">
+                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                  CERTIFICATE / DOCUMENT NUMBER
+                                </div>
+                                {isManualEditActive ? (
+                                  <input
+                                    type="text"
+                                    className="map-extraction-field-input"
+                                    value={certificateNo}
+                                    onChange={(e) => {
+                                      setCertificateNo(e.target.value);
+                                      setCorrectedFields((prev) => new Set(prev).add('certNo'));
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canManage && setIsManualEditActive(true)}>
+                                    {certificateNo || 'AMSA-COC-2026-8812 (partially legible)'}
+                                  </div>
+                                )}
+                                <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
+                                  Below 90% threshold — human review required
+                                </div>
+                              </div>
+                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: '#c2410c' }}>61%</div>
+                              </div>
+                            </div>
+
+                            {/* Issuing Authority */}
+                            <div className="map-extraction-field-row py-1">
+                              <div className="d-flex flex-column flex-grow-1 me-2">
+                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                  ISSUING AUTHORITY
+                                </div>
+                                {isManualEditActive ? (
+                                  <input
+                                    type="text"
+                                    className="map-extraction-field-input"
+                                    value={issuingAuthority}
+                                    onChange={(e) => {
+                                      setIssuingAuthority(e.target.value);
+                                      setCorrectedFields((prev) => new Set(prev).add('authority'));
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canManage && setIsManualEditActive(true)}>
+                                    {issuingAuthority || 'illegible stamp'}
+                                  </div>
+                                )}
+                                <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
+                                  Below 90% threshold — human review required
+                                </div>
+                              </div>
+                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: '#c2410c' }}>44%</div>
+                              </div>
+                            </div>
+
+                            {/* Expiry Date */}
+                            <div className="map-extraction-field-row py-1">
+                              <div className="d-flex flex-column flex-grow-1 me-2">
+                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                  EXPIRY DATE
+                                </div>
+                                {isManualEditActive ? (
+                                  <input
+                                    type="date"
+                                    className="map-extraction-field-input"
+                                    value={expiryDate}
+                                    onChange={(e) => {
+                                      setExpiryDate(e.target.value);
+                                      setCorrectedFields((prev) => new Set(prev).add('expiry'));
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canManage && setIsManualEditActive(true)}>
+                                    {expiryDate || '2031-01-01'}
+                                  </div>
+                                )}
+                                <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
+                                  Below 90% threshold — human review required
+                                </div>
+                              </div>
+                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: '#c2410c' }}>79%</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Exception Action Banner */}
+                      {canManage && (
+                        <div className="map-exception-banner mt-3">
+                          <div>
+                            <div className="fw-bold text-dark mb-0.5" style={{ fontSize: '0.825rem', color: '#92400e' }}>
+                              Exception identified — Submitter action required
+                            </div>
+                            <div className="small" style={{ fontSize: '0.725rem', color: '#b45309' }}>
+                              Issuing authority illegible, certificate number partially legible. Replace with a clearer scan or provide a renewed certificate.
+                            </div>
+                          </div>
+
+                          <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              className="btn btn-sm map-btn-outline-manual py-1"
+                              onClick={() => setIsManualEditActive(!isManualEditActive)}
+                            >
+                              {isManualEditActive ? 'Done Editing Fields' : 'Correct field manually'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Column 2 (Right): Document Upload Panel */}
+                <div className={hasExtractedSpecs ? "col-lg-5 col-md-6 ps-md-4 d-flex flex-column gap-3" : "col-12 d-flex flex-column gap-3"}>
+                  <div className="fw-bold text-dark border-bottom pb-2" style={{ fontSize: '0.95rem' }}>
+                    Document Upload &amp; Re-upload Panel
+                  </div>
+
+                  {/* STCW Compliance Layer Selector */}
+                  <div>
+                    <label className="form-label small fw-semibold text-secondary mb-1">STCW Compliance Layer *</label>
+                    <select
+                      className="form-select form-select-sm bg-white text-dark border-secondary"
+                      value={layer}
+                      onChange={(e) => setLayer(e.target.value as STCWLayer)}
+                      disabled={isUploading || isExtractingAi || !!existingDocument}
+                    >
+                      <option value="Layer 1 - Universal Core">Layer 1 — Universal STCW Core (Passport, Seaman Book, BST, ENG1 Medical)</option>
+                      <option value="Layer 2 - Vessel Specific & Endorsements">Layer 2 — Vessel Specific & Endorsements (CoC, Tanker, IGF, DP, FSE)</option>
+                    </select>
+                  </div>
+
+                  {/* Document Title & STCW Regulation */}
+                  <div className="row g-2">
+                    <div className="col-md-7">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="doc-title">
+                        Document Title *
+                      </label>
+                      <input
+                        id="doc-title"
+                        type="text"
+                        className="form-control form-control-sm bg-white text-dark border-secondary"
+                        placeholder="e.g. Master Unlimited CoC / IGF Code Training"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        disabled={isUploading || isExtractingAi || !!existingDocument}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-5">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="stcw-reg">
+                        STCW Reg Ref
+                      </label>
+                      <input
+                        id="stcw-reg"
+                        type="text"
+                        className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
+                        placeholder="STCW Reg II/2"
+                        value={stcwRegulation}
+                        onChange={(e) => setStcwRegulation(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Certificate No & Issuing Authority */}
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="cert-no">
+                        Certificate No *
+                      </label>
+                      <input
+                        id="cert-no"
+                        type="text"
+                        className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
+                        placeholder="e.g. CoC-II-2-0041"
+                        value={certificateNo}
+                        onChange={(e) => setCertificateNo(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="issuing-auth">
+                        Issuing Body *
+                      </label>
+                      <input
+                        id="issuing-auth"
+                        type="text"
+                        className="form-control form-control-sm bg-white text-dark border-secondary"
+                        placeholder="AMSA Australia"
+                        value={issuingAuthority}
+                        onChange={(e) => setIssuingAuthority(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Flag State & Expiry Date */}
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="flag-state">
+                        Flag State Authority
+                      </label>
+                      <input
+                        id="flag-state"
+                        type="text"
+                        className="form-control form-control-sm bg-white text-dark border-secondary"
+                        placeholder="e.g. Australia / Liberia"
+                        value={flagState}
+                        onChange={(e) => setFlagState(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="expiry-date">
+                        Expiry Date *
+                      </label>
+                      <input
+                        id="expiry-date"
+                        type="date"
+                        className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
+                        value={expiryDate}
+                        onChange={(e) => setExpiryDate(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Drag and Drop / Clickable File Upload Dropzone */}
+                  <div>
+                    <label className="form-label text-dark fw-bold small mb-1">
+                      Select Document File *
+                    </label>
+                    <div
+                      className={`p-4 border border-2 border-dashed rounded text-center transition-all ${isDraggingOver
+                        ? 'border-primary bg-primary-subtle'
+                        : fileName
+                          ? 'border-success bg-light'
+                          : 'border-secondary-subtle bg-light hover-bg-gray'
+                        }`}
+                      style={{ cursor: isUploading || isExtractingAi ? 'not-allowed' : 'pointer' }}
+                      onClick={() => {
+                        if (!isUploading && !isExtractingAi) {
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    >
+                      <div className="d-flex flex-column align-items-center justify-content-center gap-2">
+                        <div className="rounded-circle bg-white p-2 border shadow-2xs">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark mb-0.5" style={{ fontSize: '0.825rem' }}>
+                            {fileName ? (
+                              <span className="text-success font-mono-code">{fileName}</span>
+                            ) : (
+                              <span>Drag &amp; drop file here, or <span className="text-primary text-decoration-underline">browse files</span></span>
+                            )}
+                          </div>
+                          <div className="text-secondary small" style={{ fontSize: '0.725rem' }}>
+                            Supports PDF, PNG, JPG, DOCX (Max 25MB)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick File Selection Chips */}
+                    <div className="d-flex align-items-center gap-1.5 flex-wrap mt-2">
+                      <span className="text-secondary small me-1" style={{ fontSize: '0.7rem' }}>
+                        Sample file attach:
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
+                        style={{ fontSize: '0.675rem' }}
+                        onClick={() =>
+                          handleSampleFileClick(
+                            `STCW_CoC_Master_Unlimited_2026.pdf`
+                          )
+                        }
+                        disabled={isUploading || isExtractingAi}
+                      >
+                        + STCW_CoC_Master_Unlimited_2026.pdf
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Reason for revision / change summary field when editing */}
+                  {existingDocument && (
+                    <div>
+                      <label className="form-label text-dark fw-semibold small mb-1" htmlFor="revision-summary">
+                        Reason for Revision / Change Summary
+                      </label>
+                      <textarea
+                        id="revision-summary"
+                        className="form-control form-control-sm bg-white text-dark border-secondary"
+                        rows={3}
+                        placeholder="e.g. Uploading renewed STCW master certificate scan with updated AMSA seal..."
+                        value={changeSummary}
+                        onChange={(e) => setChangeSummary(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                      />
+                    </div>
+                  )}
+
+                  {/* Simulated AI Extraction Progress Indicator */}
+                  {isExtractingAi && (
+                    <div className="p-3 bg-primary-subtle border border-primary-subtle rounded shadow-2xs">
+                      <div className="d-flex align-items-center justify-content-between mb-1">
+                        <span className="fw-bold text-primary small d-flex align-items-center gap-2">
+                          <span className="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true" />
+                          AI OCR Scanning in Progress...
+                        </span>
+                        <span className="badge bg-primary text-white font-mono-code">AI Processing</span>
+                      </div>
+                      <div className="ai-scan-bar" />
+                      <div className="font-mono-code text-muted small mt-2" style={{ fontSize: '0.725rem' }}>
+                        Extracting Certificate Attributes from <strong>{fileName}</strong>...
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer border-top bg-light">
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary"
+                onClick={onClose}
+                disabled={isUploading || isExtractingAi}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-sm btn-primary fw-bold px-4 d-inline-flex align-items-center gap-2"
+                disabled={isUploading || isExtractingAi || !title.trim() || !canManage}
+              >
+                {isUploading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                    Uploading...
+                  </>
+                ) : existingDocument ? (
+                  'Submit Replacement Revision'
+                ) : (
+                  'Upload Certificate'
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
+
+      {/* Document File Preview & Verification Gate Popup Modal */}
+      {isPendingVerification && (
+        <div
+          className="modal show d-block map-modal-backdrop"
+          tabIndex={-1}
+          style={{ zIndex: 1070 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsPendingVerification(false);
+          }}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content bg-white text-dark border shadow-lg">
+              {/* Header */}
+              <div className="modal-header border-bottom bg-light d-flex align-items-center justify-content-between p-3">
+                <div>
+                  <h5 className="modal-title fw-bold text-dark m-0">
+                    Document Preview
+                  </h5>
+                  <div className="text-secondary small mt-0.5">
+                    Verify seafarer certificate scan clarity before authorizing AI metadata extraction
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setIsPendingVerification(false)}
+                  aria-label="Close"
+                />
+              </div>
+
+              {/* Body */}
+              <div className="modal-body p-4">
+                <div className="alert alert-info py-2 px-3 small font-mono-code mb-3">
+                  <strong>File Staged:</strong> {fileName} (Ready for automated AI spec extraction)
+                </div>
+
+                {/* Simulated Document Preview Box */}
+                <div
+                  className="p-5 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-light shadow-2xs"
+                  style={{ minHeight: '260px', borderStyle: 'dashed', borderColor: '#cbd5e1' }}
+                >
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary mb-2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </svg>
+                  <div className="fw-bold text-dark mb-1">{fileName}</div>
+                  <div className="text-secondary small font-mono-code">240 DPI · Scanned STCW Certificate · 1 Page</div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="modal-footer border-top bg-light d-flex align-items-center justify-content-end gap-2 p-3">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={() => setIsPendingVerification(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary fw-bold px-3 d-inline-flex align-items-center gap-1.5"
+                  onClick={handleConfirmVerifyAndExtract}
+                >
+                  Confirm Document &amp; Extract Specs
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

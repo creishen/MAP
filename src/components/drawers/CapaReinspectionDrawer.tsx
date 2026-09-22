@@ -29,13 +29,13 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
   } = useMapStore();
 
   const isInspector = activePersona === 'Inspector';
-  const isCAdmin = activePersona === 'C Admin';
+  const isAdminPersona = activePersona === 'C Admin' || activePersona === 'Administrator';
 
   /* local state for inspector edit controls */
   const [reInspectStatus, setReInspectStatus] = useState<CapaStatus>(capa.status);
   const [reInspectNotes, setReInspectNotes] = useState(capa.inspectorNotes || '');
 
-  /* local state for c admin flag workflow */
+  /* local state for admin flag workflow */
   const [cAdminReason, setCAdminReason] = useState(capa.cadminFlagReason || '');
   const [flagSuccessToast, setFlagSuccessToast] = useState(false);
 
@@ -67,7 +67,7 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
     onClose();
   };
 
-  /* c admin flag for re-inspection handler */
+  /* admin flag for re-inspection handler */
   const handleFlagForReinspection = () => {
     flagCapaForReinspection(capa.id, cAdminReason);
     setFlagSuccessToast(true);
@@ -448,7 +448,7 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
               </div>
             </div>
 
-            {/* Action Footer: Endorse for Inspector vs Flag for C Admin */}
+            {/* Action Footer: Endorse for Inspector vs Flag for Admin */}
             {isInspector ? (
               <button
                 type="button"
@@ -456,27 +456,27 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
                 onClick={handleSaveReInspection}
                 style={{ fontSize: '0.9rem' }}
               >
-                Endorse & Save CAPA Re-Inspection Status
+                Endorse &amp; Save CAPA Re-Inspection Status
               </button>
-            ) : (
+            ) : isAdminPersona ? (
               <div className="card map-card-custom p-3 bg-white border border-primary-subtle">
                 <div className="d-flex align-items-center justify-content-between mb-2">
                   <h6 className="fw-bold text-primary m-0" style={{ fontSize: '0.9rem' }}>
-                    C Admin Governance: Request Re-Inspection
+                    Admin Governance: Flag CAPA as Addressed
                   </h6>
                   {flagSuccessToast && (
                     <span className="badge bg-success text-white font-mono-code">
-                      Flag Saved & Sent to Inspector!
+                      ✓ Flagged as Addressed — Inspector Notified!
                     </span>
                   )}
                 </div>
                 <div className="text-secondary small mb-2.5" style={{ fontSize: '0.775rem' }}>
-                  As C Admin, you cannot directly change status or modify evidence. You can flag this CAPA item to request a mandatory re-inspection from the assigned inspector.
+                  Flag this CAPA item as addressed by the vessel operator to notify the assigned inspector for re-inspection verification.
                 </div>
                 <textarea
                   className="form-control form-control-sm mb-3"
                   rows={2}
-                  placeholder="Enter specific re-inspection request notes or required evidence for inspector..."
+                  placeholder="Enter resolution notes or details on how this finding was addressed for inspector..."
                   value={cAdminReason}
                   onChange={(e) => setCAdminReason(e.target.value)}
                   style={{ fontSize: '0.8rem' }}
@@ -487,10 +487,10 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
                   style={{ backgroundColor: '#0284c7', borderColor: '#0284c7', fontSize: '0.875rem' }}
                   onClick={handleFlagForReinspection}
                 >
-                  {capa.flaggedForReinspection ? 'Update Re-Inspection Flag Notes' : 'Flag for Re-Inspection'}
+                  {capa.flaggedForReinspection ? 'Update Addressed Notes & Notify Inspector' : 'Flag CAPA as Addressed (Notify Inspector)'}
                 </button>
               </div>
-            )}
+            ) : null}
 
           </div>
         </div>
