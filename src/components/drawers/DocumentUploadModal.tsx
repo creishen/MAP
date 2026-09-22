@@ -326,7 +326,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     }, 1500);
   };
 
-  const hasSelectedFile = Boolean(fileName || existingDocument || isAiExtracted || isExtractingAi);
+  /* extraction review is rendered only after ai ocr scan animation is completed */
+  const hasExtractedSpecs = Boolean(isAiExtracted || (existingDocument && fileName));
 
   return (
     <div
@@ -337,7 +338,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         if (e.target === e.currentTarget && !isUploading && !isExtractingAi) onClose();
       }}
     >
-      <div className="modal-dialog modal-dialog-centered transition-all" style={{ maxWidth: hasSelectedFile ? '1180px' : '620px', width: '95%' }}>
+      <div className="modal-dialog modal-dialog-centered transition-all" style={{ maxWidth: hasExtractedSpecs ? '1180px' : '620px', width: '95%' }}>
         <div className="modal-content bg-white text-dark border shadow-lg">
           {/* hidden native file input */}
           <input
@@ -392,8 +393,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
 
               {/* Dynamic Column Layout Container */}
               <div className="row g-4">
-                {/* Column 1 (Left): Extraction Review Screen (shown dynamically only when a file is selected) */}
-                {hasSelectedFile && (
+                {/* Column 1 (Left): Extraction Review Screen (shown dynamically only when extract specs & verify is clicked) */}
+                {hasExtractedSpecs && (
                   <div className="col-lg-7 col-md-6 border-end pe-md-4">
                     <div className="map-extraction-preview-container p-4 h-100 d-flex flex-column justify-between">
                       <div>
@@ -591,7 +592,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                 )}
 
                 {/* Column 2 (Right): Document Upload Panel */}
-                <div className={hasSelectedFile ? "col-lg-5 col-md-6 ps-md-4 d-flex flex-column gap-3" : "col-12 d-flex flex-column gap-3"}>
+                <div className={hasExtractedSpecs ? "col-lg-5 col-md-6 ps-md-4 d-flex flex-column gap-3" : "col-12 d-flex flex-column gap-3"}>
                   <div className="fw-bold text-dark border-bottom pb-2" style={{ fontSize: '0.95rem' }}>
                     Document Upload &amp; Re-upload Panel
                   </div>
