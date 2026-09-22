@@ -23,6 +23,9 @@ interface AddUserModalProps {
 */
 export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) => {
   const { users, addUser, activePersona } = useMapStore();
+  const isCAdmin = activePersona === 'C Admin';
+  const defaultOrgName = isCAdmin ? 'Southern Basin Energy Pty Ltd' : 'Northwind Marine Pty Ltd';
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [userType, setUserType] = useState<UserType>('Third-Party');
@@ -43,7 +46,13 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       return;
     }
 
-    const roles = buildRolesFromForm(isPlatformAdmin, operationalRoles);
+    /* sanitize roles for c admin to guarantee no platform admin or c admin role leakage */
+    const effectivePlatformAdmin = isCAdmin ? false : isPlatformAdmin;
+    const effectiveOperationalRoles = isCAdmin
+      ? operationalRoles.filter((r) => r !== 'C Admin')
+      : operationalRoles;
+
+    const roles = buildRolesFromForm(effectivePlatformAdmin, effectiveOperationalRoles);
     if (roles.length === 0) {
       setErrorMessage('Select at least one platform or operational role for this user.');
       return;
@@ -63,7 +72,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       roles,
       userType,
       organization: organization.trim(),
-      departmentOrScope: departmentOrScope.trim() || (userType === 'Organization' ? 'Internal Operations' : 'External Stakeholder Scope'),
+      departmentOrScope: departmentOrScope.trim() || (userType === 'Organization' ? (isCAdmin ? 'Client Operations' : 'Internal Operations') : 'External Stakeholder Scope'),
       status: userType === 'Third-Party' ? 'Pending Invitation' : 'Active',
       lastActive: userType === 'Third-Party' ? 'Invitation Sent' : 'Just Now',
     };
@@ -120,11 +129,11 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
                     checked={userType === 'Organization'}
                     onChange={() => {
                       setUserType('Organization');
-                      setOrganization('Northwind Marine Pty Ltd');
+                      setOrganization(defaultOrgName);
                     }}
                   />
                   <label className="form-check-input-label small text-dark fw-semibold cursor-pointer" htmlFor="userTypeOrg">
-                    Organization Member (Northwind Marine)
+                    Organization Member ({isCAdmin ? 'Southern Basin Energy' : 'Northwind Marine'})
                   </label>
                 </div>
                 <div className="form-check">
@@ -179,10 +188,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
             <div className="row g-3">
               <div className="col-12">
                 <UserRoleChecklist
-                  isPlatformAdmin={isPlatformAdmin}
+                  isPlatformAdmin={isCAdmin ? false : isPlatformAdmin}
                   operationalRoles={operationalRoles}
                   onPlatformAdminChange={setIsPlatformAdmin}
                   onOperationalRolesChange={setOperationalRoles}
+                  hidePlatformAdmin={isCAdmin}
+                  hideCAdminRole={isCAdmin}
                 />
               </div>
 

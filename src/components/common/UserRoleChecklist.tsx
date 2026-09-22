@@ -17,19 +17,37 @@ interface UserRoleChecklistProps {
   operationalRoles: RoleName[];
   onPlatformAdminChange: (checked: boolean) => void;
   onOperationalRolesChange: (roles: RoleName[]) => void;
+  hidePlatformAdmin?: boolean;
+  hideCAdminRole?: boolean;
+  excludedRoles?: RoleName[];
 }
 
 /**
   what: renders platform admin + operational role checkboxes including Roles & Permissions custom roles.
+  how: checks active persona and visibility props, filtering out platform access control and restricted roles such as C Admin for client administrators.
+  with what file: src/components/common/UserRoleChecklist.tsx loaded by AddUserModal.tsx and EditUserModal.tsx.
 */
 export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
   isPlatformAdmin,
   operationalRoles,
   onPlatformAdminChange,
   onOperationalRolesChange,
+  hidePlatformAdmin,
+  hideCAdminRole,
+  excludedRoles = [],
 }) => {
-  const customRoles = useMapStore((s) => s.customRoles);
-  const roleOptions = getOperationalRoleOptions(customRoles);
+  const { customRoles, activePersona } = useMapStore();
+  const isCAdminPersona = activePersona === 'C Admin';
+
+  const shouldHidePlatformAdmin = hidePlatformAdmin ?? isCAdminPersona;
+  const shouldHideCAdminRole = hideCAdminRole ?? isCAdminPersona;
+
+  const effectiveExcludedRoles: RoleName[] = [
+    ...excludedRoles,
+    ...(shouldHideCAdminRole ? (['C Admin'] as RoleName[]) : []),
+  ];
+
+  const roleOptions = getOperationalRoleOptions(customRoles, effectiveExcludedRoles);
 
   const toggleOperationalRole = (role: RoleName) => {
     if (operationalRoles.includes(role)) {
@@ -40,30 +58,32 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
   };
 
   const previewRoles: RoleName[] = [
-    ...(isPlatformAdmin ? (['Administrator'] as RoleName[]) : []),
+    ...(isPlatformAdmin && !shouldHidePlatformAdmin ? (['Administrator'] as RoleName[]) : []),
     ...operationalRoles,
   ];
   const sodWarnings = getSegregationWarnings(previewRoles);
 
   return (
     <div className="d-flex flex-column gap-3">
-      <div>
-        <label className="form-label small fw-semibold text-secondary mb-2">
-          Platform Access
-        </label>
-        <div className="form-check">
-          <input
-            className="form-check-input"
-            type="checkbox"
-            id="role-platform-admin"
-            checked={isPlatformAdmin}
-            onChange={(e) => onPlatformAdminChange(e.target.checked)}
-          />
-          <label className="form-check-label small text-dark fw-semibold" htmlFor="role-platform-admin">
-            Platform Administrator (full MAP governance access)
+      {!shouldHidePlatformAdmin && (
+        <div>
+          <label className="form-label small fw-semibold text-secondary mb-2">
+            Platform Access Control
           </label>
+          <div className="form-check">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id="role-platform-admin"
+              checked={isPlatformAdmin}
+              onChange={(e) => onPlatformAdminChange(e.target.checked)}
+            />
+            <label className="form-check-label small text-dark fw-semibold" htmlFor="role-platform-admin">
+              Platform Full Access Control (Governance Administrator)
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       <div>
         <label className="form-label small fw-semibold text-secondary mb-2">
@@ -85,7 +105,7 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
                   htmlFor={`role-${String(role).replace(/\s+/g, '-').toLowerCase()}`}
                 >
                   {label}
-                  
+
                 </label>
               </div>
             </div>

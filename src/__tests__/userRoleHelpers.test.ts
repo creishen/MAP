@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildRolesFromForm,
   getAssuranceAssignmentWarnings,
+  getOperationalRoleOptions,
   getSegregationWarnings,
   hasBlockingAssuranceAssignmentConflict,
   splitRolesForForm,
@@ -46,5 +47,16 @@ describe('userRoleHelpers', () => {
         approverId: 'USR-202',
       }),
     ).toBe(true);
+  });
+
+  it('should exclude specified roles like C Admin from operational role options', () => {
+    const allOptions = getOperationalRoleOptions(['Custom Auditor']);
+    expect(allOptions.some((o) => o.role === 'C Admin')).toBe(true);
+    expect(allOptions.some((o) => o.role === 'Custom Auditor')).toBe(true);
+
+    const filteredOptions = getOperationalRoleOptions(['Custom Auditor'], ['C Admin']);
+    expect(filteredOptions.some((o) => o.role === 'C Admin')).toBe(false);
+    expect(filteredOptions.some((o) => o.role === 'Verifier')).toBe(true);
+    expect(filteredOptions.some((o) => o.role === 'Custom Auditor')).toBe(true);
   });
 });

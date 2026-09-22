@@ -17,10 +17,13 @@ export const OPERATIONAL_ROLE_OPTIONS: { role: UserRolePersona; label: string }[
 ];
 
 /**
-  what: builds operational role checklist options including admin-created custom roles.
+  what: builds operational role checklist options including admin-created custom roles with optional exclusions.
+  how: aggregates static operational roles and custom roles from store, filtering out any roles matching excludeRoles.
+  with what file: src/utils/userRoleHelpers.ts consumed by UserRoleChecklist.tsx.
 */
 export function getOperationalRoleOptions(
   customRoles: string[] = [],
+  excludeRoles: RoleName[] = [],
 ): { role: RoleName; label: string; isCustom?: boolean }[] {
   const brd = OPERATIONAL_ROLE_OPTIONS.map(({ role, label }) => ({
     role: role as RoleName,
@@ -32,7 +35,11 @@ export function getOperationalRoleOptions(
     label: `${role} `,
     isCustom: true,
   }));
-  return [...brd, ...custom];
+  const combined = [...brd, ...custom];
+  if (excludeRoles.length > 0) {
+    return combined.filter((opt) => !excludeRoles.includes(opt.role));
+  }
+  return combined;
 }
 
 export function userHasRole(

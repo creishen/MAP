@@ -178,12 +178,12 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
             style={{ width: '160px' }}
           >
             <option value="ALL">All Persona Roles</option>
-            <option value="Administrator">Administrator</option>
+            {activePersona !== 'C Admin' && <option value="Administrator">Administrator</option>}
             <option value="Submitter">Submitter</option>
             <option value="Verifier">Verifier</option>
             <option value="Inspector">Inspector</option>
             <option value="Approver">Approver</option>
-            <option value="C Admin">C Admin</option>
+            {activePersona !== 'C Admin' && <option value="C Admin">C Admin</option>}
             {customRoles.map((role) => (
               <option key={role} value={role}>
                 {role}

@@ -23,7 +23,9 @@ interface EditUserModalProps {
   with what file: src/components/drawers/EditUserModal.tsx loaded by UserTable.tsx.
 */
 export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user }) => {
-  const { users, updateUser } = useMapStore();
+  const { users, updateUser, activePersona } = useMapStore();
+  const isCAdmin = activePersona === 'C Admin';
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [userType, setUserType] = useState<UserType>('Organization');
@@ -43,8 +45,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       setEmail(user.email);
       setUserType(user.userType);
       const { isPlatformAdmin: admin, operationalRoles: ops } = splitRolesForForm(user.roles);
-      setIsPlatformAdmin(admin);
-      setOperationalRoles(ops);
+      setIsPlatformAdmin(isCAdmin ? false : admin);
+      setOperationalRoles(isCAdmin ? ops.filter((r) => r !== 'C Admin') : ops);
       setOrganization(user.organization);
       setDepartmentOrScope(user.departmentOrScope);
       setStatus(user.status);
@@ -53,7 +55,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       const timer = setTimeout(() => setIsJustLoaded(false), 750);
       return () => clearTimeout(timer);
     }
-  }, [user, isOpen]);
+  }, [user, isOpen, isCAdmin]);
 
   if (!isOpen || !user) return null;
 
@@ -66,7 +68,13 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       return;
     }
 
-    const roles = buildRolesFromForm(isPlatformAdmin, operationalRoles);
+    /* sanitize roles for c admin to guarantee no platform admin or c admin role leakage */
+    const effectivePlatformAdmin = isCAdmin ? false : isPlatformAdmin;
+    const effectiveOperationalRoles = isCAdmin
+      ? operationalRoles.filter((r) => r !== 'C Admin')
+      : operationalRoles;
+
+    const roles = buildRolesFromForm(effectivePlatformAdmin, effectiveOperationalRoles);
     if (roles.length === 0) {
       setErrorMessage('Select at least one platform or operational role for this user.');
       return;
@@ -187,10 +195,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
             <div className="row g-3">
               <div className="col-12">
                 <UserRoleChecklist
-                  isPlatformAdmin={isPlatformAdmin}
+                  isPlatformAdmin={isCAdmin ? false : isPlatformAdmin}
                   operationalRoles={operationalRoles}
                   onPlatformAdminChange={setIsPlatformAdmin}
                   onOperationalRolesChange={setOperationalRoles}
+                  hidePlatformAdmin={isCAdmin}
+                  hideCAdminRole={isCAdmin}
                 />
               </div>
 
