@@ -99,6 +99,7 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
       imoNumber: selectedVessel.imoNumber,
       initiatorOrg: isClient ? 'Chevron Australia Pty Ltd' : 'Pacific Ocean Logistics',
       initiatorRole: isClient ? 'C Admin · Client Created' : 'Vessel Provider Admin',
+      charterer: isClient ? 'Chevron Australia Pty Ltd' : 'Pacific Ocean Logistics',
       charterWindowStart: startDate,
       charterWindowEnd: endDate,
       stage: 'Initiated',

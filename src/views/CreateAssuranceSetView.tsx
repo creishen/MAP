@@ -46,6 +46,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(templateSetId || '');
   const [title, setTitle] = useState('');
   const [vesselId, setVesselId] = useState(vessels[0]?.id || '');
+  const [charterer, setCharterer] = useState('Chevron Australia Pty Ltd');
   const [startDate, setStartDate] = useState('2026-11-01');
   const [endDate, setEndDate] = useState('2027-11-01');
 
@@ -91,6 +92,10 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     if (targetSet.charterWindowStart) setStartDate(targetSet.charterWindowStart);
     if (targetSet.charterWindowEnd) setEndDate(targetSet.charterWindowEnd);
     setInspectionRequired(targetSet.mandatoryInspectionRequired);
+
+    /* extract charterer from template set */
+    const templateCharterer = targetSet.charterer || targetSet.initiatorOrg || 'Chevron Australia Pty Ltd';
+    setCharterer(templateCharterer);
 
     /* map master document toggles based on existing template requirements */
     const updatedToggles: Record<string, boolean> = {};
@@ -254,6 +259,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
       imoNumber: selectedVessel.imoNumber,
       initiatorOrg: isClientAdmin ? 'Chevron Australia Pty Ltd' : 'Pacific Ocean Logistics',
       initiatorRole: isClientAdmin ? 'C Admin · Client Created' : 'Vessel Provider Admin',
+      charterer: charterer || (isClientAdmin ? 'Chevron Australia Pty Ltd' : 'Pacific Ocean Logistics'),
       charterWindowStart: startDate,
       charterWindowEnd: endDate,
       stage: 'Initiated',
@@ -344,7 +350,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                             Auto-filled from Template: {assuranceSets.find((s) => s.id === selectedTemplateId)?.title}
                           </div>
                           <div className="text-secondary small">
-                            Vessel, Charter Window, Master Document Toggles, and Role Assignments loaded from template.
+                            Vessel, Charterer ({charterer}), Charter Window, Master Document Toggles, and Role Assignments loaded from template.
                           </div>
                         </div>
                         <button
@@ -369,6 +375,21 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                       placeholder="e.g. Chevron Gorgon Charter Vetting 2026"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label text-secondary small fw-semibold" htmlFor="grid-charterer-org">
+                      Charterer Organization *
+                    </label>
+                    <input
+                      id="grid-charterer-org"
+                      type="text"
+                      className="form-control bg-white text-dark border-secondary-subtle"
+                      placeholder="e.g. Chevron Australia Pty Ltd"
+                      value={charterer}
+                      onChange={(e) => setCharterer(e.target.value)}
                       required
                     />
                   </div>

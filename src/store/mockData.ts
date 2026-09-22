@@ -599,6 +599,7 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     imoNumber: '9123456',
     initiatorOrg: 'Chevron Australia Pty Ltd',
     initiatorRole: 'C Admin · Client Created',
+    charterer: 'Chevron Australia Pty Ltd',
     charterWindowStart: '2026-11-01',
     charterWindowEnd: '2027-11-01',
     stage: 'Approval',

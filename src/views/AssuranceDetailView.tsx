@@ -189,6 +189,10 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                     <div className="fw-bold text-dark">{assuranceSet.initiatorOrg}</div>
                   </div>
                   <div className="border-bottom pb-1.5">
+                    <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Charterer:</div>
+                    <div className="fw-bold text-dark">{assuranceSet.charterer || assuranceSet.initiatorOrg}</div>
+                  </div>
+                  <div className="border-bottom pb-1.5">
                     <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Vessel:</div>
                     <div
                       className="fw-bold text-primary text-decoration-underline-hover"

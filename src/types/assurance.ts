@@ -31,8 +31,9 @@ export interface AssuranceSet {
   imoNumber: string;
   initiatorOrg: string;
   initiatorRole: InitiatingRoleType;
-  charterWindowStart: string; // ISO date
-  charterWindowEnd: string; // ISO date
+  charterer?: string; /* charterer organization or entity assigned to the campaign set */
+  charterWindowStart: string; /* iso date */
+  charterWindowEnd: string; /* iso date */
   stage: AssuranceStage;
   readinessScore: number; // 0 - 100%
   requirements: AssuranceRequirement[];
