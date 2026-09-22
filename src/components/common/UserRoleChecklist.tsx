@@ -29,7 +29,7 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
   const isCAdmin = activePersona === 'C Admin';
 
   const visibleRoleOptions = isCAdmin
-    ? OPERATIONAL_ROLE_OPTIONS.filter((o) => o.role !== 'C Admin')
+    ? OPERATIONAL_ROLE_OPTIONS.filter((o) => o.role !== 'C Admin' && o.role !== 'Submitter')
     : OPERATIONAL_ROLE_OPTIONS;
 
   const toggleOperationalRole = (role: UserRolePersona) => {

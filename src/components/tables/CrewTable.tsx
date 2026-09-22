@@ -42,7 +42,8 @@ export const CrewTable: React.FC<CrewTableProps> = ({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
-  const canManageCrew = activePersona === 'Administrator' || activePersona === 'Submitter';
+  const canManageCrew = activePersona === 'Submitter' || activePersona === 'C Admin';
+  const canRegisterCrew = activePersona !== 'Submitter';
 
   const filteredCrew = crew.filter((c) => {
     const term = searchTerm.toLowerCase();
@@ -203,8 +204,8 @@ export const CrewTable: React.FC<CrewTableProps> = ({
             )}
           </div>
 
-          {/* Register Crew Member Action Button */}
-          {canManageCrew && onRegisterCrew && (
+          {/* register crew member action button - hidden for submitter persona */}
+          {canRegisterCrew && onRegisterCrew && (
             <button
               type="button"
               className="btn btn-sm btn-primary"
