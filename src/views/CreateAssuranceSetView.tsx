@@ -4,7 +4,7 @@
   role in system: rendered by App.tsx when currentHashView is 'create-assurance-set'.
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { AssuranceSet, AssuranceRequirement } from '../types/assurance';
 import { UserProfile } from '../types/user';
@@ -49,6 +49,20 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
   const [charterer, setCharterer] = useState('Chevron Australia Pty Ltd');
   const [startDate, setStartDate] = useState('2026-11-01');
   const [endDate, setEndDate] = useState('2027-11-01');
+
+  /* tracks which field ids are currently playing the autofill shimmer animation */
+  const [animatingFields, setAnimatingFields] = useState<Set<string>>(new Set());
+
+  /**
+    what: triggers the autofill shimmer animation on a given list of field ids.
+    how: adds all ids to the animating set, then removes them after 750ms so the
+         css animation plays exactly once without permanently altering the element style.
+    with what file: CreateAssuranceSetView.tsx — called from applyTemplateData.
+  */
+  const triggerAutofillAnimation = useCallback((fieldIds: string[]) => {
+    setAnimatingFields(new Set(fieldIds));
+    setTimeout(() => setAnimatingFields(new Set()), 750);
+  }, []);
 
   /* master document toggles state */
   const [docToggles, setDocToggles] = useState<Record<string, boolean>>(() => {
@@ -109,6 +123,19 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
       updatedToggles[d.id] = isMatched;
     });
     setDocToggles(updatedToggles);
+
+    /* trigger autofill shimmer on all programmatically populated fields */
+    triggerAutofillAnimation([
+      'grid-campaign-title',
+      'grid-charterer-org',
+      'grid-target-vessel',
+      'grid-charter-start',
+      'grid-charter-end',
+      'grid-assign-submitter',
+      'grid-assign-verifier',
+      'grid-assign-inspector',
+      'grid-assign-approver',
+    ]);
 
     /* pre-populate stakeholder selections matching user profiles */
     if (targetSet.assignedSubmitter) {
@@ -371,7 +398,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     <input
                       id="grid-campaign-title"
                       type="text"
-                      className="form-control bg-white text-dark border-secondary-subtle"
+                      className={`form-control bg-white text-dark border-secondary-subtle${animatingFields.has('grid-campaign-title') ? ' map-autofill-animate' : ''}`}
                       placeholder="e.g. Chevron Gorgon Charter Vetting 2026"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -386,7 +413,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     <input
                       id="grid-charterer-org"
                       type="text"
-                      className="form-control bg-white text-dark border-secondary-subtle"
+                      className={`form-control bg-white text-dark border-secondary-subtle${animatingFields.has('grid-charterer-org') ? ' map-autofill-animate' : ''}`}
                       placeholder="e.g. Chevron Australia Pty Ltd"
                       value={charterer}
                       onChange={(e) => setCharterer(e.target.value)}
@@ -400,7 +427,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     </label>
                     <select
                       id="grid-target-vessel"
-                      className="form-select bg-white text-dark border-secondary-subtle"
+                      className={`form-select bg-white text-dark border-secondary-subtle${animatingFields.has('grid-target-vessel') ? ' map-autofill-animate' : ''}`}
                       value={vesselId}
                       onChange={(e) => setVesselId(e.target.value)}
                     >
@@ -453,7 +480,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     <input
                       id="grid-charter-start"
                       type="date"
-                      className="form-control bg-white text-dark border-secondary-subtle font-mono-code"
+                      className={`form-control bg-white text-dark border-secondary-subtle font-mono-code${animatingFields.has('grid-charter-start') ? ' map-autofill-animate' : ''}`}
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
                       required
@@ -467,7 +494,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     <input
                       id="grid-charter-end"
                       type="date"
-                      className="form-control bg-white text-dark border-secondary-subtle font-mono-code"
+                      className={`form-control bg-white text-dark border-secondary-subtle font-mono-code${animatingFields.has('grid-charter-end') ? ' map-autofill-animate' : ''}`}
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
                       required
@@ -515,7 +542,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                       </div>
                       <select
                         id="grid-assign-submitter"
-                        className="form-select form-select-sm bg-white text-dark border-secondary-subtle mb-2"
+                        className={`form-select form-select-sm bg-white text-dark border-secondary-subtle mb-2${animatingFields.has('grid-assign-submitter') ? ' map-autofill-animate' : ''}`}
                         value={assignedSubmitter}
                         onChange={(e) => setAssignedSubmitter(e.target.value)}
                         required
@@ -547,7 +574,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                         </div>
                         <select
                           id="grid-assign-verifier"
-                          className="form-select form-select-sm bg-white text-dark border-secondary-subtle mb-2"
+                          className={`form-select form-select-sm bg-white text-dark border-secondary-subtle mb-2${animatingFields.has('grid-assign-verifier') ? ' map-autofill-animate' : ''}`}
                           value={assignedVerifier}
                           onChange={(e) => setAssignedVerifier(e.target.value)}
                           required
@@ -580,7 +607,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                         </div>
                         <select
                           id="grid-assign-inspector"
-                          className="form-select form-select-sm bg-white text-dark border-secondary-subtle mb-2"
+                          className={`form-select form-select-sm bg-white text-dark border-secondary-subtle mb-2${animatingFields.has('grid-assign-inspector') ? ' map-autofill-animate' : ''}`}
                           value={assignedInspector}
                           onChange={(e) => setAssignedInspector(e.target.value)}
                           required
@@ -613,7 +640,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                         </div>
                         <select
                           id="grid-assign-approver"
-                          className="form-select form-select-sm bg-white text-dark border-secondary-subtle mb-2"
+                          className={`form-select form-select-sm bg-white text-dark border-secondary-subtle mb-2${animatingFields.has('grid-assign-approver') ? ' map-autofill-animate' : ''}`}
                           value={assignedApprover}
                           onChange={(e) => setAssignedApprover(e.target.value)}
                           required

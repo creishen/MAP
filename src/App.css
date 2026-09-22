@@ -4,6 +4,76 @@
   role in system: primary stylesheet for layout shell, drawers, tables, and view components.
 */
 
+/* ============================================================
+   auto-fill animation: fires when a data field is populated
+   from a document library source or ocr extraction result.
+   applies a brief shimmer sweep and border accent to signal
+   that the value was injected programmatically, not by user.
+
+   two variants:
+     map-autofill-shimmer        — for input and select form elements
+     map-autofill-shimmer-text   — for inline text/strong display cells
+   ============================================================ */
+
+@keyframes map-autofill-shimmer {
+  0% {
+    background-color: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: none;
+  }
+  18% {
+    background-color: #eff8ff;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
+  }
+  55% {
+    background-color: #f0fdf4;
+    border-color: #4ade80;
+    box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.14);
+  }
+  100% {
+    background-color: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: none;
+  }
+}
+
+@keyframes map-autofill-shimmer-text {
+  0% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+  18% {
+    background-color: #dbeafe;
+    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.2);
+  }
+  55% {
+    background-color: #dcfce7;
+    box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+/* applied to input and select form elements that receive
+   a value from a document library source or ocr extraction */
+.map-autofill-animate {
+  animation: map-autofill-shimmer 0.72s ease-out forwards;
+}
+
+/* applied to strong, span, and display div elements that show
+   ocr-extracted attribute values from documents or file extraction */
+strong.map-autofill-animate,
+div.map-autofill-animate {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 0 3px;
+  animation: map-autofill-shimmer-text 0.72s ease-out forwards;
+}
+
+
 .map-app-shell {
   display: flex;
   flex-direction: row;

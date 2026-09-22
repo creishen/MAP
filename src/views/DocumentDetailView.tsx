@@ -4,7 +4,7 @@
   role in system: deep-dive view rendered when a document row is selected.
 */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { ConfidenceBadge } from '../components/common/ConfidenceBadge';
 import { formatMaritimeDate } from '../utils/formatters';
@@ -25,6 +25,13 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
   const { documents, setCurrentHashView, previousHashView, previousEntityId, activePersona } = useMapStore();
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  /* triggers one-shot shimmer on all extracted attribute value cells on mount */
+  const [isJustLoaded, setIsJustLoaded] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setIsJustLoaded(false), 800);
+    return () => clearTimeout(timer);
+  }, [documentId]);
 
   const backInfo = getBackButtonInfo('documents', 'Document Vault', previousHashView, activePersona, previousEntityId);
   const canUpload = activePersona === 'Submitter' || activePersona === 'Administrator';
@@ -180,34 +187,34 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
           {doc.vesselAttributes && (
             <div className="row g-3 small">
               <div className="col-md-4">
-                <span className="text-secondary">Certificate Number:</span> <div className="font-mono-code"><strong className="text-dark">{doc.vesselAttributes.certificateNumber}</strong></div>
+                <span className="text-secondary">Certificate Number:</span> <div className="font-mono-code"><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.vesselAttributes.certificateNumber}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Cert Type:</span> <div><strong className="text-dark">{doc.vesselAttributes.certType}</strong></div>
+                <span className="text-secondary">Cert Type:</span> <div><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.vesselAttributes.certType}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Issuing Body:</span> <div><strong className="text-dark">{doc.vesselAttributes.issuingBody}</strong></div>
+                <span className="text-secondary">Issuing Body:</span> <div><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.vesselAttributes.issuingBody}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Issue Date:</span> <div className="font-mono-code"><strong className="text-dark">{formatMaritimeDate(doc.vesselAttributes.issueDate)}</strong></div>
+                <span className="text-secondary">Issue Date:</span> <div className="font-mono-code"><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{formatMaritimeDate(doc.vesselAttributes.issueDate)}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Expiry Date:</span> <div className="font-mono-code"><strong className="text-dark">{formatMaritimeDate(doc.vesselAttributes.expiryDate)}</strong></div>
+                <span className="text-secondary">Expiry Date:</span> <div className="font-mono-code"><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{formatMaritimeDate(doc.vesselAttributes.expiryDate)}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Vessel Name:</span> <div><strong className="text-dark">{doc.vesselAttributes.vesselName}</strong></div>
+                <span className="text-secondary">Vessel Name:</span> <div><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.vesselAttributes.vesselName}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">IMO Number:</span> <div className="font-mono-code"><strong className="text-dark">{doc.vesselAttributes.imoNumber}</strong></div>
+                <span className="text-secondary">IMO Number:</span> <div className="font-mono-code"><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.vesselAttributes.imoNumber}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Flag State:</span> <div><strong className="text-dark">{doc.vesselAttributes.flagState}</strong></div>
+                <span className="text-secondary">Flag State:</span> <div><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.vesselAttributes.flagState}</strong></div>
               </div>
               <div className="col-md-4">
                 <span className="text-secondary">100% Asset Match:</span> <div><span className="badge bg-success text-white">MATCH Verified</span></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Last Survey Date:</span> <div className="font-mono-code"><strong className="text-dark">{formatMaritimeDate(doc.vesselAttributes.lastSurveyDate)}</strong></div>
+                <span className="text-secondary">Last Survey Date:</span> <div className="font-mono-code"><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{formatMaritimeDate(doc.vesselAttributes.lastSurveyDate)}</strong></div>
               </div>
               <div className="col-md-4">
                 <span className="text-secondary">OCR Score:</span> <div><ConfidenceBadge score={doc.vesselAttributes.ocrConfidence} /></div>
@@ -218,31 +225,31 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
           {doc.crewAttributes && (
             <div className="row g-3 small">
               <div className="col-md-4">
-                <span className="text-secondary">Crew Name:</span> <div><strong className="text-dark">{doc.crewAttributes.crewName}</strong></div>
+                <span className="text-secondary">Crew Name:</span> <div><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.crewAttributes.crewName}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Passport / ID:</span> <div className="font-mono-code"><strong className="text-dark">{doc.crewAttributes.passportId}</strong></div>
+                <span className="text-secondary">Passport / ID:</span> <div className="font-mono-code"><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.crewAttributes.passportId}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Rank:</span> <div><strong className="text-dark">{doc.crewAttributes.rank}</strong></div>
+                <span className="text-secondary">Rank:</span> <div><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.crewAttributes.rank}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Cert Type:</span> <div><strong className="text-dark">{doc.crewAttributes.certType}</strong></div>
+                <span className="text-secondary">Cert Type:</span> <div><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.crewAttributes.certType}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Issuing Center:</span> <div><strong className="text-dark">{doc.crewAttributes.issuingCenter}</strong></div>
+                <span className="text-secondary">Issuing Center:</span> <div><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.crewAttributes.issuingCenter}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Issue Date:</span> <div className="font-mono-code"><strong className="text-dark">{formatMaritimeDate(doc.crewAttributes.issueDate)}</strong></div>
+                <span className="text-secondary">Issue Date:</span> <div className="font-mono-code"><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{formatMaritimeDate(doc.crewAttributes.issueDate)}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Expiry Date:</span> <div className="font-mono-code"><strong className="text-dark">{formatMaritimeDate(doc.crewAttributes.expiryDate)}</strong></div>
+                <span className="text-secondary">Expiry Date:</span> <div className="font-mono-code"><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{formatMaritimeDate(doc.crewAttributes.expiryDate)}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Assigned Vessel:</span> <div><strong className="text-dark">{doc.crewAttributes.assignedVessel}</strong></div>
+                <span className="text-secondary">Assigned Vessel:</span> <div><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.crewAttributes.assignedVessel}</strong></div>
               </div>
               <div className="col-md-4">
-                <span className="text-secondary">Nationality:</span> <div><strong className="text-dark">{doc.crewAttributes.nationality}</strong></div>
+                <span className="text-secondary">Nationality:</span> <div><strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{doc.crewAttributes.nationality}</strong></div>
               </div>
             </div>
           )}

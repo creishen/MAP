@@ -34,8 +34,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
   const [status, setStatus] = useState<UserProfile['status']>('Active');
   const [errorMessage, setErrorMessage] = useState('');
 
+  /* autofill animation state for pre-filled user fields */
+  const [isJustLoaded, setIsJustLoaded] = useState(false);
+
   useEffect(() => {
-    if (user) {
+    if (user && isOpen) {
       setName(user.name);
       setEmail(user.email);
       setUserType(user.userType);
@@ -46,6 +49,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       setDepartmentOrScope(user.departmentOrScope);
       setStatus(user.status);
       setErrorMessage('');
+      setIsJustLoaded(true);
+      const timer = setTimeout(() => setIsJustLoaded(false), 750);
+      return () => clearTimeout(timer);
     }
   }, [user, isOpen]);
 
@@ -155,7 +161,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                 <input
                   id="edit-user-name"
                   type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''}`}
                   placeholder="e.g. Captain H. Vance"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -168,7 +174,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                 <input
                   id="edit-user-email"
                   type="email"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''}`}
                   placeholder="name@organization.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -193,7 +199,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                 <input
                   id="edit-user-org"
                   type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''}`}
                   placeholder="e.g. Chevron Australia / DNV"
                   value={organization}
                   onChange={(e) => setOrganization(e.target.value)}
@@ -209,7 +215,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                 <input
                   id="edit-user-scope"
                   type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''}`}
                   placeholder="e.g. Vetting Compliance & Statutory Verification"
                   value={departmentOrScope}
                   onChange={(e) => setDepartmentOrScope(e.target.value)}
@@ -220,7 +226,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                 <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="edit-user-status">Account Status *</label>
                 <select
                   id="edit-user-status"
-                  className="form-select form-select-sm bg-white text-dark border-secondary"
+                  className={`form-select form-select-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''}`}
                   value={status}
                   onChange={(e) => setStatus(e.target.value as UserProfile['status'])}
                 >

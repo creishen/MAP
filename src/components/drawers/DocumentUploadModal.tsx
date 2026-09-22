@@ -49,6 +49,9 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const [fileName, setFileName] = useState('');
   const [changeSummary, setChangeSummary] = useState('');
 
+  /* tracks which right-column form field ids are playing the ocr autofill shimmer */
+  const [animatingFields, setAnimatingFields] = useState<Set<string>>(new Set());
+
   /* simulated AI extraction states */
   const [isExtractingAi, setIsExtractingAi] = useState(false);
   const [isAiExtracted, setIsAiExtracted] = useState(false);
@@ -187,22 +190,28 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       setIsAiExtracted(true);
       setAiOcrConfidence(99.2);
 
-      /* stagger 1: certificate number */
+      /* stagger 1: certificate number — add shimmer, remove after 750ms */
       setTimeout(() => {
         setCertificateNo(generatedCertNo);
         setRevealedFields((prev) => ({ ...prev, certNo: true }));
+        setAnimatingFields((prev) => new Set(prev).add('doc-cert-no'));
+        setTimeout(() => setAnimatingFields((prev) => { const n = new Set(prev); n.delete('doc-cert-no'); return n; }), 750);
       }, 120);
 
-      /* stagger 2: issuing authority */
+      /* stagger 2: issuing authority — add shimmer, remove after 750ms */
       setTimeout(() => {
         setIssuingAuthority(authority);
         setRevealedFields((prev) => ({ ...prev, authority: true }));
+        setAnimatingFields((prev) => new Set(prev).add('doc-issuing-authority'));
+        setTimeout(() => setAnimatingFields((prev) => { const n = new Set(prev); n.delete('doc-issuing-authority'); return n; }), 750);
       }, 420);
 
-      /* stagger 3: expiry date */
+      /* stagger 3: expiry date — add shimmer, remove after 750ms */
       setTimeout(() => {
         setExpiryDate('2029-06-30');
         setRevealedFields((prev) => ({ ...prev, expiry: true }));
+        setAnimatingFields((prev) => new Set(prev).add('doc-expiry-date'));
+        setTimeout(() => setAnimatingFields((prev) => { const n = new Set(prev); n.delete('doc-expiry-date'); return n; }), 750);
       }, 720);
 
       /* stagger 4: revision summary */
@@ -488,7 +497,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                                     }}
                                   />
                                 ) : (
-                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canUpload && setIsManualEditActive(true)}>
+                                  <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-cert-no') ? ' map-autofill-animate' : ''}`} onClick={() => canUpload && setIsManualEditActive(true)}>
                                     {certificateNo || 'P9912447 (partially legible)'}
                                   </div>
                                 )}
@@ -518,7 +527,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                                     }}
                                   />
                                 ) : (
-                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canUpload && setIsManualEditActive(true)}>
+                                  <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-issuing-authority') ? ' map-autofill-animate' : ''}`} onClick={() => canUpload && setIsManualEditActive(true)}>
                                     {issuingAuthority || 'illegible stamp'}
                                   </div>
                                 )}
@@ -548,7 +557,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                                     }}
                                   />
                                 ) : (
-                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canUpload && setIsManualEditActive(true)}>
+                                  <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-expiry-date') ? ' map-autofill-animate' : ''}`} onClick={() => canUpload && setIsManualEditActive(true)}>
                                     {expiryDate || '2026-10-29'}
                                   </div>
                                 )}

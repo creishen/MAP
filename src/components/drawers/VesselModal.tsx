@@ -36,6 +36,29 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     classificationSociety: false, yearBuilt: false, gt: false, dwt: false, registeredOwner: false,
   });
 
+  /* autofill animation state for programmatically populated fields */
+  const [animatingFields, setAnimatingFields] = useState<Set<string>>(new Set());
+
+  /*
+    what: triggers map-autofill-animate shimmer on specified form inputs.
+    how: adds field keys to animatingFields set and removes them after 750ms.
+    with what file: src/components/drawers/VesselModal.tsx.
+  */
+  const triggerAutofillAnimation = (fieldIds: string[]) => {
+    setAnimatingFields((prev) => {
+      const next = new Set(prev);
+      fieldIds.forEach((id) => next.add(id));
+      return next;
+    });
+    setTimeout(() => {
+      setAnimatingFields((prev) => {
+        const next = new Set(prev);
+        fieldIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    }, 750);
+  };
+
   // 1. Vessel Identification
   const [name, setName] = useState('');
   const [previousNames, setPreviousNames] = useState('');
@@ -294,32 +317,60 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     const doFill = () => {
       if (doc.vesselAttributes) {
         if (doc.vesselAttributes.vesselName) {
-          setTimeout(() => { setName(doc.vesselAttributes!.vesselName!); setRevealedVesselFields((p) => ({ ...p, name: true })); }, 0);
+          setTimeout(() => {
+            setName(doc.vesselAttributes!.vesselName!);
+            setRevealedVesselFields((p) => ({ ...p, name: true }));
+            triggerAutofillAnimation(['vessel-name']);
+          }, 0);
         }
         if (doc.vesselAttributes.imoNumber) {
-          setTimeout(() => { setImoNumber(doc.vesselAttributes!.imoNumber!); setRevealedVesselFields((p) => ({ ...p, imoNumber: true })); }, 150);
+          setTimeout(() => {
+            setImoNumber(doc.vesselAttributes!.imoNumber!);
+            setRevealedVesselFields((p) => ({ ...p, imoNumber: true }));
+            triggerAutofillAnimation(['imo-number']);
+          }, 150);
         }
         if (doc.vesselAttributes.flagState) {
-          setTimeout(() => { setFlagState(doc.vesselAttributes!.flagState!); setRevealedVesselFields((p) => ({ ...p, flagState: true })); }, 300);
+          setTimeout(() => {
+            setFlagState(doc.vesselAttributes!.flagState!);
+            setRevealedVesselFields((p) => ({ ...p, flagState: true }));
+            triggerAutofillAnimation(['flag-state']);
+          }, 300);
         }
         if (doc.vesselAttributes.issuingBody) {
           const body = doc.vesselAttributes.issuingBody;
           if (['DNV', 'ABS', "Lloyd's Register", 'Bureau Veritas', 'RINA'].includes(body)) {
-            setTimeout(() => { setClassificationSociety(body as ClassificationSociety); setRevealedVesselFields((p) => ({ ...p, classificationSociety: true })); }, 450);
+            setTimeout(() => {
+              setClassificationSociety(body as ClassificationSociety);
+              setRevealedVesselFields((p) => ({ ...p, classificationSociety: true }));
+              triggerAutofillAnimation(['classification-society']);
+            }, 450);
           }
         }
       } else {
         if (doc.title) {
           const cleaned = doc.title.replace(/Certificate of Class|Certificate of Registry/i, '').trim();
-          setTimeout(() => { setName(cleaned || 'MV Pacific Leader'); setRevealedVesselFields((p) => ({ ...p, name: true })); }, 0);
+          setTimeout(() => {
+            setName(cleaned || 'MV Pacific Leader');
+            setRevealedVesselFields((p) => ({ ...p, name: true }));
+            triggerAutofillAnimation(['vessel-name']);
+          }, 0);
         }
       }
 
       if (doc.certificateNo) {
-        setTimeout(() => { setOfficialRegNumber(doc.certificateNo); setRevealedVesselFields((p) => ({ ...p, officialRegNumber: true })); }, 200);
+        setTimeout(() => {
+          setOfficialRegNumber(doc.certificateNo);
+          setRevealedVesselFields((p) => ({ ...p, officialRegNumber: true }));
+          triggerAutofillAnimation(['official-reg-number']);
+        }, 200);
       }
       if (!registeredOwner) {
-        setTimeout(() => { setRegisteredOwner('Pacific Ocean Logistics Pty Ltd'); setRevealedVesselFields((p) => ({ ...p, registeredOwner: true })); }, 550);
+        setTimeout(() => {
+          setRegisteredOwner('Pacific Ocean Logistics Pty Ltd');
+          setRevealedVesselFields((p) => ({ ...p, registeredOwner: true }));
+          triggerAutofillAnimation(['registered-owner']);
+        }, 550);
       }
 
       setSelectedDocIds((prev) => ({ ...prev, [stepNumber]: doc.id }));
@@ -382,14 +433,47 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
         setAiNotice(`Found matching document in Document Library ("${existingDoc.title}", Cert: ${existingDoc.certificateNo}). Automatically filled vessel particulars for Stage ${stepNumber}!`);
       } else {
         /* stagger each field reveal by 150ms */
-        setTimeout(() => { setName(extractedVesselName); setRevealedVesselFields((p) => ({ ...p, name: true })); }, 0);
-        setTimeout(() => { setImoNumber(extractedImo); setRevealedVesselFields((p) => ({ ...p, imoNumber: true })); }, 150);
-        setTimeout(() => { setOfficialRegNumber(`OSV-REG-${Math.floor(100 + Math.random() * 900)}`); setRevealedVesselFields((p) => ({ ...p, officialRegNumber: true })); }, 300);
-        setTimeout(() => { setFlagState('Australia'); setRevealedVesselFields((p) => ({ ...p, flagState: true })); }, 450);
-        setTimeout(() => { setClassificationSociety('DNV'); setRevealedVesselFields((p) => ({ ...p, classificationSociety: true })); }, 600);
-        setTimeout(() => { setYearBuilt(2023); setRevealedVesselFields((p) => ({ ...p, yearBuilt: true })); }, 750);
-        setTimeout(() => { setGt(3800); setDwt(4600); setRevealedVesselFields((p) => ({ ...p, gt: true, dwt: true })); }, 900);
-        setTimeout(() => { setRegisteredOwner('Pacific Ocean Logistics Pty Ltd'); setRevealedVesselFields((p) => ({ ...p, registeredOwner: true })); }, 1050);
+        setTimeout(() => {
+          setName(extractedVesselName);
+          setRevealedVesselFields((p) => ({ ...p, name: true }));
+          triggerAutofillAnimation(['vessel-name']);
+        }, 0);
+        setTimeout(() => {
+          setImoNumber(extractedImo);
+          setRevealedVesselFields((p) => ({ ...p, imoNumber: true }));
+          triggerAutofillAnimation(['imo-number']);
+        }, 150);
+        setTimeout(() => {
+          setOfficialRegNumber(`OSV-REG-${Math.floor(100 + Math.random() * 900)}`);
+          setRevealedVesselFields((p) => ({ ...p, officialRegNumber: true }));
+          triggerAutofillAnimation(['official-reg-number']);
+        }, 300);
+        setTimeout(() => {
+          setFlagState('Australia');
+          setRevealedVesselFields((p) => ({ ...p, flagState: true }));
+          triggerAutofillAnimation(['flag-state']);
+        }, 450);
+        setTimeout(() => {
+          setClassificationSociety('DNV');
+          setRevealedVesselFields((p) => ({ ...p, classificationSociety: true }));
+          triggerAutofillAnimation(['classification-society']);
+        }, 600);
+        setTimeout(() => {
+          setYearBuilt(2023);
+          setRevealedVesselFields((p) => ({ ...p, yearBuilt: true }));
+          triggerAutofillAnimation(['year-built']);
+        }, 750);
+        setTimeout(() => {
+          setGt(3800);
+          setDwt(4600);
+          setRevealedVesselFields((p) => ({ ...p, gt: true, dwt: true }));
+          triggerAutofillAnimation(['gt', 'dwt']);
+        }, 900);
+        setTimeout(() => {
+          setRegisteredOwner('Pacific Ocean Logistics Pty Ltd');
+          setRevealedVesselFields((p) => ({ ...p, registeredOwner: true }));
+          triggerAutofillAnimation(['registered-owner']);
+        }, 1050);
 
         const newDocId = `DOC-2026-${Math.floor(100 + Math.random() * 900)}`;
         const newMasterDoc: MasterDocument = {
@@ -722,7 +806,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       <label className="form-label text-secondary small fw-semibold">Vessel Name *</label>
                       <input
                         type="text"
-                        className="form-control form-control-sm"
+                        className={`form-control form-control-sm${animatingFields.has('vessel-name') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. MV Pacific Supporter"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
@@ -753,7 +837,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       <label className="form-label text-secondary small fw-semibold">IMO Number (7 Digits) *</label>
                       <input
                         type="text"
-                        className="form-control form-control-sm font-mono-code"
+                        className={`form-control form-control-sm font-mono-code${animatingFields.has('imo-number') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. 9481234"
                         value={imoNumber}
                         onChange={(e) => setImoNumber(e.target.value)}
@@ -764,7 +848,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       <label className="form-label text-secondary small fw-semibold">Official Registration Number *</label>
                       <input
                         type="text"
-                        className="form-control form-control-sm font-mono-code"
+                        className={`form-control form-control-sm font-mono-code${animatingFields.has('official-reg-number') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. OSV-99-2023"
                         value={officialRegNumber}
                         onChange={(e) => setOfficialRegNumber(e.target.value)}
@@ -796,7 +880,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       <label className="form-label text-secondary small fw-semibold">Flag State / Country</label>
                       <input
                         type="text"
-                        className="form-control form-control-sm"
+                        className={`form-control form-control-sm${animatingFields.has('flag-state') ? ' map-autofill-animate' : ''}`}
                         value={flagState}
                         onChange={(e) => setFlagState(e.target.value)}
                       />
@@ -855,7 +939,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                     <div className={`col-md-4 ${revealedVesselFields.classificationSociety ? 'ai-field-reveal ai-field-highlight' : ''}`}>
                       <label className="form-label text-secondary small fw-semibold">Classification Society</label>
                       <select
-                        className="form-select form-select-sm"
+                        className={`form-select form-select-sm${animatingFields.has('classification-society') ? ' map-autofill-animate' : ''}`}
                         value={classificationSociety}
                         onChange={(e) => setClassificationSociety(e.target.value as ClassificationSociety)}
                       >
@@ -934,7 +1018,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       <label className="form-label text-secondary small fw-semibold">Year Built / Completed</label>
                       <input
                         type="number"
-                        className="form-control form-control-sm"
+                        className={`form-control form-control-sm${animatingFields.has('year-built') ? ' map-autofill-animate' : ''}`}
                         value={yearBuilt}
                         onChange={(e) => setYearBuilt(parseInt(e.target.value) || 2023)}
                       />
@@ -964,7 +1048,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       <label className="form-label text-secondary small fw-semibold">Gross Tonnage (GT)</label>
                       <input
                         type="number"
-                        className="form-control form-control-sm"
+                        className={`form-control form-control-sm${animatingFields.has('gt') ? ' map-autofill-animate' : ''}`}
                         value={gt}
                         onChange={(e) => setGt(parseInt(e.target.value) || 0)}
                       />
@@ -973,7 +1057,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       <label className="form-label text-secondary small fw-semibold">Deadweight (DWT)</label>
                       <input
                         type="number"
-                        className="form-control form-control-sm"
+                        className={`form-control form-control-sm${animatingFields.has('dwt') ? ' map-autofill-animate' : ''}`}
                         value={dwt}
                         onChange={(e) => setDwt(parseInt(e.target.value) || 0)}
                       />
@@ -988,7 +1072,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       <label className="form-label text-secondary small fw-semibold">Registered Owner Name *</label>
                       <input
                         type="text"
-                        className="form-control form-control-sm"
+                        className={`form-control form-control-sm${animatingFields.has('registered-owner') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. Pacific Ocean Logistics Pty Ltd"
                         value={registeredOwner}
                         onChange={(e) => setRegisteredOwner(e.target.value)}

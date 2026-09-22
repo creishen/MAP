@@ -4,7 +4,7 @@
   role in system: deep-dive view rendered when a crew directory row is selected or navigated to (/crew/CREW-101).
 */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { STCWDocumentItem } from '../types/crew';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
@@ -33,6 +33,14 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
   const [viewingDoc, setViewingDoc] = useState<STCWDocumentItem | null>(null);
 
   const [isExportOpen, setIsExportOpen] = useState(false);
+
+  /* triggers one-shot shimmer on all crew attribute value cells on mount or crewId change */
+  const [isJustLoaded, setIsJustLoaded] = useState(true);
+  useEffect(() => {
+    setIsJustLoaded(true);
+    const timer = setTimeout(() => setIsJustLoaded(false), 800);
+    return () => clearTimeout(timer);
+  }, [crewId]);
 
   const backInfo = getBackButtonInfo('crew', 'Crew Directory', previousHashView, activePersona, previousEntityId);
   const canManageDocuments = activePersona === 'Administrator' || activePersona === 'Submitter';
@@ -187,11 +195,11 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
           <div className="row g-3">
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Crew ID</span>
-              <strong className="text-dark">{crewMember.id}</strong>
+              <strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{crewMember.id}</strong>
             </div>
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Rank</span>
-              <strong className="text-dark">{crewMember.rank}</strong>
+              <strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{crewMember.rank}</strong>
             </div>
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Compliance Status</span>
@@ -201,31 +209,31 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
             </div>
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Organization</span>
-              <strong className="text-dark text-truncate d-block">{crewMember.organization || 'Northwind Marine Pty Ltd'}</strong>
+              <strong className={`text-dark text-truncate d-block${isJustLoaded ? ' map-autofill-animate' : ''}`}>{crewMember.organization || 'Northwind Marine Pty Ltd'}</strong>
             </div>
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Nationality</span>
-              <strong className="text-dark">{crewMember.nationality}</strong>
+              <strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{crewMember.nationality}</strong>
             </div>
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Seaman's Book No</span>
-              <strong className="text-dark">{crewMember.seamansBookNo}</strong>
+              <strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{crewMember.seamansBookNo}</strong>
             </div>
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Passport No</span>
-              <strong className="text-dark">{crewMember.passportNo}</strong>
+              <strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{crewMember.passportNo}</strong>
             </div>
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Date of Birth</span>
-              <strong className="text-dark">{crewMember.dateOfBirth}</strong>
+              <strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{crewMember.dateOfBirth}</strong>
             </div>
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Emergency Contact</span>
-              <strong className="text-dark text-truncate d-block">{crewMember.emergencyContact}</strong>
+              <strong className={`text-dark text-truncate d-block${isJustLoaded ? ' map-autofill-animate' : ''}`}>{crewMember.emergencyContact}</strong>
             </div>
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Last Compliance Audit</span>
-              <strong className="text-dark">{formatMaritimeDate(crewMember.lastAuditedDate)}</strong>
+              <strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{formatMaritimeDate(crewMember.lastAuditedDate)}</strong>
             </div>
             <div className="col-md-3 col-6">
               <span className="text-secondary d-block" style={{ fontSize: '0.7rem' }}>Management Permissions</span>

@@ -63,6 +63,15 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
     setRouteTarget(linkedSet?.mandatoryInspectionRequired ? 'Inspector' : 'Approver');
   }, [document?.id, linkedSet?.id, linkedSet?.mandatoryInspectionRequired]);
 
+  /* triggers one-shot shimmer on all ocr-extracted value cells when drawer opens or document changes */
+  const [isJustLoaded, setIsJustLoaded] = useState(true);
+  useEffect(() => {
+    if (!document) return;
+    setIsJustLoaded(true);
+    const timer = setTimeout(() => setIsJustLoaded(false), 800);
+    return () => clearTimeout(timer);
+  }, [document?.id]);
+
   if (!document) return null;
 
   const isVerified = document.verificationStatus === 'Verified';
@@ -267,7 +276,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                         />
                       ) : (
                         <div
-                          className={`font-mono-code fw-bold ${isMissing ? 'text-danger' : 'text-dark'}`}
+                          className={`font-mono-code fw-bold ${isMissing ? 'text-danger' : `text-dark${isJustLoaded && !isMissing ? ' map-autofill-animate' : ''}`}`}
                           style={{ fontSize: '0.875rem', cursor: canSubmit ? 'pointer' : 'default' }}
                           title={canSubmit ? "Click to edit field manually" : undefined}
                           onClick={() => canSubmit && setIsManualEditActive(true)}

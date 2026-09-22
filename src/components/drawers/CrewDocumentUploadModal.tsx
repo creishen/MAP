@@ -69,6 +69,29 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
   const [isPendingVerification, setIsPendingVerification] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  /* autofill animation state for programmatically populated fields */
+  const [animatingFields, setAnimatingFields] = useState<Set<string>>(new Set());
+
+  /*
+    what: triggers map-autofill-animate shimmer on specified form inputs or display values.
+    how: adds field keys to animatingFields set and removes them after 750ms.
+    with what file: src/components/drawers/CrewDocumentUploadModal.tsx.
+  */
+  const triggerAutofillAnimation = (fieldIds: string[]) => {
+    setAnimatingFields((prev) => {
+      const next = new Set(prev);
+      fieldIds.forEach((id) => next.add(id));
+      return next;
+    });
+    setTimeout(() => {
+      setAnimatingFields((prev) => {
+        const next = new Set(prev);
+        fieldIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    }, 750);
+  };
+
   useEffect(() => {
     if (isOpen) {
       if (existingDocument) {
@@ -85,6 +108,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
         setChangeSummary('Replacement STCW certificate scan uploaded by submitter.');
         setIsAiExtracted(true);
         setAiOcrConfidence(98.5);
+        triggerAutofillAnimation(['doc-title', 'doc-cert-no', 'doc-issuing-auth', 'doc-flag-state', 'doc-expiry-date']);
       } else {
         setTitle('');
         setLayer(initialLayer || 'Layer 1 - Universal Core');
@@ -175,18 +199,21 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
       setTimeout(() => {
         setCertificateNo(generatedCertNo);
         setRevealedFields((prev) => ({ ...prev, certNo: true }));
+        triggerAutofillAnimation(['doc-cert-no']);
       }, 120);
 
       /* stagger 2: issuing authority */
       setTimeout(() => {
         setIssuingAuthority('Australian Maritime Safety Authority (AMSA)');
         setRevealedFields((prev) => ({ ...prev, authority: true }));
+        triggerAutofillAnimation(['doc-issuing-auth']);
       }, 420);
 
       /* stagger 3: expiry date */
       setTimeout(() => {
         setExpiryDate('2031-01-01');
         setRevealedFields((prev) => ({ ...prev, expiry: true }));
+        triggerAutofillAnimation(['doc-expiry-date']);
       }, 720);
 
       /* stagger 4: revision summary */
@@ -440,7 +467,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                                     }}
                                   />
                                 ) : (
-                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canManage && setIsManualEditActive(true)}>
+                                  <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-cert-no') ? ' map-autofill-animate' : ''}`} onClick={() => canManage && setIsManualEditActive(true)}>
                                     {certificateNo || 'AMSA-COC-2026-8812 (partially legible)'}
                                   </div>
                                 )}
@@ -470,7 +497,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                                     }}
                                   />
                                 ) : (
-                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canManage && setIsManualEditActive(true)}>
+                                  <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-issuing-auth') ? ' map-autofill-animate' : ''}`} onClick={() => canManage && setIsManualEditActive(true)}>
                                     {issuingAuthority || 'illegible stamp'}
                                   </div>
                                 )}
@@ -500,7 +527,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                                     }}
                                   />
                                 ) : (
-                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canManage && setIsManualEditActive(true)}>
+                                  <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-expiry-date') ? ' map-autofill-animate' : ''}`} onClick={() => canManage && setIsManualEditActive(true)}>
                                     {expiryDate || '2031-01-01'}
                                   </div>
                                 )}
@@ -572,7 +599,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                       <input
                         id="doc-title"
                         type="text"
-                        className="form-control form-control-sm bg-white text-dark border-secondary"
+                        className={`form-control form-control-sm bg-white text-dark border-secondary${animatingFields.has('doc-title') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. Master Unlimited CoC / IGF Code Training"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
@@ -605,7 +632,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                       <input
                         id="cert-no"
                         type="text"
-                        className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
+                        className={`form-control form-control-sm bg-white text-dark border-secondary font-mono-code${animatingFields.has('doc-cert-no') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. CoC-II-2-0041"
                         value={certificateNo}
                         onChange={(e) => setCertificateNo(e.target.value)}
@@ -619,7 +646,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                       <input
                         id="issuing-auth"
                         type="text"
-                        className="form-control form-control-sm bg-white text-dark border-secondary"
+                        className={`form-control form-control-sm bg-white text-dark border-secondary${animatingFields.has('doc-issuing-auth') ? ' map-autofill-animate' : ''}`}
                         placeholder="AMSA Australia"
                         value={issuingAuthority}
                         onChange={(e) => setIssuingAuthority(e.target.value)}
@@ -637,7 +664,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                       <input
                         id="flag-state"
                         type="text"
-                        className="form-control form-control-sm bg-white text-dark border-secondary"
+                        className={`form-control form-control-sm bg-white text-dark border-secondary${animatingFields.has('doc-flag-state') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. Australia / Liberia"
                         value={flagState}
                         onChange={(e) => setFlagState(e.target.value)}
@@ -651,7 +678,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                       <input
                         id="expiry-date"
                         type="date"
-                        className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
+                        className={`form-control form-control-sm bg-white text-dark border-secondary font-mono-code${animatingFields.has('doc-expiry-date') ? ' map-autofill-animate' : ''}`}
                         value={expiryDate}
                         onChange={(e) => setExpiryDate(e.target.value)}
                         disabled={isUploading || isExtractingAi}

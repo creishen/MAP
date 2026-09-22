@@ -50,6 +50,14 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [selectedCapaForDrawer, setSelectedCapaForDrawer] = useState<CapaItem | null>(null);
 
+  /* triggers one-shot shimmer on all vessel attribute value cells on mount or vesselId change */
+  const [isJustLoaded, setIsJustLoaded] = useState(true);
+  useEffect(() => {
+    setIsJustLoaded(true);
+    const timer = setTimeout(() => setIsJustLoaded(false), 800);
+    return () => clearTimeout(timer);
+  }, [vesselId]);
+
   /* vessel crew management modal & assignment states */
   const [isAddCrewModalOpen, setIsAddCrewModalOpen] = useState(false);
   const [isAssignExistingOpen, setIsAssignExistingOpen] = useState(false);
@@ -637,7 +645,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
               )}
             </div>
             <div className="text-secondary small mt-1 font-mono-code">
-              <strong className="text-dark">IMO: {vessel.imoNumber} | Reg: {vessel.officialRegNumber}</strong>
+              <strong className={`text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>IMO: {vessel.imoNumber} | Reg: {vessel.officialRegNumber}</strong>
               <span className="mx-2">•</span>
               <span>{vessel.classNotation} | {vessel.flagState} Flag | Port: {vessel.portOfRegistry}</span>
             </div>
@@ -831,12 +839,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('name') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1"
+                        className={`form-control form-control-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block text-dark">{vessel.name}</strong>
+                      <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.name}</strong>
                     )}
                   </div>
                   <div className="col-md-4">
@@ -844,12 +852,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('imoNumber') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1 font-mono-code"
+                        className={`form-control form-control-sm mt-1 font-mono-code${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.imoNumber}
                         onChange={(e) => handleInputChange('imoNumber', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block font-mono-code text-dark">{vessel.imoNumber}</strong>
+                      <strong className={`d-block font-mono-code text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.imoNumber}</strong>
                     )}
                   </div>
                   <div className="col-md-4">
@@ -857,12 +865,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('officialRegNumber') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1"
+                        className={`form-control form-control-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.officialRegNumber}
                         onChange={(e) => handleInputChange('officialRegNumber', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block font-mono-code text-dark">{vessel.officialRegNumber}</strong>
+                      <strong className={`d-block font-mono-code text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.officialRegNumber}</strong>
                     )}
                   </div>
                   <div className="col-md-4">
@@ -870,12 +878,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('mmsiNumber') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1"
+                        className={`form-control form-control-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.mmsiNumber}
                         onChange={(e) => handleInputChange('mmsiNumber', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block font-mono-code text-dark">{vessel.mmsiNumber}</strong>
+                      <strong className={`d-block font-mono-code text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.mmsiNumber}</strong>
                     )}
                   </div>
                   <div className="col-md-4">
@@ -883,12 +891,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('callSign') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1"
+                        className={`form-control form-control-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.callSign}
                         onChange={(e) => handleInputChange('callSign', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block font-mono-code text-dark">{vessel.callSign}</strong>
+                      <strong className={`d-block font-mono-code text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.callSign}</strong>
                     )}
                   </div>
                   <div className="col-md-4">
@@ -897,19 +905,19 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                       <div className="d-flex gap-1 mt-1">
                         <input
                           type="text"
-                          className="form-control form-control-sm"
+                          className={`form-control form-control-sm${isJustLoaded ? ' map-autofill-animate' : ''}`}
                           value={formData.flagState}
                           onChange={(e) => handleInputChange('flagState', e.target.value)}
                         />
                         <input
                           type="text"
-                          className="form-control form-control-sm"
+                          className={`form-control form-control-sm${isJustLoaded ? ' map-autofill-animate' : ''}`}
                           value={formData.portOfRegistry}
                           onChange={(e) => handleInputChange('portOfRegistry', e.target.value)}
                         />
                       </div>
                     ) : (
-                      <strong className="d-block text-dark">{vessel.flagState} ({vessel.portOfRegistry})</strong>
+                      <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.flagState} ({vessel.portOfRegistry})</strong>
                     )}
                   </div>
                 </div>
@@ -933,17 +941,17 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('vesselType') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1"
+                        className={`form-control form-control-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.vesselType}
                         onChange={(e) => handleInputChange('vesselType', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block text-dark">{vessel.vesselType}</strong>
+                      <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.vesselType}</strong>
                     )}
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Subtype / Use:</span>
-                    <strong className="d-block text-dark">
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>
                       {vessel.vesselSubtype} &middot; {vessel.intendedUse}
                     </strong>
                   </div>
@@ -951,7 +959,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     <span className="text-secondary">Class Society:</span>
                     {fieldEditable('classificationSociety') ? (
                       <select
-                        className="form-select form-select-sm mt-1"
+                        className={`form-select form-select-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.classificationSociety}
                         onChange={(e) =>
                           handleInputChange('classificationSociety', e.target.value as ClassificationSociety)
@@ -964,7 +972,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                         <option value="RINA">RINA</option>
                       </select>
                     ) : (
-                      <strong className="d-block text-dark">{vessel.classificationSociety}</strong>
+                      <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.classificationSociety}</strong>
                     )}
                   </div>
                   <div className="col-md-4">
@@ -972,17 +980,17 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('classNotation') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1"
+                        className={`form-control form-control-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.classNotation}
                         onChange={(e) => handleInputChange('classNotation', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block text-dark">{vessel.classNotation}</strong>
+                      <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.classNotation}</strong>
                     )}
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Hull Type:</span>
-                    <strong className="d-block text-dark">{vessel.hullType}</strong>
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.hullType}</strong>
                   </div>
                 </div>
               )}
@@ -1005,21 +1013,21 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('yearBuilt') ? (
                       <input
                         type="number"
-                        className="form-control form-control-sm mt-1"
+                        className={`form-control form-control-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.yearBuilt}
                         onChange={(e) => handleInputChange('yearBuilt', parseInt(e.target.value, 10) || 0)}
                       />
                     ) : (
-                      <strong className="d-block text-dark">{vessel.yearBuilt}</strong>
+                      <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.yearBuilt}</strong>
                     )}
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Shipyard:</span>
-                    <strong className="d-block text-dark">{vessel.shipyardBuilder}</strong>
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.shipyardBuilder}</strong>
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">LOA x Beam x Draft:</span>
-                    <strong className="d-block text-dark">
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>
                       {vessel.lengthOverallMeters}m x {vessel.beamMeters}m x {vessel.draftMeters}m
                     </strong>
                   </div>
@@ -1041,15 +1049,15 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 <div className="p-3 bg-white row g-3 small border-top">
                   <div className="col-md-4">
                     <span className="text-secondary">Gross Tonnage (GT):</span>
-                    <strong className="d-block text-dark">{vessel.grossTonnageGT.toLocaleString()} GT</strong>
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.grossTonnageGT.toLocaleString()} GT</strong>
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Deadweight (DWT):</span>
-                    <strong className="d-block text-dark">{vessel.deadweightTonnageDWT.toLocaleString()} DWT</strong>
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.deadweightTonnageDWT.toLocaleString()} DWT</strong>
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">DP Class:</span>
-                    <strong className="d-block text-dark">{vessel.dynamicPositioningClass}</strong>
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.dynamicPositioningClass}</strong>
                   </div>
                 </div>
               )}
@@ -1072,12 +1080,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('registeredOwner') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1"
+                        className={`form-control form-control-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.registeredOwner}
                         onChange={(e) => handleInputChange('registeredOwner', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block text-dark">{vessel.registeredOwner}</strong>
+                      <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.registeredOwner}</strong>
                     )}
                   </div>
                   <div className="col-md-6">
@@ -1085,12 +1093,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('technicalManager') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1"
+                        className={`form-control form-control-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.technicalManager}
                         onChange={(e) => handleInputChange('technicalManager', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block text-dark">{vessel.technicalManager}</strong>
+                      <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.technicalManager}</strong>
                     )}
                   </div>
                   <div className="col-md-6">
@@ -1098,12 +1106,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('docNumber') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1 font-mono-code"
+                        className={`form-control form-control-sm mt-1 font-mono-code${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.docNumber}
                         onChange={(e) => handleInputChange('docNumber', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block font-mono-code text-dark">{vessel.docNumber}</strong>
+                      <strong className={`d-block font-mono-code text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.docNumber}</strong>
                     )}
                   </div>
                   <div className="col-md-6">
@@ -1111,12 +1119,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     {fieldEditable('contact247') ? (
                       <input
                         type="text"
-                        className="form-control form-control-sm mt-1"
+                        className={`form-control form-control-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.contact247}
                         onChange={(e) => handleInputChange('contact247', e.target.value)}
                       />
                     ) : (
-                      <strong className="d-block text-dark">{vessel.contact247}</strong>
+                      <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.contact247}</strong>
                     )}
                   </div>
                 </div>
@@ -1137,23 +1145,23 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 <div className="p-3 bg-white row g-3 small border-top">
                   <div className="col-md-4">
                     <span className="text-secondary">P&I Club:</span>
-                    <strong className="d-block text-dark">{vessel.piClubName}</strong>
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.piClubName}</strong>
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Policy #:</span>
-                    <strong className="d-block font-mono-code text-dark">{vessel.policyNumber}</strong>
+                    <strong className={`d-block font-mono-code text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.policyNumber}</strong>
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Master's Name:</span>
-                    <strong className="d-block text-dark">{vessel.masterName}</strong>
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.masterName}</strong>
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Safe Manning Count:</span>
-                    <strong className="d-block text-dark">{vessel.safeManningComplement} Crew</strong>
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.safeManningComplement} Crew</strong>
                   </div>
                   <div className="col-md-4">
                     <span className="text-secondary">Lifeboat Capacity:</span>
-                    <strong className="d-block text-dark">{vessel.lifeboatCapacity} Persons</strong>
+                    <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.lifeboatCapacity} Persons</strong>
                   </div>
                 </div>
               )}
@@ -1174,7 +1182,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     <span className="text-secondary">Current Status:</span>
                     {fieldEditable('status') ? (
                       <select
-                        className="form-select form-select-sm mt-1"
+                        className={`form-select form-select-sm mt-1${isJustLoaded ? ' map-autofill-animate' : ''}`}
                         value={formData.status}
                         onChange={(e) =>
                           handleInputChange('status', e.target.value as VesselRegistrationStatus)
@@ -1188,7 +1196,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                         <option value="Under Charter">Under Charter</option>
                       </select>
                     ) : (
-                      <strong className="d-block text-dark">{vessel.status}</strong>
+                      <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.status}</strong>
                     )}
                   </div>
                   {!canEditStatus && isReadOnly && (
