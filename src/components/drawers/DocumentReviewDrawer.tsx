@@ -37,11 +37,21 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
   const [correctedFieldIds, setCorrectedFieldIds] = useState<Set<string>>(new Set());
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [routeTarget, setRouteTarget] = useState<'Inspector' | 'Approver'>('Approver');
-
   const linkedSet = document
-    ? assuranceSets.find((set) => set.requirements.some((req) => req.documentId === document.id))
+    ? assuranceSets.find(
+      (set) =>
+        set.requirements?.some(
+          (req) =>
+            req.documentId === document.id ||
+            req.linkedDocumentId === document.id ||
+            (req.title && document.title && req.title.toLowerCase().includes(document.title.toLowerCase())) ||
+            (document.title && req.title && document.title.toLowerCase().includes(req.title.toLowerCase()))
+        ) || (set.vesselId === document.vesselId)
+    )
     : undefined;
+
+  const defaultRouteTarget = linkedSet?.mandatoryInspectionRequired ? 'Inspector' : 'Approver';
+  const [routeTarget, setRouteTarget] = useState<'Inspector' | 'Approver'>(defaultRouteTarget);
 
   useEffect(() => {
     if (!document) return;
@@ -51,7 +61,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
     setEditedValues({});
     setCorrectedFieldIds(new Set());
     setRouteTarget(linkedSet?.mandatoryInspectionRequired ? 'Inspector' : 'Approver');
-  }, [document?.id, linkedSet?.mandatoryInspectionRequired]);
+  }, [document?.id, linkedSet?.id, linkedSet?.mandatoryInspectionRequired]);
 
   if (!document) return null;
 

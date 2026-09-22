@@ -326,6 +326,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     }, 1500);
   };
 
+  const hasSelectedFile = Boolean(fileName || existingDocument || isAiExtracted || isExtractingAi);
+
   return (
     <div
       className="modal show d-block map-modal-backdrop"
@@ -335,7 +337,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         if (e.target === e.currentTarget && !isUploading && !isExtractingAi) onClose();
       }}
     >
-      <div className="modal-dialog modal-dialog-centered modal-lg">
+      <div className="modal-dialog modal-dialog-centered transition-all" style={{ maxWidth: hasSelectedFile ? '1180px' : '620px', width: '95%' }}>
         <div className="modal-content bg-white text-dark border shadow-lg">
           {/* hidden native file input */}
           <input
@@ -388,398 +390,374 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                 </div>
               )}
 
-              {/* 1. Document Title & Entity Type (Same Row) */}
-              <div className="row g-2 mb-3">
-                <div className="col-md-6">
-                  <label className="form-label text-secondary small fw-semibold" htmlFor="doc-title">
-                    Document Title *
-                  </label>
-                  <input
-                    id="doc-title"
-                    type="text"
-                    className="form-control form-control-sm bg-white text-dark border-secondary"
-                    placeholder="e.g. Certificate of Class"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    disabled={isUploading || isExtractingAi || !!existingDocument}
-                    required
-                  />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label text-secondary small fw-semibold" htmlFor="doc-type">
-                    Entity Type *
-                  </label>
-                  <select
-                    id="doc-type"
-                    className="form-select form-select-sm bg-white text-dark border-secondary"
-                    value={entityType}
-                    onChange={(e) => setEntityType(e.target.value as DocumentEntityType)}
-                    disabled={isUploading || isExtractingAi || !!existingDocument}
-                  >
-                    <option value="Vessel Certificate">Vessel Certificate</option>
-                    <option value="Crew Certificate">Crew Certificate</option>
-                  </select>
-                </div>
-              </div>
+              {/* Dynamic Column Layout Container */}
+              <div className="row g-4">
+                {/* Column 1 (Left): Extraction Review Screen (shown dynamically only when a file is selected) */}
+                {hasSelectedFile && (
+                  <div className="col-lg-7 col-md-6 border-end pe-md-4">
+                    <div className="map-extraction-preview-container p-4 h-100 d-flex flex-column justify-between">
+                      <div>
+                        {/* Subtitle & Confidence Indicator */}
+                        <div className="d-flex flex-wrap align-items-start justify-content-between mb-3 border-bottom pb-3">
+                          <div>
+                            <div className="font-mono-code text-uppercase text-muted small fw-bold mb-0.5" style={{ fontSize: '0.675rem', letterSpacing: '0.08em' }}>
+                              EXTRACTION REVIEW
+                            </div>
+                            <h5 className="fw-bold text-dark m-0 mb-1" style={{ fontSize: '1.15rem' }}>
+                              {title || existingDocument?.title || 'International Oil Pollution Prevention (IOPP)'}
+                            </h5>
+                            <div className="font-mono-code text-muted small" style={{ fontSize: '0.75rem' }}>
+                              {(fileName || existingDocument?.versions[0]?.fileName || 'iopp-annex1-scan.jpg')} · 640 KB · 1 page
+                            </div>
+                          </div>
 
-              {/* 2. Drag and Drop / Clickable File Upload Dropzone */}
-              <div className="mb-3">
-                <label className="form-label text-dark fw-bold small mb-1">
-                  Select Document File *
-                </label>
-                <div
-                  className={`p-4 border border-2 border-dashed rounded text-center transition-all ${isDraggingOver
-                    ? 'border-primary bg-primary-subtle'
-                    : fileName
-                      ? 'border-success bg-light'
-                      : 'border-secondary-subtle bg-light hover-bg-gray'
-                    }`}
-                  style={{ cursor: isUploading || isExtractingAi ? 'not-allowed' : 'pointer' }}
-                  onClick={() => {
-                    if (!isUploading && !isExtractingAi) {
-                      fileInputRef.current?.click();
-                    }
-                  }}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                >
-                  <div className="d-flex flex-column align-items-center justify-content-center gap-2">
-                    <div className="rounded-circle bg-white p-2.5 border shadow-2xs">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="fw-bold text-dark mb-0.5">
-                        {fileName ? (
-                          <span className="text-success font-mono-code">{fileName}</span>
-                        ) : (
-                          <span>Drag &amp; drop document file here, or <span className="text-primary text-decoration-underline">browse files from system</span></span>
-                        )}
+                          <div className="text-end">
+                            <div className="fw-bold lh-1" style={{ fontSize: '1.65rem', color: correctedFields.size > 0 ? '#059669' : aiOcrConfidence >= 90 ? '#059669' : '#c2410c' }}>
+                              {correctedFields.size > 0 ? '100%' : `${aiOcrConfidence || 74}%`}
+                            </div>
+                            <div className="small lh-sm text-muted" style={{ fontSize: '0.65rem' }}>
+                              overall confidence<br />threshold 90%
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2 Sub-Columns inside Left Side: Scanned page preview on left, Extracted attributes on right */}
+                        <div className="row g-3 mb-3">
+                          {/* Thumbnail + Quality Checks */}
+                          <div className="col-md-4 d-flex flex-column gap-2">
+                            <div
+                              className="p-3 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-white shadow-2xs"
+                              style={{ borderStyle: 'dashed', borderColor: '#cbd5e1', minHeight: '180px' }}
+                            >
+                              <div className="font-mono-code text-uppercase text-muted small fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}>
+                                SCANNED PAGE
+                              </div>
+                              <div className="font-mono-code text-muted small mt-1" style={{ fontSize: '0.7rem' }}>
+                                1 of 1
+                              </div>
+                            </div>
+
+                            <div className="d-flex flex-column gap-1.5">
+                              <div className="d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success" style={{ width: '16px', height: '16px', fontSize: '0.6rem' }}>✓</span>
+                                <span>Resolution 240 DPI</span>
+                              </div>
+                              <div className="d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '16px', height: '16px', backgroundColor: '#c2410c', fontSize: '0.6rem' }}>!</span>
+                                <span>Full page captured</span>
+                              </div>
+                              <div className="d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '16px', height: '16px', backgroundColor: '#c2410c', fontSize: '0.6rem' }}>!</span>
+                                <span>Signature / stamp present</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Extracted Attributes List matching screenshot */}
+                          <div className="col-md-8 d-flex flex-column gap-1">
+                            {/* Certificate Title */}
+                            <div className="map-extraction-field-row py-1">
+                              <div className="d-flex flex-column flex-grow-1 me-2">
+                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                  CERTIFICATE TITLE
+                                </div>
+                                <div className="font-mono-code fw-bold text-dark small">
+                                  {title || 'International Oil Pollution Prevention (IOPP)'}
+                                </div>
+                              </div>
+                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                <div className="font-mono-code small text-success fw-bold" style={{ fontSize: '0.7rem' }}>91%</div>
+                              </div>
+                            </div>
+
+                            {/* Certificate Number / Crew ID */}
+                            <div className="map-extraction-field-row py-1">
+                              <div className="d-flex flex-column flex-grow-1 me-2">
+                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                  CREW ID / PASSPORT NUMBER
+                                </div>
+                                {isManualEditActive ? (
+                                  <input
+                                    type="text"
+                                    className="map-extraction-field-input"
+                                    value={certificateNo}
+                                    onChange={(e) => {
+                                      setCertificateNo(e.target.value);
+                                      setCorrectedFields((prev) => new Set(prev).add('certNo'));
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canUpload && setIsManualEditActive(true)}>
+                                    {certificateNo || 'P9912447 (partially legible)'}
+                                  </div>
+                                )}
+                                <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
+                                  Below 90% threshold — human review required
+                                </div>
+                              </div>
+                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: '#c2410c' }}>61%</div>
+                              </div>
+                            </div>
+
+                            {/* Issuing Authority */}
+                            <div className="map-extraction-field-row py-1">
+                              <div className="d-flex flex-column flex-grow-1 me-2">
+                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                  ISSUING AUTHORITY
+                                </div>
+                                {isManualEditActive ? (
+                                  <input
+                                    type="text"
+                                    className="map-extraction-field-input"
+                                    value={issuingAuthority}
+                                    onChange={(e) => {
+                                      setIssuingAuthority(e.target.value);
+                                      setCorrectedFields((prev) => new Set(prev).add('authority'));
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canUpload && setIsManualEditActive(true)}>
+                                    {issuingAuthority || 'illegible stamp'}
+                                  </div>
+                                )}
+                                <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
+                                  Below 90% threshold — human review required
+                                </div>
+                              </div>
+                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: '#c2410c' }}>44%</div>
+                              </div>
+                            </div>
+
+                            {/* Expiry Date */}
+                            <div className="map-extraction-field-row py-1">
+                              <div className="d-flex flex-column flex-grow-1 me-2">
+                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                  EXPIRY DATE
+                                </div>
+                                {isManualEditActive ? (
+                                  <input
+                                    type="date"
+                                    className="map-extraction-field-input"
+                                    value={expiryDate}
+                                    onChange={(e) => {
+                                      setExpiryDate(e.target.value);
+                                      setCorrectedFields((prev) => new Set(prev).add('expiry'));
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="font-mono-code fw-bold text-dark small cursor-pointer" onClick={() => canUpload && setIsManualEditActive(true)}>
+                                    {expiryDate || '2026-10-29'}
+                                  </div>
+                                )}
+                                <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
+                                  Below 90% threshold — human review required
+                                </div>
+                              </div>
+                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: '#c2410c' }}>79%</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-secondary small" style={{ fontSize: '0.75rem' }}>
-                        Supports PDF, PNG, JPG, DOCX (Max 25MB) · AI Information Extraction runs automatically
-                      </div>
+
+                      {/* Exception Action Banner matching screenshot */}
+                      {canUpload && (
+                        <div className="map-exception-banner mt-3">
+                          <div>
+                            <div className="fw-bold text-dark mb-0.5" style={{ fontSize: '0.825rem', color: '#92400e' }}>
+                              Exception identified — Submitter action required
+                            </div>
+                            <div className="small" style={{ fontSize: '0.725rem', color: '#b45309' }}>
+                              Issuing authority illegible, crew ID partially legible, training completion date absent. Replace with a clearer scan or provide a renewed certificate.
+                            </div>
+                          </div>
+
+                          <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              className="btn btn-sm map-btn-outline-manual py-1"
+                              onClick={() => setIsManualEditActive(!isManualEditActive)}
+                            >
+                              {isManualEditActive ? 'Done Editing Fields' : 'Correct field manually'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Quick File Selection Chips */}
-                <div className="d-flex align-items-center gap-1.5 flex-wrap mt-2">
-                  <span className="text-secondary small me-1" style={{ fontSize: '0.725rem' }}>
-                    Sample file attach:
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
-                    style={{ fontSize: '0.7rem' }}
-                    onClick={() =>
-                      handleSampleFileClick(
-                        `${(title || 'Statutory_Document').replace(/\s+/g, '_')}_ClassScan.pdf`
-                      )
-                    }
-                    disabled={isUploading || isExtractingAi}
-                  >
-                    + {(title || 'Statutory_Document').replace(/\s+/g, '_')}_ClassScan.pdf
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
-                    style={{ fontSize: '0.7rem' }}
-                    onClick={() =>
-                      handleSampleFileClick(
-                        `Safety_Equipment_Cert_HighRes_2026.pdf`
-                      )
-                    }
-                    disabled={isUploading || isExtractingAi}
-                  >
-                    + Safety_Equipment_Cert_HighRes_2026.pdf
-                  </button>
-                </div>
-              </div>
-
-
-
-              {/* 4. Simulated AI Extraction Progress Indicator */}
-              {isExtractingAi && (
-                <div className="p-3 mb-3 bg-primary-subtle border border-primary-subtle rounded shadow-2xs">
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <span className="fw-bold text-primary small d-flex align-items-center gap-2">
-                      <span className="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true" />
-                      AI OCR Scanning &amp; Attribute Extraction in Progress...
-                    </span>
-                    <span className="badge bg-primary text-white font-mono-code">AI Processing</span>
+                {/* Column 2 (Right): Document Upload Panel */}
+                <div className={hasSelectedFile ? "col-lg-5 col-md-6 ps-md-4 d-flex flex-column gap-3" : "col-12 d-flex flex-column gap-3"}>
+                  <div className="fw-bold text-dark border-bottom pb-2" style={{ fontSize: '0.95rem' }}>
+                    Document Upload &amp; Re-upload Panel
                   </div>
-                  {/* animated scan sweep bar */}
-                  <div className="ai-scan-bar" />
-                  <div className="font-mono-code text-muted small mt-2" style={{ fontSize: '0.75rem' }}>
-                    Extracting Certificate Number, Issuing Authority, Expiry Date, and IACS Compliance Attributes from <strong>{fileName}</strong>...
-                  </div>
-                </div>
-              )}
 
-              {/* 5. AI Extracted Information Display & Preview Screen matching mockup */}
-              {isAiExtracted && (
-                <div className="map-extraction-preview-container p-4 mb-3">
-                  {/* header accent and title */}
-                  <div className="d-flex flex-wrap align-items-start justify-content-between border-bottom pb-3 mb-3">
-                    <div>
-                      <div className="map-extraction-header-accent" />
-                      <h5 className="fw-bold text-dark m-0 mb-1">{title || 'Crew Medical Fitness (ENG1)'}</h5>
-                      <div className="font-mono-code text-muted small" style={{ fontSize: '0.775rem' }}>
-                        {(fileName || 'eng1-mendoza-scan.jpg')} · 640 KB · 1 page
-                      </div>
+                  {/* Document Title & Entity Type (Same Row) */}
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="doc-title">
+                        Document Title *
+                      </label>
+                      <input
+                        id="doc-title"
+                        type="text"
+                        className="form-control form-control-sm bg-white text-dark border-secondary"
+                        placeholder="e.g. Certificate of Class"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        disabled={isUploading || isExtractingAi || !!existingDocument}
+                        required
+                      />
                     </div>
-                    <div className="text-end">
-                      <div className="fw-bold lh-1" style={{ fontSize: '1.75rem', color: correctedFields.size > 0 ? '#059669' : aiOcrConfidence >= 90 ? '#059669' : '#c2410c' }}>
-                        {correctedFields.size > 0 ? '100%' : `${aiOcrConfidence || 74}%`}
-                      </div>
-                      <div className="small lh-sm text-muted" style={{ fontSize: '0.675rem' }}>
-                        overall confidence<br />threshold 90%
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 2-column preview layout */}
-                  <div className="row g-4 mb-3">
-                    {/* left column: scan thumbnail & quality checks */}
-                    <div className="col-md-4 col-lg-3 d-flex flex-column gap-3">
-                      <div
-                        className="p-4 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-white shadow-2xs"
-                        style={{ borderStyle: 'dashed', borderColor: '#cbd5e1', minHeight: '220px' }}
+                    <div className="col-md-6">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="doc-type">
+                        Entity Type *
+                      </label>
+                      <select
+                        id="doc-type"
+                        className="form-select form-select-sm bg-white text-dark border-secondary"
+                        value={entityType}
+                        onChange={(e) => setEntityType(e.target.value as DocumentEntityType)}
+                        disabled={isUploading || isExtractingAi || !!existingDocument}
                       >
-                        <div className="font-mono-code text-uppercase text-muted small fw-bold" style={{ fontSize: '0.725rem', letterSpacing: '0.08em' }}>
-                          SCANNED PAGE
-                        </div>
-                        <div className="font-mono-code text-muted small mt-1" style={{ fontSize: '0.725rem' }}>
-                          1 of 1
-                        </div>
-                      </div>
-
-                      <div className="d-flex flex-column gap-2">
-                        <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
-                          <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '18px', height: '18px', backgroundColor: '#059669', fontSize: '0.65rem' }}>✓</span>
-                          <span>Resolution 240 DPI</span>
-                        </div>
-                        <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
-                          <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '18px', height: '18px', backgroundColor: '#c2410c', fontSize: '0.65rem' }}>!</span>
-                          <span>Full page captured</span>
-                        </div>
-                        <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
-                          <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '18px', height: '18px', backgroundColor: '#c2410c', fontSize: '0.65rem' }}>!</span>
-                          <span>Signature / stamp present</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* right column: extracted fields with confidence bars & manual edit mode */}
-                    <div className="col-md-8 col-lg-9 d-flex flex-column gap-1">
-                      {/* cert number field */}
-                      <div className={`map-extraction-field-row ${revealedFields.certNo ? 'ai-field-reveal ai-field-highlight' : ''}`} style={{ opacity: revealedFields.certNo ? 1 : 0 }}>
-                        <div className="d-flex flex-column flex-grow-1 me-3">
-                          <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.65rem', color: '#64748b' }}>
-                            CERTIFICATE NUMBER / CREW ID
-                          </div>
-                          {isManualEditActive ? (
-                            <input
-                              type="text"
-                              className="map-extraction-field-input"
-                              value={certificateNo}
-                              onChange={(e) => {
-                                setCertificateNo(e.target.value);
-                                setCorrectedFields((prev) => new Set(prev).add('certNo'));
-                              }}
-                              placeholder="Enter certificate number..."
-                            />
-                          ) : (
-                            <div
-                              className="font-mono-code fw-bold text-dark"
-                              style={{ fontSize: '0.875rem', cursor: 'pointer' }}
-                              onClick={() => setIsManualEditActive(true)}
-                              title="Click to edit field manually"
-                            >
-                              {certificateNo || 'DNV-STAT-2026-99 (partially legible)'}
-                            </div>
-                          )}
-                          {correctedFields.has('certNo') ? (
-                            <div className="small mt-0.5 fw-bold text-success" style={{ fontSize: '0.7rem' }}>
-                              ✓ Manually Corrected (100% Verified)
-                            </div>
-                          ) : (
-                            <div className="small mt-0.5" style={{ fontSize: '0.7rem', color: '#b45309' }}>
-                              Below 90% threshold — human review required
-                            </div>
-                          )}
-                        </div>
-                        <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '140px' }}>
-                          <div className="w-100 bg-light rounded-pill overflow-hidden" style={{ height: '6px' }}>
-                            <div className="h-100 rounded-pill transition-all" style={{ width: correctedFields.has('certNo') ? '100%' : '61%', backgroundColor: correctedFields.has('certNo') ? '#059669' : '#c2410c' }} />
-                          </div>
-                          <div className="font-mono-code small text-muted mt-1" style={{ fontSize: '0.725rem' }}>
-                            {correctedFields.has('certNo') ? '100%' : '61%'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* issuing authority field */}
-                      <div className={`map-extraction-field-row ${revealedFields.authority ? 'ai-field-reveal ai-field-highlight' : ''}`} style={{ opacity: revealedFields.authority ? 1 : 0 }}>
-                        <div className="d-flex flex-column flex-grow-1 me-3">
-                          <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.65rem', color: '#64748b' }}>
-                            ISSUING AUTHORITY
-                          </div>
-                          {isManualEditActive ? (
-                            <input
-                              type="text"
-                              className="map-extraction-field-input"
-                              value={issuingAuthority}
-                              onChange={(e) => {
-                                setIssuingAuthority(e.target.value);
-                                setCorrectedFields((prev) => new Set(prev).add('authority'));
-                              }}
-                              placeholder="Enter issuing authority..."
-                            />
-                          ) : (
-                            <div
-                              className="font-mono-code fw-bold text-dark"
-                              style={{ fontSize: '0.875rem', cursor: 'pointer' }}
-                              onClick={() => setIsManualEditActive(true)}
-                              title="Click to edit field manually"
-                            >
-                              {issuingAuthority || 'illegible stamp'}
-                            </div>
-                          )}
-                          {correctedFields.has('authority') ? (
-                            <div className="small mt-0.5 fw-bold text-success" style={{ fontSize: '0.7rem' }}>
-                              ✓ Manually Corrected (100% Verified)
-                            </div>
-                          ) : (
-                            <div className="small mt-0.5" style={{ fontSize: '0.7rem', color: '#b45309' }}>
-                              Below 90% threshold — human review required
-                            </div>
-                          )}
-                        </div>
-                        <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '140px' }}>
-                          <div className="w-100 bg-light rounded-pill overflow-hidden" style={{ height: '6px' }}>
-                            <div className="h-100 rounded-pill transition-all" style={{ width: correctedFields.has('authority') ? '100%' : '44%', backgroundColor: correctedFields.has('authority') ? '#059669' : '#c2410c' }} />
-                          </div>
-                          <div className="font-mono-code small text-muted mt-1" style={{ fontSize: '0.725rem' }}>
-                            {correctedFields.has('authority') ? '100%' : '44%'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* expiry date field */}
-                      <div className={`map-extraction-field-row ${revealedFields.expiry ? 'ai-field-reveal ai-field-highlight' : ''}`} style={{ opacity: revealedFields.expiry ? 1 : 0 }}>
-                        <div className="d-flex flex-column flex-grow-1 me-3">
-                          <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.65rem', color: '#64748b' }}>
-                            EXPIRY DATE
-                          </div>
-                          {isManualEditActive ? (
-                            <input
-                              type="date"
-                              className="map-extraction-field-input"
-                              value={expiryDate}
-                              onChange={(e) => {
-                                setExpiryDate(e.target.value);
-                                setCorrectedFields((prev) => new Set(prev).add('expiry'));
-                              }}
-                            />
-                          ) : (
-                            <div
-                              className="font-mono-code fw-bold text-dark"
-                              style={{ fontSize: '0.875rem', cursor: 'pointer' }}
-                              onClick={() => setIsManualEditActive(true)}
-                              title="Click to edit field manually"
-                            >
-                              {expiryDate || '2029-06-30'}
-                            </div>
-                          )}
-                          {correctedFields.has('expiry') ? (
-                            <div className="small mt-0.5 fw-bold text-success" style={{ fontSize: '0.7rem' }}>
-                              ✓ Manually Corrected (100% Verified)
-                            </div>
-                          ) : (
-                            <div className="small mt-0.5" style={{ fontSize: '0.7rem', color: '#b45309' }}>
-                              Below 90% threshold — human review required
-                            </div>
-                          )}
-                        </div>
-                        <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '140px' }}>
-                          <div className="w-100 bg-light rounded-pill overflow-hidden" style={{ height: '6px' }}>
-                            <div className="h-100 rounded-pill transition-all" style={{ width: correctedFields.has('expiry') ? '100%' : '79%', backgroundColor: correctedFields.has('expiry') ? '#059669' : '#c2410c' }} />
-                          </div>
-                          <div className="font-mono-code small text-muted mt-1" style={{ fontSize: '0.725rem' }}>
-                            {correctedFields.has('expiry') ? '100%' : '79%'}
-                          </div>
-                        </div>
-                      </div>
+                        <option value="Vessel Certificate">Vessel Certificate</option>
+                        <option value="Crew Certificate">Crew Certificate</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Exception Action Banner matching mockup */}
-                  <div className="map-exception-banner">
-                    <div>
-                      <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.875rem', color: '#92400e' }}>
-                        Exception identified — Submitter action required
-                      </div>
-                      <div className="small" style={{ fontSize: '0.775rem', color: '#b45309' }}>
-                        Issuing authority illegible, crew ID partially legible, training completion date absent. Replace with a clearer scan or provide a renewed certificate.
+                  {/* Drag and Drop / Clickable File Upload Dropzone */}
+                  <div>
+                    <label className="form-label text-dark fw-bold small mb-1">
+                      Select Document File *
+                    </label>
+                    <div
+                      className={`p-4 border border-2 border-dashed rounded text-center transition-all ${isDraggingOver
+                        ? 'border-primary bg-primary-subtle'
+                        : fileName
+                          ? 'border-success bg-light'
+                          : 'border-secondary-subtle bg-light hover-bg-gray'
+                        }`}
+                      style={{ cursor: isUploading || isExtractingAi ? 'not-allowed' : 'pointer' }}
+                      onClick={() => {
+                        if (!isUploading && !isExtractingAi) {
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    >
+                      <div className="d-flex flex-column align-items-center justify-content-center gap-2">
+                        <div className="rounded-circle bg-white p-2 border shadow-2xs">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark mb-0.5" style={{ fontSize: '0.825rem' }}>
+                            {fileName ? (
+                              <span className="text-success font-mono-code">{fileName}</span>
+                            ) : (
+                              <span>Drag &amp; drop file here, or <span className="text-primary text-decoration-underline">browse files</span></span>
+                            )}
+                          </div>
+                          <div className="text-secondary small" style={{ fontSize: '0.725rem' }}>
+                            Supports PDF, PNG, JPG, DOCX (Max 25MB)
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                    {/* Quick File Selection Chips */}
+                    <div className="d-flex align-items-center gap-1.5 flex-wrap mt-2">
+                      <span className="text-secondary small me-1" style={{ fontSize: '0.7rem' }}>
+                        Sample file attach:
+                      </span>
                       <button
                         type="button"
-                        className="btn btn-sm map-btn-outline-manual"
-                        onClick={() => setIsManualEditActive(!isManualEditActive)}
+                        className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
+                        style={{ fontSize: '0.675rem' }}
+                        onClick={() =>
+                          handleSampleFileClick(
+                            `IOPP_MARPOL_Annex1_Certificate_2026.pdf`
+                          )
+                        }
+                        disabled={isUploading || isExtractingAi}
                       >
-                        {isManualEditActive ? 'Done Editing Fields' : 'Correct field manually'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm map-btn-orange-action"
-                        onClick={() => {
-                          setFileName('');
-                          setIsAiExtracted(false);
-                        }}
-                      >
-                        Upload replacement version
+                        + IOPP_MARPOL_Annex1_Certificate_2026.pdf
                       </button>
                     </div>
                   </div>
+
+                  {/* Reason for Revision / Change Summary Field */}
+                  <div>
+                    <label className="form-label text-dark fw-semibold small mb-1" htmlFor="revision-summary">
+                      Reason for Revision / Change Summary
+                    </label>
+                    <textarea
+                      id="revision-summary"
+                      className="form-control form-control-sm bg-white text-dark border-secondary"
+                      rows={3}
+                      placeholder="e.g. Uploading renewed IOPP statutory certificate scan with updated issuing authority seal..."
+                      value={changeSummary}
+                      onChange={(e) => setChangeSummary(e.target.value)}
+                      disabled={isUploading || isExtractingAi}
+                    />
+                  </div>
+
+                  {/* Simulated AI Extraction Progress Indicator */}
+                  {isExtractingAi && (
+                    <div className="p-3 bg-primary-subtle border border-primary-subtle rounded shadow-2xs">
+                      <div className="d-flex align-items-center justify-content-between mb-1">
+                        <span className="fw-bold text-primary small d-flex align-items-center gap-2">
+                          <span className="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true" />
+                          AI OCR Scanning in Progress...
+                        </span>
+                        <span className="badge bg-primary text-white font-mono-code">AI Processing</span>
+                      </div>
+                      <div className="ai-scan-bar" />
+                      <div className="font-mono-code text-muted small mt-2" style={{ fontSize: '0.725rem' }}>
+                        Extracting Certificate Attributes from <strong>{fileName}</strong>...
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="modal-footer border-top bg-light">
-              <button
-                type="button"
-                className="btn btn-sm btn-secondary"
-                onClick={onClose}
-                disabled={isUploading || isExtractingAi}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn btn-sm btn-primary fw-bold px-4 d-inline-flex align-items-center gap-2"
-                disabled={isUploading || isExtractingAi || !title.trim()}
-              >
-                {isUploading ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                    Uploading...
-                  </>
-                ) : existingDocument ? (
-                  'Submit Replacement Revision'
-                ) : (
-                  ' Upload Document'
-                )}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={onClose}
+                  disabled={isUploading || isExtractingAi}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-sm btn-primary fw-bold px-4 d-inline-flex align-items-center gap-2"
+                  disabled={isUploading || isExtractingAi || !title.trim()}
+                >
+                  {isUploading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                      Uploading...
+                    </>
+                  ) : existingDocument ? (
+                    'Submit Replacement Revision'
+                  ) : (
+                    ' Upload Document'
+                  )}
+                </button>
+              </div>
           </form>
         </div>
       </div>
