@@ -469,17 +469,19 @@ export const ApproverDashboardView: React.FC = () => {
       {/* main approval requests table card */}
       <div className="card map-card-custom">
         <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3">
-          <span className="fw-bold text-dark">Executive Approval Requests Register</span>
-          <div className="d-flex flex-wrap align-items-center gap-2 ms-auto">
+          {/* filter controls inline row */}
+          <div className="d-flex align-items-center gap-2 flex-nowrap">
             <input
               type="text"
               className="form-control form-control-sm font-mono-code"
+              style={{ width: '260px' }}
               placeholder="Search ID, Vessel, Submitter..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <select
               className="form-select form-select-sm font-mono-code"
+              style={{ width: '190px' }}
               value={stageFilter}
               onChange={(e) => setStageFilter(e.target.value)}
             >
