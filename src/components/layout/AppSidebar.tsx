@@ -85,7 +85,7 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'verifier',
       label: 'Verification Queue',
-      allowedRoles: ['Administrator', 'Verifier'],
+      allowedRoles: ['Administrator'],
       badgeText: '2',
     },
     {
