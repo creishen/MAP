@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../../store/useMapStore';
-import { UserRolePersona } from '../../types/audit';
+import { RoleName } from '../../types/permissions';
 import { UserType, UserProfile } from '../../types/user';
 import { UserRoleChecklist } from '../common/UserRoleChecklist';
 import { buildRolesFromForm, splitRolesForForm } from '../../utils/userRoleHelpers';
@@ -28,7 +28,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
   const [email, setEmail] = useState('');
   const [userType, setUserType] = useState<UserType>('Organization');
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
-  const [operationalRoles, setOperationalRoles] = useState<UserRolePersona[]>(['Submitter']);
+  const [operationalRoles, setOperationalRoles] = useState<RoleName[]>(['Submitter']);
   const [organization, setOrganization] = useState('');
   const [departmentOrScope, setDepartmentOrScope] = useState('');
   const [status, setStatus] = useState<UserProfile['status']>('Active');

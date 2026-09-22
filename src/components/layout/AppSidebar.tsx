@@ -7,6 +7,8 @@
 import React, { useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { UserRolePersona } from '../../types/audit';
+import { ENABLE_ROLES_AND_PERMISSIONS } from '../../config/featureFlags';
+import { VIEW_TO_SCOPE, getEffectiveUserScopeFlags, getRoleScopeFlags } from '../../utils/permissionHelpers';
 
 interface NavItem {
   key: string;
@@ -21,7 +23,16 @@ interface NavItem {
   with what file: src/components/layout/AppSidebar.tsx loaded by App.tsx.
 */
 export const AppSidebar: React.FC = () => {
-  const { activePersona, currentHashView, setCurrentHashView, logout } = useMapStore();
+  const {
+    activePersona,
+    currentHashView,
+    setCurrentHashView,
+    logout,
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    users,
+    customScopes,
+  } = useMapStore();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   /* lookup mock user details based on active persona */
@@ -74,18 +85,18 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'verifier',
       label: 'Verification Queue',
-      allowedRoles: ['Administrator'],
+      allowedRoles: ['Administrator', 'Verifier'],
       badgeText: '2',
     },
     {
       key: 'inspector',
       label: 'Physical Inspections',
-      allowedRoles: ['Administrator'],
+      allowedRoles: ['Administrator', 'Inspector'],
     },
     {
       key: 'approver',
       label: 'Approval Gate',
-      allowedRoles: ['Administrator'],
+      allowedRoles: ['Administrator', 'Approver'],
     },
     {
       key: 'capa',
@@ -99,15 +110,41 @@ export const AppSidebar: React.FC = () => {
       allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
 
     },
+    
     {
       key: 'users',
       label: 'User Management',
-      allowedRoles: ['Administrator', 'C Admin'],
+      allowedRoles: ['Administrator'],
     },
+    ...(ENABLE_ROLES_AND_PERMISSIONS
+      ? [
+          {
+            key: 'roles-permissions',
+            label: 'Roles & Permissions',
+            allowedRoles: ['Administrator'] as UserRolePersona[],
+          },
+        ]
+      : []),
   ];
 
   /* filter navigation items based on active persona rbac permissions */
-  const visibleItems = navItems.filter((item) => item.allowedRoles.includes(activePersona));
+  const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
+  const visibleItems = navItems.filter((item) => {
+    if (!item.allowedRoles.includes(activePersona)) return false;
+    if (!ENABLE_ROLES_AND_PERMISSIONS) return true;
+    const scopeKey = VIEW_TO_SCOPE[item.key];
+    if (!scopeKey) return true;
+    if (matchingUser) {
+      return getEffectiveUserScopeFlags(
+        rolePermissionDefaults,
+        userPermissionOverrides,
+        matchingUser,
+        scopeKey,
+        customScopes,
+      ).read;
+    }
+    return getRoleScopeFlags(rolePermissionDefaults, activePersona, scopeKey, customScopes).read;
+  });
 
   return (
     <aside className="map-sidebar-nav" style={{ backgroundColor: 'rgb(11, 27, 43)' }}>
@@ -158,51 +195,73 @@ export const AppSidebar: React.FC = () => {
       {/* main navigation list with dot highlights */}
       <div className="nav flex-column nav-pills px-2">
         {visibleItems.map((item) => {
-          const isActive =
-            currentHashView === item.key ||
-            (item.key === 'assurance-sets' && currentHashView === 'create-assurance-set');
-          return (
-            <button
-              key={item.key}
-              type="button"
-              className={`nav-link text-start d-flex align-items-center justify-between mb-1 py-2 px-3 ${isActive ? 'fw-semibold' : ''
-                }`}
-              style={{
-                borderRadius: '6px',
-                fontSize: '0.85rem',
-                backgroundColor: isActive ? '#0e324c' : 'transparent',
-                color: isActive ? '#ffffff' : '#cbd5e1',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease-in-out',
-              }}
-              onClick={() => setCurrentHashView(item.key)}
-            >
-              <div className="d-flex align-items-center">
-                <span
-                  style={{
-                    display: 'inline-block',
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    backgroundColor: isActive ? '#38bdf8' : '#475569',
-                    marginRight: '10px',
-                  }}
-                />
-                <span>{item.label}</span>
-              </div>
-              {item.badgeText && (
-                <span
-                  className={`badge rounded-pill ms-auto ${isActive ? 'bg-primary text-white' : 'bg-warning text-dark'
-                    }`}
-                  style={{ fontSize: '0.65rem', padding: '0.25em 0.6em' }}
-                >
-                  {item.badgeText}
-                </span>
-              )}
-            </button>
-          );
-        })}
+  const isActive =
+    currentHashView === item.key ||
+    (item.key === 'assurance-sets' && currentHashView === 'create-assurance-set');
+
+  return (
+    <React.Fragment key={item.key}>
+      {item.key === 'users' && (
+        <div
+          className="text-uppercase fw-bold px-3 mt-4 mb-2"
+          style={{
+            fontSize: '0.625rem',
+            letterSpacing: '0.08em',
+            color: '#64748b',
+          }}
+        >
+          Settings
+        </div>
+      )}
+
+      <button
+        type="button"
+        className={`nav-link text-start d-flex align-items-center justify-between mb-1 py-2 px-3 ${
+          isActive ? 'fw-semibold' : ''
+        }`}
+        style={{
+          borderRadius: '6px',
+          fontSize: '0.85rem',
+          backgroundColor: isActive ? '#0e324c' : 'transparent',
+          color: isActive ? '#ffffff' : '#cbd5e1',
+          border: 'none',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease-in-out',
+        }}
+        onClick={() => setCurrentHashView(item.key)}
+      >
+        <div className="d-flex align-items-center">
+          <span
+            style={{
+              display: 'inline-block',
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: isActive ? '#38bdf8' : '#475569',
+              marginRight: '10px',
+            }}
+          />
+
+          <span>{item.label}</span>
+        </div>
+
+        {item.badgeText && (
+          <span
+            className={`badge rounded-pill ms-auto ${
+              isActive ? 'bg-primary text-white' : 'bg-warning text-dark'
+            }`}
+            style={{
+              fontSize: '0.65rem',
+              padding: '0.25em 0.6em',
+            }}
+          >
+            {item.badgeText}
+          </span>
+        )}
+      </button>
+    </React.Fragment>
+  );
+})}
       </div>
 
       {/* signed in as bottom card section with interactive user menu */}

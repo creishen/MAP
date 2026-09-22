@@ -6,8 +6,8 @@
 
 import React, { useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
-import { UserProfile } from '../../types/user';
-import { UserRolePersona } from '../../types/audit';
+import { UserProfile, UserRolePersona } from '../../types/user';
+import { RoleName } from '../../types/permissions';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 import { EditUserModal } from '../drawers/EditUserModal';
 
@@ -33,7 +33,7 @@ interface UserTableProps {
   with what file: src/components/tables/UserTable.tsx loaded by UserManagementView.tsx.
 */
 export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab = 'ALL' }) => {
-  const { users, updateUserStatus, activePersona } = useMapStore();
+  const { users, updateUserStatus, activePersona, customRoles } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
@@ -55,8 +55,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
       u.organization.toLowerCase().includes(term) ||
       u.departmentOrScope.toLowerCase().includes(term);
 
-    const matchesRole =
-      roleFilter === 'ALL' || userHasRole(u, roleFilter as UserRolePersona);
+    const matchesRole = roleFilter === 'ALL' || userHasRole(u, roleFilter);
     const matchesType = typeFilter === 'ALL' || u.userType === typeFilter;
     const matchesStatus = statusFilter === 'ALL' || u.status === statusFilter;
 
@@ -185,6 +184,11 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
             <option value="Inspector">Inspector</option>
             <option value="Approver">Approver</option>
             <option value="C Admin">C Admin</option>
+            {customRoles.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
           </select>
 
           <select

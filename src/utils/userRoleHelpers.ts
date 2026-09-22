@@ -5,6 +5,7 @@
 */
 
 import { UserRolePersona } from '../types/audit';
+import { RoleName } from '../types/permissions';
 import { UserProfile } from '../types/user';
 
 export const OPERATIONAL_ROLE_OPTIONS: { role: UserRolePersona; label: string }[] = [
@@ -15,24 +16,43 @@ export const OPERATIONAL_ROLE_OPTIONS: { role: UserRolePersona; label: string }[
   { role: 'C Admin', label: 'C Admin (Client Admin)' },
 ];
 
+/**
+  what: builds operational role checklist options including admin-created custom roles.
+*/
+export function getOperationalRoleOptions(
+  customRoles: string[] = [],
+): { role: RoleName; label: string; isCustom?: boolean }[] {
+  const brd = OPERATIONAL_ROLE_OPTIONS.map(({ role, label }) => ({
+    role: role as RoleName,
+    label,
+    isCustom: false,
+  }));
+  const custom = customRoles.map((role) => ({
+    role: role as RoleName,
+    label: `${role} `,
+    isCustom: true,
+  }));
+  return [...brd, ...custom];
+}
+
 export function userHasRole(
   user: Pick<UserProfile, 'roles'>,
-  role: UserRolePersona,
+  role: RoleName,
 ): boolean {
   return user.roles.includes(role);
 }
 
-export function usersWithRole(users: UserProfile[], role: UserRolePersona): UserProfile[] {
+export function usersWithRole(users: UserProfile[], role: RoleName): UserProfile[] {
   return users.filter((u) => userHasRole(u, role));
 }
 
-export function formatUserRoles(roles: UserRolePersona[]): string {
+export function formatUserRoles(roles: RoleName[]): string {
   return roles.join(', ');
 }
 
-export function splitRolesForForm(roles: UserRolePersona[]): {
+export function splitRolesForForm(roles: RoleName[]): {
   isPlatformAdmin: boolean;
-  operationalRoles: UserRolePersona[];
+  operationalRoles: RoleName[];
 } {
   return {
     isPlatformAdmin: roles.includes('Administrator'),
@@ -42,8 +62,8 @@ export function splitRolesForForm(roles: UserRolePersona[]): {
 
 export function buildRolesFromForm(
   isPlatformAdmin: boolean,
-  operationalRoles: UserRolePersona[],
-): UserRolePersona[] {
+  operationalRoles: RoleName[],
+): RoleName[] {
   const roles = [...operationalRoles];
   if (isPlatformAdmin && !roles.includes('Administrator')) {
     roles.unshift('Administrator');
@@ -51,9 +71,9 @@ export function buildRolesFromForm(
   return roles;
 }
 
-export function getSegregationWarnings(roles: UserRolePersona[]): string[] {
+export function getSegregationWarnings(roles: RoleName[]): string[] {
   const warnings: string[] = [];
-  const has = (role: UserRolePersona) => roles.includes(role);
+  const has = (role: RoleName) => roles.includes(role);
 
   if (has('Verifier') && has('Approver')) {
     warnings.push(
@@ -78,7 +98,7 @@ export function getSegregationWarnings(roles: UserRolePersona[]): string[] {
 
 export function userMatchesAnyRole(
   user: Pick<UserProfile, 'roles'>,
-  roles: UserRolePersona[],
+  roles: RoleName[],
 ): boolean {
   return roles.some((role) => user.roles.includes(role));
 }

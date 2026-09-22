@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { UserType, UserProfile } from '../../types/user';
-import { UserRolePersona } from '../../types/audit';
+import { RoleName } from '../../types/permissions';
 import { UserRoleChecklist } from '../common/UserRoleChecklist';
 import { buildRolesFromForm } from '../../utils/userRoleHelpers';
 
@@ -27,7 +27,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
   const [email, setEmail] = useState('');
   const [userType, setUserType] = useState<UserType>('Third-Party');
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
-  const [operationalRoles, setOperationalRoles] = useState<UserRolePersona[]>(['Verifier']);
+  const [operationalRoles, setOperationalRoles] = useState<RoleName[]>(['Verifier']);
   const [organization, setOrganization] = useState('');
   const [departmentOrScope, setDepartmentOrScope] = useState('');
   const [errorMessage, setErrorMessage] = useState('');

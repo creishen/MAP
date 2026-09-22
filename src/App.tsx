@@ -23,6 +23,7 @@ import { InspectorWorkspaceView } from './views/InspectorWorkspaceView';
 import { InspectionChecklistView } from './views/InspectionChecklistView';
 import { AuditTrailView } from './views/AuditTrailView';
 import { UserManagementView } from './views/UserManagementView';
+import { RolesAndPermissionsView } from './views/RolesAndPermissionsView';
 import { CrewView } from './views/CrewView';
 import { CrewDetailView } from './views/CrewDetailView';
 import { CapaManagementView } from './views/CapaManagementView';
@@ -30,6 +31,8 @@ import { ApproverDashboardView } from './views/ApproverDashboardView';
 import './App.css';
 
 import { isViewAccessibleToPersona } from './utils/rbacHelpers';
+import { ENABLE_ROLES_AND_PERMISSIONS } from './config/featureFlags';
+import { VIEW_TO_SCOPE, getEffectiveUserScopeFlags, getRoleScopeFlags } from './utils/permissionHelpers';
 
 /**
   what: renders the root application shell and handles window hash change navigation or login page.
@@ -37,7 +40,17 @@ import { isViewAccessibleToPersona } from './utils/rbacHelpers';
   with what file: src/App.tsx mounted by src/main.tsx.
 */
 export const App: React.FC = () => {
-  const { currentHashView, currentEntityId, setCurrentHashView, isAuthenticated, activePersona } = useMapStore();
+  const {
+    currentHashView,
+    currentEntityId,
+    setCurrentHashView,
+    isAuthenticated,
+    activePersona,
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    users,
+    customScopes,
+  } = useMapStore();
 
   useEffect(() => {
     /* parse initial hash route on mount or enforce login view on reload */
@@ -66,10 +79,48 @@ export const App: React.FC = () => {
 
   /* enforce RBAC route restriction across all active user personas */
   useEffect(() => {
-    if (isAuthenticated && !isViewAccessibleToPersona(currentHashView, currentEntityId, activePersona)) {
+    if (!isAuthenticated) return;
+
+    let allowed = isViewAccessibleToPersona(currentHashView, currentEntityId, activePersona);
+
+    if (ENABLE_ROLES_AND_PERMISSIONS && allowed) {
+      const scopeKey = VIEW_TO_SCOPE[currentHashView];
+      if (scopeKey) {
+        const matchingUser =
+          users.find((u) => u.roles.includes(activePersona)) ?? null;
+        if (matchingUser) {
+          allowed = getEffectiveUserScopeFlags(
+            rolePermissionDefaults,
+            userPermissionOverrides,
+            matchingUser,
+            scopeKey,
+            customScopes,
+          ).read;
+        } else {
+          allowed = getRoleScopeFlags(
+            rolePermissionDefaults,
+            activePersona,
+            scopeKey,
+            customScopes,
+          ).read;
+        }
+      }
+    }
+
+    if (!allowed) {
       setCurrentHashView('dashboard');
     }
-  }, [activePersona, currentHashView, currentEntityId, isAuthenticated, setCurrentHashView]);
+  }, [
+    activePersona,
+    currentHashView,
+    currentEntityId,
+    isAuthenticated,
+    setCurrentHashView,
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    users,
+    customScopes,
+  ]);
 
   /* render login view if user is unauthenticated or on login view */
   if (!isAuthenticated || currentHashView === 'login') {
@@ -101,6 +152,12 @@ export const App: React.FC = () => {
         return <AuditTrailView />;
       case 'users':
         return <UserManagementView />;
+      case 'roles-permissions':
+        return ENABLE_ROLES_AND_PERMISSIONS ? (
+          <RolesAndPermissionsView />
+        ) : (
+          <DashboardView />
+        );
       case 'crew':
         return currentEntityId ? <CrewDetailView crewId={currentEntityId} /> : <CrewView />;
       case 'dashboard':

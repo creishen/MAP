@@ -5,6 +5,7 @@
 */
 
 import { UserRolePersona } from './audit';
+import { RoleName } from './permissions';
 
 export type UserType = 'Organization' | 'Third-Party';
 
@@ -12,10 +13,13 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  roles: UserRolePersona[];
+  /** BRD personas and any admin-created custom roles */
+  roles: RoleName[];
   userType: UserType;
   organization: string;
   departmentOrScope: string;
   status: 'Active' | 'Pending Invitation' | 'Inactive';
   lastActive: string;
 }
+
+export type { RoleName, UserRolePersona };

@@ -316,6 +316,9 @@ export function isViewAccessibleToPersona(
   persona: UserRolePersona,
 ): boolean {
   if (persona === "Administrator") return true;
+  if (view === "roles-permissions") {
+    return ["Administrator", "C Admin"].includes(persona);
+  }
   if (view === "users" && !["Administrator", "C Admin"].includes(persona)) return false;
   if (view === "crew" && !["Administrator", "Submitter"].includes(persona))
     return false;
@@ -330,9 +333,14 @@ export function isViewAccessibleToPersona(
 
   if (persona === "Submitter") {
     if (
-      ["verifier", "inspector", "inspection", "create-assurance-set", "approver"].includes(
-        view,
-      )
+      [
+        "verifier",
+        "inspector",
+        "inspection",
+        "create-assurance-set",
+        "approver",
+        "roles-permissions",
+      ].includes(view)
     ) {
       return false;
     }
@@ -348,6 +356,8 @@ export function isViewAccessibleToPersona(
         "inspection",
         "create-assurance-set",
         "approver",
+        "users",
+        "roles-permissions",
       ].includes(view)
     ) {
       return false;
@@ -367,6 +377,8 @@ export function isViewAccessibleToPersona(
         "verifier",
         "create-assurance-set",
         "approver",
+        "users",
+        "roles-permissions",
       ].includes(view)
     ) {
       return false;
@@ -386,6 +398,8 @@ export function isViewAccessibleToPersona(
         "inspector",
         "inspection",
         "create-assurance-set",
+        "users",
+        "roles-permissions",
       ].includes(view)
     ) {
       return false;

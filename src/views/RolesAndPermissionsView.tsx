@@ -1,0 +1,577 @@
+/*
+  file summary: Roles & Permissions settings with draft/save, custom roles, and custom scopes.
+  responsibilities: editable Create/Read/Update/Delete matrix per role or user with explicit Save.
+  role in system: routed at #/roles-permissions from AppSidebar.
+*/
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { useMapStore } from '../store/useMapStore';
+import { PermissionMatrix } from '../components/permissions/PermissionMatrix';
+import {
+  ALL_ROLE_PERSONAS,
+  CrudAction,
+  PERMISSION_CATEGORIES,
+  PermissionCategory,
+  RolePermissionMatrix,
+  UserPermissionOverrides,
+  emptyCrud,
+} from '../types/permissions';
+import {
+  countEnabledRights,
+  getScopeDefinition,
+  PERMISSION_SCOPE_CATALOG,
+} from '../utils/permissionDefaults';
+import {
+  applyPermissionGuards,
+  getEffectiveUserScopeFlags,
+  getRoleScopeFlags,
+  isUserOverride,
+} from '../utils/permissionHelpers';
+import { formatUserRoles } from '../utils/userRoleHelpers';
+import { filterUsersForPersona } from '../utils/rbacHelpers';
+
+type SettingsTab = 'role-defaults' | 'user-permissions';
+
+function cloneMatrix(matrix: RolePermissionMatrix): RolePermissionMatrix {
+  return JSON.parse(JSON.stringify(matrix)) as RolePermissionMatrix;
+}
+
+function cloneOverrides(overrides: UserPermissionOverrides): UserPermissionOverrides {
+  return JSON.parse(JSON.stringify(overrides)) as UserPermissionOverrides;
+}
+
+/**
+  what: Roles & Permissions settings with Save bar, Add Role, and Add Scope.
+*/
+export const RolesAndPermissionsView: React.FC = () => {
+  const {
+    activePersona,
+    users,
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    customRoles,
+    customScopes,
+    commitRolePermissionDefaults,
+    commitUserPermissionOverrides,
+    resetRolePermissionsToBrd,
+    clearUserPermissionOverrides,
+    addCustomRole,
+    addCustomScope,
+  } = useMapStore();
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>('role-defaults');
+  const [selectedRole, setSelectedRole] = useState<string>('Administrator');
+  const visibleUsers = filterUsersForPersona(users, activePersona);
+  const [selectedUserId, setSelectedUserId] = useState<string>(
+    () => visibleUsers[0]?.id ?? '',
+  );
+
+  const [draftRoleMatrix, setDraftRoleMatrix] = useState<RolePermissionMatrix>(() =>
+    cloneMatrix(rolePermissionDefaults),
+  );
+  const [draftUserOverrides, setDraftUserOverrides] = useState<UserPermissionOverrides>(() =>
+    cloneOverrides(userPermissionOverrides),
+  );
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const [showAddRole, setShowAddRole] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [showAddScope, setShowAddScope] = useState(false);
+  const [newScopeLabel, setNewScopeLabel] = useState('');
+  const [newScopeDescription, setNewScopeDescription] = useState('');
+  const [newScopeCategory, setNewScopeCategory] = useState<PermissionCategory>('Custom');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const selectedUser = useMemo(
+    () => visibleUsers.find((u) => u.id === selectedUserId) ?? visibleUsers[0],
+    [visibleUsers, selectedUserId],
+  );
+
+  const canEdit = activePersona === 'Administrator';
+  const allRoles = useMemo(
+    () => [...ALL_ROLE_PERSONAS, ...customRoles],
+    [customRoles],
+  );
+  const catalog = useMemo(
+    () => [...PERMISSION_SCOPE_CATALOG, ...customScopes],
+    [customScopes],
+  );
+
+  useEffect(() => {
+    setDraftRoleMatrix(cloneMatrix(rolePermissionDefaults));
+  }, [rolePermissionDefaults]);
+
+  useEffect(() => {
+    setDraftUserOverrides(cloneOverrides(userPermissionOverrides));
+  }, [userPermissionOverrides]);
+
+  useEffect(() => {
+    if (!allRoles.includes(selectedRole)) {
+      setSelectedRole(allRoles[0] ?? 'Administrator');
+    }
+  }, [allRoles, selectedRole]);
+
+  const roleDirty =
+    JSON.stringify(draftRoleMatrix) !== JSON.stringify(rolePermissionDefaults);
+  const userDirty =
+    JSON.stringify(draftUserOverrides) !== JSON.stringify(userPermissionOverrides);
+  const isDirty = activeTab === 'role-defaults' ? roleDirty : userDirty;
+
+  const roleRightCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const role of allRoles) {
+      counts[role] = countEnabledRights(draftRoleMatrix[role] || {});
+    }
+    return counts;
+  }, [allRoles, draftRoleMatrix]);
+
+  const isActionLocked = (scopeKey: string, action: CrudAction, role?: string): boolean => {
+    const def = getScopeDefinition(scopeKey, customScopes);
+    if (!def) return false;
+    if (action === 'create' && def.lockCreate) return true;
+    if (action === 'read' && def.lockRead) return true;
+    if (action === 'update' && def.lockUpdate) return true;
+    if (action === 'delete' && def.lockDelete) return true;
+    if (role && def.hardDeny?.[role]?.includes(action)) return true;
+    return false;
+  };
+
+  const toggleRoleDraft = (scopeKey: string, action: CrudAction, value: boolean) => {
+    setDraftRoleMatrix((prev) => {
+      const current = prev[selectedRole]?.[scopeKey] ?? emptyCrud();
+      const guarded = applyPermissionGuards(
+        scopeKey,
+        selectedRole,
+        { ...current, [action]: value },
+        customScopes,
+      );
+      return {
+        ...prev,
+        [selectedRole]: {
+          ...(prev[selectedRole] || {}),
+          [scopeKey]: guarded,
+        },
+      };
+    });
+    setSaveMessage(null);
+  };
+
+  const toggleUserDraft = (scopeKey: string, action: CrudAction, value: boolean) => {
+    if (!selectedUser) return;
+    setDraftUserOverrides((prev) => {
+      const userOverrides = { ...(prev[selectedUser.id] || {}) };
+      const scopePatch = { ...(userOverrides[scopeKey] || {}), [action]: value };
+      userOverrides[scopeKey] = scopePatch;
+      return { ...prev, [selectedUser.id]: userOverrides };
+    });
+    setSaveMessage(null);
+  };
+
+  const handleSave = () => {
+    if (!canEdit) return;
+    if (activeTab === 'role-defaults') {
+      commitRolePermissionDefaults(cloneMatrix(draftRoleMatrix));
+      setSaveMessage('Role defaults saved. Users inherit these rights unless they have overrides.');
+    } else {
+      commitUserPermissionOverrides(cloneOverrides(draftUserOverrides));
+      setSaveMessage(
+        'User overrides saved. That user keeps role defaults plus these personal grants/denies.',
+      );
+    }
+  };
+
+  const handleDiscard = () => {
+    if (activeTab === 'role-defaults') {
+      setDraftRoleMatrix(cloneMatrix(rolePermissionDefaults));
+    } else {
+      setDraftUserOverrides(cloneOverrides(userPermissionOverrides));
+    }
+    setSaveMessage('Draft changes discarded.');
+  };
+
+  const handleAddRole = () => {
+    setFormError(null);
+    const result = addCustomRole(newRoleName);
+    if (!result.success) {
+      setFormError(result.message || 'Could not create role.');
+      return;
+    }
+    setSelectedRole(newRoleName.trim());
+    setNewRoleName('');
+    setShowAddRole(false);
+    setSaveMessage(`Role "${newRoleName.trim()}" created. Set Create/Read/Update/Delete, then Save.`);
+  };
+
+  const handleAddScope = () => {
+    setFormError(null);
+    const result = addCustomScope({
+      label: newScopeLabel,
+      description: newScopeDescription,
+      category: newScopeCategory,
+    });
+    if (!result.success) {
+      setFormError(result.message || 'Could not create scope.');
+      return;
+    }
+    setNewScopeLabel('');
+    setNewScopeDescription('');
+    setNewScopeCategory('Custom');
+    setShowAddScope(false);
+    setSaveMessage(
+      `Feature "${newScopeLabel.trim()}" added. Enable rights per role, then Save role defaults.`,
+    );
+  };
+
+  return (
+    <div className="d-flex flex-column gap-4 pb-5">
+      <div className="card map-card-custom p-4 bg-white">
+        <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
+          <div>
+            <h3 className="fw-bold text-primary m-0">Roles &amp; Permissions</h3>
+            <div className="text-secondary small mt-1">
+              Edit user permissions, then click <strong>Save changes</strong>.
+            </div>
+          </div>
+          <div className="d-flex flex-wrap gap-2">
+            {canEdit && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-outline-primary btn-sm"
+                  onClick={() => {
+                    setFormError(null);
+                    setShowAddRole(true);
+                  }}
+                >
+                  + New role
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-primary btn-sm"
+                  onClick={() => {
+                    setFormError(null);
+                    setShowAddScope(true);
+                  }}
+                >
+                  + New permission
+                </button>
+              </>
+            )}
+            {canEdit && activeTab === 'role-defaults' && (
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      'Reset all role defaults to BRD values and clear custom roles, scopes, and user overrides?',
+                    )
+                  ) {
+                    resetRolePermissionsToBrd();
+                    setSaveMessage('Reset to BRD defaults.');
+                  }
+                }}
+              >
+                Reset default
+              </button>
+            )}
+          </div>
+        </div>
+
+        {!canEdit && (
+          <div className="alert alert-info py-2 small mt-3 mb-0">
+            Read-only mode. Only Platform Administrators can save changes.
+          </div>
+        )}
+        {saveMessage && (
+          <div className="alert alert-success py-2 small mt-3 mb-0">{saveMessage}</div>
+        )}
+      </div>
+
+      <ul className="nav nav-tabs px-1">
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link ${activeTab === 'role-defaults' ? 'active' : ''}`}
+            onClick={() => setActiveTab('role-defaults')}
+          >
+            Role defaults
+            {roleDirty && <span className="badge text-bg-warning ms-2">Unsaved</span>}
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link ${activeTab === 'user-permissions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('user-permissions')}
+          >
+            User permissions
+            {userDirty && <span className="badge text-bg-warning ms-2">Unsaved</span>}
+          </button>
+        </li>
+      </ul>
+
+      {activeTab === 'role-defaults' && (
+        <div className="d-flex flex-column gap-3">
+          <div className="map-perm-role-picker justify-content-center" role="tablist" aria-label="Select role">
+            {allRoles.map((role) => (
+              <button
+                key={role}
+                type="button"
+                role="tab"
+                aria-selected={selectedRole === role}
+                className={`map-perm-role-chip ${selectedRole === role ? 'is-active' : ''}`}
+                onClick={() => setSelectedRole(role)}
+              >
+                <span className="map-perm-role-chip-name">{role}</span>
+                <span className="map-perm-role-chip-count">
+                  {roleRightCounts[role] ?? 0} rights
+                  {!ALL_ROLE_PERSONAS.includes(role as (typeof ALL_ROLE_PERSONAS)[number]) &&
+                    ''}
+                </span>
+              </button>
+            ))}
+          </div>
+
+
+          <PermissionMatrix
+            catalog={catalog}
+            contextRole={selectedRole}
+            readOnly={!canEdit}
+            getFlags={(scopeKey) =>
+              getRoleScopeFlags(draftRoleMatrix, selectedRole, scopeKey, customScopes)
+            }
+            isLocked={(scopeKey, action) => isActionLocked(scopeKey, action, selectedRole)}
+            onToggle={toggleRoleDraft}
+          />
+        </div>
+      )}
+
+      {activeTab === 'user-permissions' && (
+        <div className="d-flex flex-column gap-3">
+          <div className="card map-card-custom p-3 bg-white">
+            <div className="row g-3 align-items-end">
+              <div className="col-md-6">
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="perm-user">
+                  Registered user
+                </label>
+                <select
+                  id="perm-user"
+                  className="form-select"
+                  value={selectedUser?.id ?? ''}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
+                >
+                  {visibleUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} · {formatUserRoles(u.roles)} ({u.organization})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-md-6">
+                {selectedUser && (
+                  <div className="d-flex flex-wrap align-items-center gap-2 justify-content-md-end">
+                    <span className="small text-secondary">
+                      Roles:{' '}
+                      <strong className="text-dark">{formatUserRoles(selectedUser.roles)}</strong>
+                    </span>
+                    {(draftUserOverrides[selectedUser.id] ||
+                      userPermissionOverrides[selectedUser.id]) && (
+                        <span className="badge text-bg-warning" title="Personal grants beyond role defaults">
+                          Has overrides
+                        </span>
+                      )}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        disabled={!userPermissionOverrides[selectedUser.id] && !draftUserOverrides[selectedUser.id]}
+                        onClick={() => {
+                          clearUserPermissionOverrides(selectedUser.id);
+                          setDraftUserOverrides((prev) => {
+                            const next = { ...prev };
+                            delete next[selectedUser.id];
+                            return next;
+                          });
+                          setSaveMessage(`${selectedUser.name} reset to role defaults.`);
+                        }}
+                      >
+                        Reset defaults
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="form-text mt-2">
+              <strong>Has overrides</strong> means this person has personal
+              changes on top of their role. After Save, those rights apply for that user. <br></br>
+              Orange rings = overridden
+              cells. Locked BRD rules still cannot be forced on.
+            </div>
+          </div>
+
+          {selectedUser ? (
+            <PermissionMatrix
+              catalog={catalog}
+              contextRole={selectedUser.roles[0]}
+              readOnly={!canEdit}
+              getFlags={(scopeKey) =>
+                getEffectiveUserScopeFlags(
+                  draftRoleMatrix,
+                  draftUserOverrides,
+                  selectedUser,
+                  scopeKey,
+                  customScopes,
+                )
+              }
+              isLocked={(scopeKey, action) =>
+                selectedUser.roles.some((role) => isActionLocked(scopeKey, action, role))
+              }
+              isOverride={(scopeKey, action) =>
+                isUserOverride(draftUserOverrides, selectedUser.id, scopeKey, action)
+              }
+              onToggle={toggleUserDraft}
+            />
+          ) : (
+            <div className="alert alert-secondary mb-0">No users available for this persona.</div>
+          )}
+        </div>
+      )}
+
+      {canEdit && (
+        <div className={`map-perm-save-bar ${isDirty ? 'is-dirty' : ''}`}>
+          <div className="small">
+            {isDirty ? (
+              <span className="text-warning-emphasis fw-semibold">You have unsaved changes</span>
+            ) : (
+              <span className="text-secondary">All changes saved for this session</span>
+            )}
+          </div>
+          <div className="d-flex gap-2">
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              disabled={!isDirty}
+              onClick={handleDiscard}
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={!isDirty}
+              onClick={handleSave}
+            >
+              Save changes
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showAddRole && (
+        <div className="modal d-block" style={{ background: 'rgba(15,23,42,0.45)' }} role="dialog">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Create new role</h5>
+                <button type="button" className="btn-close" aria-label="Close" onClick={() => setShowAddRole(false)} />
+              </div>
+              <div className="modal-body">
+                <label className="form-label" htmlFor="new-role-name">
+                  Role name
+                </label>
+                <input
+                  id="new-role-name"
+                  className="form-control"
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  placeholder="e.g. Fleet Coordinator"
+                />
+                <div className="form-text">
+                  Assign the role to users in User
+                  Management after you save rights.
+                </div>
+                {formError && <div className="text-danger small mt-2">{formError}</div>}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowAddRole(false)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-primary" onClick={handleAddRole}>
+                  Create role
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddScope && (
+        <div className="modal d-block" style={{ background: 'rgba(15,23,42,0.45)' }} role="dialog">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Create feature / scope</h5>
+                <button type="button" className="btn-close" aria-label="Close" onClick={() => setShowAddScope(false)} />
+              </div>
+              <div className="modal-body d-flex flex-column gap-3">
+                <div>
+                  <label className="form-label" htmlFor="new-scope-label">
+                    Feature name
+                  </label>
+                  <input
+                    id="new-scope-label"
+                    className="form-control"
+                    value={newScopeLabel}
+                    onChange={(e) => setNewScopeLabel(e.target.value)}
+                    placeholder="e.g. Charter briefing pack"
+                  />
+                </div>
+                <div>
+                  <label className="form-label" htmlFor="new-scope-desc">
+                    Description
+                  </label>
+                  <textarea
+                    id="new-scope-desc"
+                    className="form-control"
+                    rows={2}
+                    value={newScopeDescription}
+                    onChange={(e) => setNewScopeDescription(e.target.value)}
+                    placeholder="What this permission controls"
+                  />
+                </div>
+                <div>
+                  <label className="form-label" htmlFor="new-scope-cat">
+                    Category
+                  </label>
+                  <select
+                    id="new-scope-cat"
+                    className="form-select"
+                    value={newScopeCategory}
+                    onChange={(e) => setNewScopeCategory(e.target.value as PermissionCategory)}
+                  >
+                    {PERMISSION_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {formError && <div className="text-danger small">{formError}</div>}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowAddScope(false)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-primary" onClick={handleAddScope}>
+                  Create feature
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

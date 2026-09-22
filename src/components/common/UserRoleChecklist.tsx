@@ -1,38 +1,37 @@
 /* 
   file summary: reusable operational role checklist for user provisioning and edit forms.
-  responsibilities: renders platform admin toggle, operational role checkboxes, and segregation-of-duty warnings.
+  responsibilities: renders platform admin toggle, BRD + custom operational role checkboxes, and SoD warnings.
   role in system: used by AddUserModal and EditUserModal.
 */
 
 import React from 'react';
-import { useMapStore } from '../../store/useMapStore';
-import { UserRolePersona } from '../../types/audit';
+import { RoleName } from '../../types/permissions';
 import {
-  OPERATIONAL_ROLE_OPTIONS,
+  getOperationalRoleOptions,
   getSegregationWarnings,
 } from '../../utils/userRoleHelpers';
+import { useMapStore } from '../../store/useMapStore';
 
 interface UserRoleChecklistProps {
   isPlatformAdmin: boolean;
-  operationalRoles: UserRolePersona[];
+  operationalRoles: RoleName[];
   onPlatformAdminChange: (checked: boolean) => void;
-  onOperationalRolesChange: (roles: UserRolePersona[]) => void;
+  onOperationalRolesChange: (roles: RoleName[]) => void;
 }
 
+/**
+  what: renders platform admin + operational role checkboxes including Roles & Permissions custom roles.
+*/
 export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
   isPlatformAdmin,
   operationalRoles,
   onPlatformAdminChange,
   onOperationalRolesChange,
 }) => {
-  const { activePersona } = useMapStore();
-  const isCAdmin = activePersona === 'C Admin';
+  const customRoles = useMapStore((s) => s.customRoles);
+  const roleOptions = getOperationalRoleOptions(customRoles);
 
-  const visibleRoleOptions = isCAdmin
-    ? OPERATIONAL_ROLE_OPTIONS.filter((o) => o.role !== 'C Admin' && o.role !== 'Submitter')
-    : OPERATIONAL_ROLE_OPTIONS;
-
-  const toggleOperationalRole = (role: UserRolePersona) => {
+  const toggleOperationalRole = (role: RoleName) => {
     if (operationalRoles.includes(role)) {
       onOperationalRolesChange(operationalRoles.filter((r) => r !== role));
       return;
@@ -40,62 +39,69 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
     onOperationalRolesChange([...operationalRoles, role]);
   };
 
-  const previewRoles = [
-    ...(!isCAdmin && isPlatformAdmin ? (['Administrator'] as UserRolePersona[]) : []),
+  const previewRoles: RoleName[] = [
+    ...(isPlatformAdmin ? (['Administrator'] as RoleName[]) : []),
     ...operationalRoles,
   ];
   const sodWarnings = getSegregationWarnings(previewRoles);
 
   return (
     <div className="d-flex flex-column gap-3">
-      {!isCAdmin && (
-        <div>
-          <label className="form-label small fw-semibold text-secondary mb-2">
-            Platform Access
+      <div>
+        <label className="form-label small fw-semibold text-secondary mb-2">
+          Platform Access
+        </label>
+        <div className="form-check">
+          <input
+            className="form-check-input"
+            type="checkbox"
+            id="role-platform-admin"
+            checked={isPlatformAdmin}
+            onChange={(e) => onPlatformAdminChange(e.target.checked)}
+          />
+          <label className="form-check-label small text-dark fw-semibold" htmlFor="role-platform-admin">
+            Platform Administrator (full MAP governance access)
           </label>
-          <div className="form-check">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              id="role-platform-admin"
-              checked={isPlatformAdmin}
-              onChange={(e) => onPlatformAdminChange(e.target.checked)}
-            />
-            <label className="form-check-label small text-dark fw-semibold" htmlFor="role-platform-admin">
-              Platform Administrator (full MAP governance access)
-            </label>
-          </div>
         </div>
-      )}
+      </div>
 
       <div>
         <label className="form-label small fw-semibold text-secondary mb-2">
-          Operational Roles *
+          Operational Roles (UC-04) *
         </label>
         <div className="row g-2">
-          {visibleRoleOptions.map(({ role, label }) => (
+          {roleOptions.map(({ role, label, isCustom }) => (
             <div key={role} className="col-md-6">
               <div className="form-check">
                 <input
                   className="form-check-input"
                   type="checkbox"
-                  id={`role-${role.replace(/\s+/g, '-').toLowerCase()}`}
+                  id={`role-${String(role).replace(/\s+/g, '-').toLowerCase()}`}
                   checked={operationalRoles.includes(role)}
                   onChange={() => toggleOperationalRole(role)}
                 />
                 <label
                   className="form-check-label small text-dark"
-                  htmlFor={`role-${role.replace(/\s+/g, '-').toLowerCase()}`}
+                  htmlFor={`role-${String(role).replace(/\s+/g, '-').toLowerCase()}`}
                 >
                   {label}
+                  
                 </label>
               </div>
             </div>
           ))}
         </div>
-        <div className="form-text">
-          A user may hold multiple operational roles where permitted by segregation-of-duty rules.
-        </div>
+        {customRoles.length === 0 ? (
+          <div className="form-text">
+            A user may hold multiple operational roles where permitted by segregation-of-duty rules.
+            Create extra roles under <strong>Roles &amp; Permissions</strong> → New role.
+          </div>
+        ) : (
+          <div className="form-text">
+            Includes {customRoles.length} custom role{customRoles.length === 1 ? '' : 's'} from Roles
+            &amp; Permissions. Assign rights there, then select the role here.
+          </div>
+        )}
       </div>
 
       {sodWarnings.length > 0 && (

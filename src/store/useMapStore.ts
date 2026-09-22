@@ -17,6 +17,22 @@ import { UserProfile } from '../types/user';
 import { CrewMember, STCWDocumentItem } from '../types/crew';
 import { CapaItem, CapaStatus, CapaEvidenceItem } from '../types/capa';
 import { MOCK_CAPA_ITEMS } from './capaMockData';
+import {
+  CrudAction,
+  PermissionCategory,
+  PermissionScopeDefinition,
+  RolePermissionMatrix,
+  UserPermissionOverrides,
+  emptyCrud,
+  slugifyPermissionKey,
+  ALL_ROLE_PERSONAS,
+} from '../types/permissions';
+import {
+  PERMISSION_SCOPE_CATALOG,
+  buildBrdRolePermissionDefaults,
+  buildEmptyFlagsForCatalog,
+} from '../utils/permissionDefaults';
+import { applyPermissionGuards } from '../utils/permissionHelpers';
 
 export interface MapStoreState {
 
@@ -96,6 +112,34 @@ export interface MapStoreState {
   updateUser: (user: UserProfile) => void;
   updateUserStatus: (userId: string, status: UserProfile['status']) => void;
 
+  // Roles & Permissions State (BRD defaults + admin overrides)
+  rolePermissionDefaults: RolePermissionMatrix;
+  userPermissionOverrides: UserPermissionOverrides;
+  customRoles: string[];
+  customScopes: PermissionScopeDefinition[];
+  setRolePermissionFlag: (
+    role: string,
+    scopeKey: string,
+    action: CrudAction,
+    value: boolean,
+  ) => void;
+  commitRolePermissionDefaults: (matrix: RolePermissionMatrix) => void;
+  commitUserPermissionOverrides: (overrides: UserPermissionOverrides) => void;
+  resetRolePermissionsToBrd: () => void;
+  setUserPermissionOverride: (
+    userId: string,
+    scopeKey: string,
+    action: CrudAction,
+    value: boolean,
+  ) => void;
+  clearUserPermissionOverrides: (userId: string) => void;
+  addCustomRole: (roleName: string) => { success: boolean; message?: string };
+  addCustomScope: (input: {
+    label: string;
+    description: string;
+    category: PermissionCategory;
+  }) => { success: boolean; message?: string; key?: string };
+
   // Crew Directory State
   crew: CrewMember[];
   addCrewMember: (crew: CrewMember) => void;
@@ -116,6 +160,8 @@ export interface MapStoreState {
   removeCapaEvidence: (capaId: string, evidenceId: string) => void;
   flagCapaForReinspection: (capaId: string, reason?: string) => void;
 }
+
+const BRD_PERMISSION_DEFAULTS = buildBrdRolePermissionDefaults();
 
 
 export const useMapStore = create<MapStoreState>((set, get) => ({
@@ -609,6 +655,179 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set((state) => ({
       users: state.users.map((u) => (u.id === userId ? { ...u, status } : u)),
     }));
+  },
+
+  rolePermissionDefaults: BRD_PERMISSION_DEFAULTS,
+  userPermissionOverrides: {},
+  customRoles: [],
+  customScopes: [],
+  setRolePermissionFlag: (role, scopeKey, action, value) => {
+    const guarded = applyPermissionGuards(
+      scopeKey,
+      role,
+      {
+        ...(get().rolePermissionDefaults[role]?.[scopeKey] ?? emptyCrud()),
+        [action]: value,
+      },
+      get().customScopes,
+    );
+    set((state) => ({
+      rolePermissionDefaults: {
+        ...state.rolePermissionDefaults,
+        [role]: {
+          ...state.rolePermissionDefaults[role],
+          [scopeKey]: guarded,
+        },
+      },
+    }));
+    get().logAuditEvent({
+      userId: 'USR-ADMIN',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Updated Role Permission Default',
+      targetAsset: `${role} · ${scopeKey} · ${action}`,
+      justificationNotes: `Set ${action} to ${value ? 'allowed' : 'denied'} for role ${role} on scope ${scopeKey}.`,
+    });
+  },
+  commitRolePermissionDefaults: (matrix) => {
+    set({ rolePermissionDefaults: matrix });
+    get().logAuditEvent({
+      userId: 'USR-ADMIN',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Saved Role Permission Defaults',
+      targetAsset: 'Role Rights Matrix',
+      justificationNotes: 'Administrator committed role-default permission changes.',
+    });
+  },
+  commitUserPermissionOverrides: (overrides) => {
+    set({ userPermissionOverrides: overrides });
+    get().logAuditEvent({
+      userId: 'USR-ADMIN',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Saved User Permission Overrides',
+      targetAsset: 'User Rights Matrix',
+      justificationNotes: 'Administrator committed per-user permission overrides.',
+    });
+  },
+  resetRolePermissionsToBrd: () => {
+    set({
+      rolePermissionDefaults: buildBrdRolePermissionDefaults(),
+      userPermissionOverrides: {},
+      customRoles: [],
+      customScopes: [],
+    });
+    get().logAuditEvent({
+      userId: 'USR-ADMIN',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Reset Role Permissions to BRD Defaults',
+      targetAsset: 'Role Rights Matrix',
+      justificationNotes: 'Restored BRD-seeded CRUD defaults and cleared custom roles/scopes/overrides.',
+    });
+  },
+  setUserPermissionOverride: (userId, scopeKey, action, value) => {
+    set((state) => {
+      const userOverrides = { ...(state.userPermissionOverrides[userId] || {}) };
+      const scopePatch = { ...(userOverrides[scopeKey] || {}), [action]: value };
+      userOverrides[scopeKey] = scopePatch;
+      return {
+        userPermissionOverrides: {
+          ...state.userPermissionOverrides,
+          [userId]: userOverrides,
+        },
+      };
+    });
+    get().logAuditEvent({
+      userId: 'USR-ADMIN',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Updated User Permission Override',
+      targetAsset: `${userId} · ${scopeKey} · ${action}`,
+      justificationNotes: `Override ${action}=${value} for user ${userId} on scope ${scopeKey}.`,
+    });
+  },
+  clearUserPermissionOverrides: (userId) => {
+    set((state) => {
+      const next = { ...state.userPermissionOverrides };
+      delete next[userId];
+      return { userPermissionOverrides: next };
+    });
+    get().logAuditEvent({
+      userId: 'USR-ADMIN',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Cleared User Permission Overrides',
+      targetAsset: userId,
+      justificationNotes: `Restored user ${userId} to role-default permissions.`,
+    });
+  },
+  addCustomRole: (roleName) => {
+    const name = roleName.trim();
+    if (!name) return { success: false, message: 'Role name is required.' };
+    const existing = [...ALL_ROLE_PERSONAS, ...get().customRoles];
+    if (existing.some((r) => r.toLowerCase() === name.toLowerCase())) {
+      return { success: false, message: 'A role with this name already exists.' };
+    }
+    const catalog = [...PERMISSION_SCOPE_CATALOG, ...get().customScopes];
+    set((state) => ({
+      customRoles: [...state.customRoles, name],
+      rolePermissionDefaults: {
+        ...state.rolePermissionDefaults,
+        [name]: buildEmptyFlagsForCatalog(catalog),
+      },
+    }));
+    get().logAuditEvent({
+      userId: 'USR-ADMIN',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Created Custom Role',
+      targetAsset: name,
+      justificationNotes: `Added custom role "${name}" with empty CRUD defaults.`,
+    });
+    return { success: true };
+  },
+  addCustomScope: ({ label, description, category }) => {
+    const trimmed = label.trim();
+    if (!trimmed) return { success: false, message: 'Feature / scope name is required.' };
+    let key = `custom_${slugifyPermissionKey(trimmed)}`;
+    const allKeys = new Set([
+      ...PERMISSION_SCOPE_CATALOG.map((s) => s.key),
+      ...get().customScopes.map((s) => s.key),
+    ]);
+    if (allKeys.has(key)) key = `${key}_${Date.now()}`;
+
+    const def: PermissionScopeDefinition = {
+      key,
+      label: trimmed,
+      description: description.trim() || 'Custom feature scope added by administrator.',
+      category,
+      isCustom: true,
+    };
+
+    set((state) => {
+      const nextMatrix: RolePermissionMatrix = { ...state.rolePermissionDefaults };
+      for (const role of Object.keys(nextMatrix)) {
+        nextMatrix[role] = {
+          ...nextMatrix[role],
+          [key]: emptyCrud(),
+        };
+      }
+      return {
+        customScopes: [...state.customScopes, def],
+        rolePermissionDefaults: nextMatrix,
+      };
+    });
+    get().logAuditEvent({
+      userId: 'USR-ADMIN',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Created Custom Permission Scope',
+      targetAsset: key,
+      justificationNotes: `Added custom scope "${trimmed}" under ${category}.`,
+    });
+    return { success: true, key };
   },
 
   // Crew Directory
