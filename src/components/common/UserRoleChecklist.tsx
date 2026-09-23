@@ -121,10 +121,7 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
             Create extra roles under <strong>Roles &amp; Permissions</strong> → New role.
           </div>
         ) : (
-          <div className="form-text">
-            Includes {customRoles.length} custom role{customRoles.length === 1 ? '' : 's'} from Roles
-            &amp; Permissions. Assign rights there, then select the role here.
-          </div>
+          ""
         )}
       </div>
 

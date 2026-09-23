@@ -18,14 +18,11 @@ import {
 } from '../types/permissions';
 import {
   countEnabledRights,
-  getScopeDefinition,
   PERMISSION_SCOPE_CATALOG,
 } from '../utils/permissionDefaults';
 import {
-  applyPermissionGuards,
   getEffectiveUserScopeFlags,
   getRoleScopeFlags,
-  isUserOverride,
 } from '../utils/permissionHelpers';
 import { formatUserRoles } from '../utils/userRoleHelpers';
 import { filterUsersForPersona } from '../utils/rbacHelpers';
@@ -125,31 +122,14 @@ export const RolesAndPermissionsView: React.FC = () => {
     return counts;
   }, [allRoles, draftRoleMatrix]);
 
-  const isActionLocked = (scopeKey: string, action: CrudAction, role?: string): boolean => {
-    const def = getScopeDefinition(scopeKey, customScopes);
-    if (!def) return false;
-    if (action === 'create' && def.lockCreate) return true;
-    if (action === 'read' && def.lockRead) return true;
-    if (action === 'update' && def.lockUpdate) return true;
-    if (action === 'delete' && def.lockDelete) return true;
-    if (role && def.hardDeny?.[role]?.includes(action)) return true;
-    return false;
-  };
-
   const toggleRoleDraft = (scopeKey: string, action: CrudAction, value: boolean) => {
     setDraftRoleMatrix((prev) => {
       const current = prev[selectedRole]?.[scopeKey] ?? emptyCrud();
-      const guarded = applyPermissionGuards(
-        scopeKey,
-        selectedRole,
-        { ...current, [action]: value },
-        customScopes,
-      );
       return {
         ...prev,
         [selectedRole]: {
           ...(prev[selectedRole] || {}),
-          [scopeKey]: guarded,
+          [scopeKey]: { ...current, [action]: value },
         },
       };
     });
@@ -336,12 +316,10 @@ export const RolesAndPermissionsView: React.FC = () => {
 
           <PermissionMatrix
             catalog={catalog}
-            contextRole={selectedRole}
             readOnly={!canEdit}
             getFlags={(scopeKey) =>
               getRoleScopeFlags(draftRoleMatrix, selectedRole, scopeKey, customScopes)
             }
-            isLocked={(scopeKey, action) => isActionLocked(scopeKey, action, selectedRole)}
             onToggle={toggleRoleDraft}
           />
         </div>
@@ -375,12 +353,6 @@ export const RolesAndPermissionsView: React.FC = () => {
                       Roles:{' '}
                       <strong className="text-dark">{formatUserRoles(selectedUser.roles)}</strong>
                     </span>
-                    {(draftUserOverrides[selectedUser.id] ||
-                      userPermissionOverrides[selectedUser.id]) && (
-                        <span className="badge text-bg-warning" title="Personal grants beyond role defaults">
-                          Has overrides
-                        </span>
-                      )}
                     {canEdit && (
                       <button
                         type="button"
@@ -396,7 +368,7 @@ export const RolesAndPermissionsView: React.FC = () => {
                           setSaveMessage(`${selectedUser.name} reset to role defaults.`);
                         }}
                       >
-                        Reset defaults
+                        Reset to role defaults
                       </button>
                     )}
                   </div>
@@ -404,17 +376,14 @@ export const RolesAndPermissionsView: React.FC = () => {
               </div>
             </div>
             <div className="form-text mt-2">
-              <strong>Has overrides</strong> means this person has personal
-              changes on top of their role. After Save, those rights apply for that user. <br></br>
-              Orange rings = overridden
-              cells. Locked BRD rules still cannot be forced on.
+              Personal Create / View / Update / Delete for this user on top of their role defaults.
+              Save to apply. Use Reset to role defaults to clear personal changes.
             </div>
           </div>
 
           {selectedUser ? (
             <PermissionMatrix
               catalog={catalog}
-              contextRole={selectedUser.roles[0]}
               readOnly={!canEdit}
               getFlags={(scopeKey) =>
                 getEffectiveUserScopeFlags(
@@ -424,12 +393,6 @@ export const RolesAndPermissionsView: React.FC = () => {
                   scopeKey,
                   customScopes,
                 )
-              }
-              isLocked={(scopeKey, action) =>
-                selectedUser.roles.some((role) => isActionLocked(scopeKey, action, role))
-              }
-              isOverride={(scopeKey, action) =>
-                isUserOverride(draftUserOverrides, selectedUser.id, scopeKey, action)
               }
               onToggle={toggleUserDraft}
             />

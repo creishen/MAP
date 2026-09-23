@@ -149,7 +149,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
                     }}
                   />
                   <label className="form-check-input-label small text-dark fw-semibold cursor-pointer" htmlFor="userTypeThird">
-                    Third-Party Stakeholder / External Partner
+                    Third-Party Stakeholder
                   </label>
                 </div>
               </div>

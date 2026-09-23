@@ -24,7 +24,7 @@ describe('permissionDefaults and helpers', () => {
     });
   });
 
-  it('hard-denies C Admin document mutations even if flags are forced on', () => {
+  it('does not hard-deny flags — Super Admin can force any CRUD on', () => {
     const forced = applyPermissionGuards('documents', 'C Admin', {
       create: true,
       read: true,
@@ -32,10 +32,10 @@ describe('permissionDefaults and helpers', () => {
       delete: true,
     });
     expect(forced).toEqual({
-      create: false,
+      create: true,
       read: true,
-      update: false,
-      delete: false,
+      update: true,
+      delete: true,
     });
   });
 
@@ -56,7 +56,7 @@ describe('permissionDefaults and helpers', () => {
     expect(effective.update).toBe(true);
   });
 
-  it('locks audit trail update and delete for all roles', () => {
+  it('seeds audit trail as read-only by default (template), without locking toggles', () => {
     for (const role of ['Administrator', 'Submitter', 'Verifier'] as const) {
       const flags = getRoleScopeFlags(matrix, role, 'audit_trail');
       expect(flags.read).toBe(true);
