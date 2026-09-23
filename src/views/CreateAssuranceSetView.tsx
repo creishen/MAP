@@ -8,7 +8,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { AssuranceSet, AssuranceRequirement } from '../types/assurance';
 import { UserProfile } from '../types/user';
-import { getBackButtonInfo } from '../utils/rbacHelpers';
+import { filterVesselsForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 import { usersWithRole, getAssuranceAssignmentWarnings, hasBlockingAssuranceAssignmentConflict } from '../utils/userRoleHelpers';
 
 interface MasterDocItem {
@@ -43,9 +43,14 @@ interface CreateAssuranceSetViewProps {
 export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ templateSetId }) => {
   const { vessels, assuranceSets, addAssuranceSet, activePersona, setCurrentHashView, previousHashView, previousEntityId, users } = useMapStore();
 
+  const availableVessels =
+    activePersona === 'Administrator'
+      ? vessels
+      : filterVesselsForPersona(vessels, assuranceSets, activePersona);
+
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(templateSetId || '');
   const [title, setTitle] = useState('');
-  const [vesselId, setVesselId] = useState(vessels[0]?.id || '');
+  const [vesselId, setVesselId] = useState(availableVessels[0]?.id || vessels[0]?.id || '');
   const [charterer, setCharterer] = useState('Chevron Australia Pty Ltd');
   const [startDate, setStartDate] = useState('2026-11-01');
   const [endDate, setEndDate] = useState('2027-11-01');
@@ -64,18 +69,24 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     setTimeout(() => setAnimatingFields(new Set()), 750);
   }, []);
 
+  const isClientAdmin = activePersona === 'C Admin';
+
   /* master document toggles state */
   const [docToggles, setDocToggles] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     INITIAL_MASTER_DOCS.forEach((d) => {
-      initial[d.id] = d.defaultEnabled;
+      if (activePersona === 'C Admin' && d.type === 'Inspection') {
+        initial[d.id] = false;
+      } else {
+        initial[d.id] = d.defaultEnabled;
+      }
     });
     return initial;
   });
 
   /* workflow requirements state */
   const [verificationRequired, setVerificationRequired] = useState(true);
-  const [inspectionRequired, setInspectionRequired] = useState(true);
+  const [inspectionRequired, setInspectionRequired] = useState(activePersona !== 'C Admin');
   const [approvalRequired, setApprovalRequired] = useState(true);
 
   /* filter users by role */
@@ -105,7 +116,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     setTitle(`${targetSet.title} (C Admin Charter Vetting)`);
     if (targetSet.charterWindowStart) setStartDate(targetSet.charterWindowStart);
     if (targetSet.charterWindowEnd) setEndDate(targetSet.charterWindowEnd);
-    setInspectionRequired(targetSet.mandatoryInspectionRequired);
+    setInspectionRequired(isClientAdmin ? false : targetSet.mandatoryInspectionRequired);
 
     /* extract charterer from template set */
     const templateCharterer = targetSet.charterer || targetSet.initiatorOrg || 'Chevron Australia Pty Ltd';
@@ -114,6 +125,10 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     /* map master document toggles based on existing template requirements */
     const updatedToggles: Record<string, boolean> = {};
     INITIAL_MASTER_DOCS.forEach((d) => {
+      if (isClientAdmin && d.type === 'Inspection') {
+        updatedToggles[d.id] = false;
+        return;
+      }
       const isMatched = targetSet.requirements.some(
         (r) =>
           r.title.toLowerCase().includes(d.title.toLowerCase()) ||
@@ -264,9 +279,9 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
 
     const isClientAdmin = activePersona === 'C Admin';
 
-    /* construct enabled requirements list */
+    /* construct enabled requirements list (excluding physical inspection checklists for c admin) */
     const selectedRequirements: AssuranceRequirement[] = INITIAL_MASTER_DOCS
-      .filter((doc) => docToggles[doc.id])
+      .filter((doc) => docToggles[doc.id] && (!isClientAdmin || doc.type !== 'Inspection'))
       .map((doc) => ({
         id: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
         category: doc.category,
@@ -291,7 +306,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
       charterWindowEnd: endDate,
       stage: 'Initiated',
       readinessScore: 0,
-      mandatoryInspectionRequired: inspectionRequired,
+      mandatoryInspectionRequired: isClientAdmin ? false : inspectionRequired,
       inspectionCompleted: false,
       assignedSubmitter: selectedSubmitter
         ? `${selectedSubmitter.name} (${selectedSubmitter.organization})`
@@ -301,11 +316,11 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
           ? `${selectedVerifier.name} (${selectedVerifier.organization})`
           : 'Pending Admin Assignment'
         : undefined,
-      assignedInspector: inspectionRequired
-        ? selectedInspector
+      assignedInspector: (isClientAdmin || !inspectionRequired)
+        ? undefined
+        : selectedInspector
           ? `${selectedInspector.name} (${selectedInspector.organization})`
-          : 'Pending Admin Assignment'
-        : undefined,
+          : 'Pending Admin Assignment',
       assignedApprover: approvalRequired
         ? selectedApprover
           ? `${selectedApprover.name} (${selectedApprover.organization})`
@@ -431,7 +446,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                       value={vesselId}
                       onChange={(e) => setVesselId(e.target.value)}
                     >
-                      {vessels.map((v) => (
+                      {availableVessels.map((v) => (
                         <option key={v.id} value={v.id}>
                           {v.name} (IMO: {v.imoNumber} · Flag: {v.flagState})
                         </option>
@@ -680,11 +695,13 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
               <div className="card-body p-4">
                 <div className="border-top">
                   {INITIAL_MASTER_DOCS.map((doc) => {
-                    const isEnabled = !!docToggles[doc.id];
+                    const isInspectionDoc = doc.type === 'Inspection';
+                    const isRestrictedForPersona = isClientAdmin && isInspectionDoc;
+                    const isEnabled = !isRestrictedForPersona && !!docToggles[doc.id];
                     return (
                       <div
                         key={doc.id}
-                        className="py-2 border-bottom d-flex align-items-center justify-content-between gap-3"
+                        className={`py-2 border-bottom d-flex align-items-center justify-content-between gap-3 ${isRestrictedForPersona ? 'bg-light-subtle px-2 rounded opacity-75' : ''}`}
                       >
                         <div className="d-flex align-items-center gap-3">
                           <div className="form-check form-switch m-0 fs-5">
@@ -692,23 +709,35 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                               className="form-check-input style-toggle-switch cursor-pointer"
                               type="checkbox"
                               checked={isEnabled}
-                              onChange={() => handleToggleDoc(doc.id)}
+                              disabled={isRestrictedForPersona}
+                              onChange={() => !isRestrictedForPersona && handleToggleDoc(doc.id)}
                               id={`grid-toggle-${doc.id}`}
-                              style={{ width: '2.5rem', height: '1.35rem', cursor: 'pointer' }}
+                              style={{ width: '2.5rem', height: '1.35rem', cursor: isRestrictedForPersona ? 'not-allowed' : 'pointer' }}
                             />
                           </div>
                           <div>
-                            <label htmlFor={`grid-toggle-${doc.id}`} className="fw-semibold text-slate-900 mb-0 d-block cursor-pointer small">
+                            <label
+                              htmlFor={`grid-toggle-${doc.id}`}
+                              className="fw-semibold text-slate-900 mb-0 d-block small"
+                              style={{ cursor: isRestrictedForPersona ? 'not-allowed' : 'pointer' }}
+                            >
                               {doc.title}
                             </label>
                             <span className="text-muted" style={{ fontSize: '0.75rem' }}>
-                              {doc.type} · {isEnabled ? `Required in ${tempSetId}` : 'Excluded from set'}
+                              {doc.type} · {isRestrictedForPersona ? 'Restricted: Inspector checklists configured exclusively by Maritime Inspector' : isEnabled ? `Required in ${tempSetId}` : 'Excluded from set'}
                             </span>
                           </div>
                         </div>
 
                         <div>
-                          {isEnabled ? (
+                          {isRestrictedForPersona ? (
+                            <span
+                              className="badge rounded-pill fw-semibold px-2 py-1 text-secondary"
+                              style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', fontSize: '0.7rem' }}
+                            >
+                              Inspector Only
+                            </span>
+                          ) : isEnabled ? (
                             <span
                               className="badge rounded-pill fw-semibold px-3 py-1"
                               style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', fontSize: '0.75rem' }}
@@ -759,22 +788,31 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                   </div>
 
                   {/* card 2 */}
-                  <div className="p-3 border rounded-3 d-flex align-items-center gap-3 bg-white shadow-sm">
+                  <div className={`p-3 border rounded-3 d-flex align-items-center gap-3 ${isClientAdmin ? 'bg-light-subtle opacity-75' : 'bg-white shadow-sm'}`}>
                     <div className="form-check form-switch m-0 fs-5">
                       <input
-                        className="form-check-input cursor-pointer"
+                        className="form-check-input"
                         type="checkbox"
-                        checked={inspectionRequired}
-                        onChange={(e) => setInspectionRequired(e.target.checked)}
+                        checked={!isClientAdmin && inspectionRequired}
+                        disabled={isClientAdmin}
+                        onChange={(e) => !isClientAdmin && setInspectionRequired(e.target.checked)}
                         id="grid-wf-inspection"
-                        style={{ width: '2.5rem', height: '1.35rem', cursor: 'pointer' }}
+                        style={{ width: '2.5rem', height: '1.35rem', cursor: isClientAdmin ? 'not-allowed' : 'pointer' }}
                       />
                     </div>
                     <div>
-                      <label htmlFor="grid-wf-inspection" className="fw-bold text-slate-900 mb-0 d-block cursor-pointer small">
+                      <label
+                        htmlFor="grid-wf-inspection"
+                        className="fw-bold text-slate-900 mb-0 d-block small"
+                        style={{ cursor: isClientAdmin ? 'not-allowed' : 'pointer' }}
+                      >
                         Visual / vessel inspection required
                       </label>
-                      <span className="text-muted" style={{ fontSize: '0.78rem' }}>Adds an Inspector step before approval</span>
+                      <span className="text-muted" style={{ fontSize: '0.78rem' }}>
+                        {isClientAdmin
+                          ? 'Inspection checklists and surveyor assignments are managed exclusively by Maritime Inspectors and Platform Administrators'
+                          : 'Adds an Inspector step before approval'}
+                      </span>
                     </div>
                   </div>
 

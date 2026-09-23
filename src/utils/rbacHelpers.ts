@@ -21,10 +21,19 @@ export function isAssuranceSetAssignedToPersona(
 ): boolean {
   if (persona === "Administrator") return true;
   if (persona === "Submitter") {
-    return (
-      Boolean(set.assignedSubmitter) ||
-      set.initiatorRole === "Vessel Provider Admin"
+    /* submitter / vessel admin can only access assurance sets for their own organization */
+    const isAssignedToOrg = Boolean(
+      (set.assignedSubmitter &&
+        (set.assignedSubmitter.includes("M. Chen") ||
+          set.assignedSubmitter.includes("E. Ramirez") ||
+          set.assignedSubmitter.includes("Pacific Ocean") ||
+          set.assignedSubmitter.includes("Northwind Marine"))) ||
+      (set.initiatorOrg &&
+        (set.initiatorOrg.includes("Pacific Ocean") ||
+          set.initiatorOrg.includes("Northwind Marine")))
     );
+
+    return isAssignedToOrg;
   }
   if (persona === "Verifier") {
     return Boolean(set.assignedVerifier);
@@ -45,7 +54,11 @@ export function isAssuranceSetAssignedToPersona(
     return Boolean(set.assignedApprover && isVerifiedAndAwaitingApproval);
   }
   if (persona === "C Admin") {
-    return set.initiatorRole === "C Admin · Client Created";
+    return (
+      set.initiatorRole === "C Admin · Client Created" ||
+      set.initiatorOrg === "Chevron Australia Pty Ltd" ||
+      set.charterer === "Chevron Australia Pty Ltd"
+    );
   }
   return true;
 }
@@ -86,9 +99,9 @@ export function filterDocumentsForVerifierQueue(
 }
 
 /**
-  what: filters a list of vessels based on active stakeholder assignments.
-  how: matches vessel id/name against assurance sets assigned to the persona.
-  with what file: src/utils/rbacHelpers.ts used by FleetRegistryView.tsx and InspectorWorkspaceView.tsx.
+  what: filters a list of vessels based on active stakeholder assignments and ownership.
+  how: for Submitter / Vessel Admin, matches vessels owned/managed by their company or assigned in their assurance sets; for other non-admin personas, matches assigned assurance sets.
+  with what file: src/utils/rbacHelpers.ts used by FleetRegistryView.tsx, VesselTable.tsx, DashboardView.tsx, and InspectorWorkspaceView.tsx.
 */
 export function filterVesselsForPersona(
   vessels: VesselParticulars[],
@@ -96,6 +109,25 @@ export function filterVesselsForPersona(
   persona: UserRolePersona,
 ): VesselParticulars[] {
   if (persona === "Administrator") return vessels;
+
+  if (persona === "Submitter") {
+    /* vessel admin / submitter can only see their OWN vessels (owned/managed by their organization or assigned in their assurance sets) */
+    const assignedSetVesselIds = new Set(
+      assuranceSets
+        .filter((set) => isAssuranceSetAssignedToPersona(set, persona))
+        .map((set) => set.vesselId),
+    );
+
+    return vessels.filter(
+      (v) =>
+        assignedSetVesselIds.has(v.id) ||
+        v.registeredOwner.includes("Pacific Ocean Logistics") ||
+        v.registeredOwner.includes("Northwind Marine") ||
+        (v.technicalManager &&
+          (v.technicalManager.includes("Pacific") ||
+            v.technicalManager.includes("Northwind"))),
+    );
+  }
 
   const assignedSetVesselIds = new Set(
     assuranceSets
@@ -327,7 +359,7 @@ export function isViewAccessibleToPersona(
   if (view === "dashboard" || view === "audit" || view === "capa" || view === "capas") return true;
 
   if (persona === "C Admin") {
-    if (["documents", "verifier", "approver"].includes(view)) {
+    if (["documents", "verifier", "approver", "inspector", "inspection"].includes(view)) {
       return false;
     }
     return true;

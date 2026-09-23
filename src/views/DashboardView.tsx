@@ -11,7 +11,8 @@ import { formatMaritimeDate } from '../utils/formatters';
 import { VerifierWorkspaceView } from './VerifierWorkspaceView';
 import { InspectorWorkspaceView } from './InspectorWorkspaceView';
 import { ApproverDashboardView } from './ApproverDashboardView';
-import { isAssuranceSetAssignedToPersona, filterAuditTrailForPersona } from '../utils/rbacHelpers';
+import { Vessel } from '../types/vessel';
+import { isAssuranceSetAssignedToPersona, filterAuditTrailForPersona, filterVesselsForPersona } from '../utils/rbacHelpers';
 
 /**
   what: renders the executive dashboard workspace view in light theme.
@@ -34,10 +35,14 @@ export const DashboardView: React.FC = () => {
   }
 
   const visibleAuditEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
+  const visibleVessels: Vessel[] =
+    activePersona === 'Administrator'
+      ? vessels
+      : filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
-  const totalVessels = vessels.length;
+  const totalVessels = visibleVessels.length;
   const avgReadiness = Math.round(
-    vessels.reduce((acc, v) => acc + v.complianceReadinessScore, 0) / (totalVessels || 1)
+    visibleVessels.reduce((acc: number, v: Vessel) => acc + (v.complianceReadinessScore || 0), 0) / (totalVessels || 1)
   );
   const activeAssurances = assuranceSets.filter((s) => s.stage !== 'Certified').length;
 
@@ -173,7 +178,7 @@ export const DashboardView: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {vessels.map((v) => (
+                        {visibleVessels.map((v) => (
                           <tr
                             key={v.id}
                             onClick={() => setCurrentHashView('vessels', v.id)}

@@ -19,12 +19,13 @@ interface UserRoleChecklistProps {
   onOperationalRolesChange: (roles: RoleName[]) => void;
   hidePlatformAdmin?: boolean;
   hideCAdminRole?: boolean;
+  hideSubmitterRole?: boolean;
   excludedRoles?: RoleName[];
 }
 
 /**
   what: renders platform admin + operational role checkboxes including Roles & Permissions custom roles.
-  how: checks active persona and visibility props, filtering out platform access control and restricted roles such as C Admin for client administrators.
+  how: checks active persona and visibility props, filtering out platform access control, c admin role, and submitter role for client administrators.
   with what file: src/components/common/UserRoleChecklist.tsx loaded by AddUserModal.tsx and EditUserModal.tsx.
 */
 export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
@@ -34,6 +35,7 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
   onOperationalRolesChange,
   hidePlatformAdmin,
   hideCAdminRole,
+  hideSubmitterRole,
   excludedRoles = [],
 }) => {
   const { customRoles, activePersona } = useMapStore();
@@ -41,10 +43,12 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
 
   const shouldHidePlatformAdmin = hidePlatformAdmin ?? isCAdminPersona;
   const shouldHideCAdminRole = hideCAdminRole ?? isCAdminPersona;
+  const shouldHideSubmitterRole = hideSubmitterRole ?? isCAdminPersona;
 
   const effectiveExcludedRoles: RoleName[] = [
     ...excludedRoles,
     ...(shouldHideCAdminRole ? (['C Admin'] as RoleName[]) : []),
+    ...(shouldHideSubmitterRole ? (['Submitter'] as RoleName[]) : []),
   ];
 
   const roleOptions = getOperationalRoleOptions(customRoles, effectiveExcludedRoles);

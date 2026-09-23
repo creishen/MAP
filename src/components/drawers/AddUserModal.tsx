@@ -46,10 +46,10 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       return;
     }
 
-    /* sanitize roles for c admin to guarantee no platform admin or c admin role leakage */
+    /* sanitize roles for c admin to guarantee no platform admin, c admin, or submitter role leakage */
     const effectivePlatformAdmin = isCAdmin ? false : isPlatformAdmin;
     const effectiveOperationalRoles = isCAdmin
-      ? operationalRoles.filter((r) => r !== 'C Admin')
+      ? operationalRoles.filter((r) => r !== 'C Admin' && r !== 'Submitter')
       : operationalRoles;
 
     const roles = buildRolesFromForm(effectivePlatformAdmin, effectiveOperationalRoles);
@@ -194,6 +194,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
                   onOperationalRolesChange={setOperationalRoles}
                   hidePlatformAdmin={isCAdmin}
                   hideCAdminRole={isCAdmin}
+                  hideSubmitterRole={isCAdmin}
                 />
               </div>
 

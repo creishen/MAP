@@ -25,6 +25,16 @@ describe('C Admin User Management & RBAC Isolation', () => {
     expect(roleKeys).not.toContain('C Admin');
   });
 
+  it('should exclude both C Admin and Submitter roles when C Admin provisions user roles', () => {
+    const options = getOperationalRoleOptions([], ['C Admin', 'Submitter']);
+    const roleKeys = options.map((opt) => opt.role);
+    expect(roleKeys).not.toContain('Submitter');
+    expect(roleKeys).not.toContain('C Admin');
+    expect(roleKeys).toContain('Verifier');
+    expect(roleKeys).toContain('Inspector');
+    expect(roleKeys).toContain('Approver');
+  });
+
   it('should filter out Administrator users from C Admin visible directory', () => {
     const mockUsers: UserProfile[] = [
       {

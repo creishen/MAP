@@ -38,9 +38,11 @@ export const FleetRegistryView: React.FC = () => {
           <div>
             <h4 className="fw-bold text-primary m-0">Vessel Fleet Master</h4>
             <div className="text-secondary small">
-              {activeTab === 'all'
-                ? 'Comprehensive directory of vessels registered across marine providers & operators'
-                : 'Active chartered vessels under assurance monitoring, documents, and physical inspections'}
+              {activePersona === 'Submitter'
+                ? 'Directory of vessels owned and managed by your marine provider organization'
+                : activeTab === 'all'
+                  ? 'Comprehensive directory of vessels registered across marine providers & operators'
+                  : 'Active chartered vessels under assurance monitoring, documents, and physical inspections'}
             </div>
           </div>
 

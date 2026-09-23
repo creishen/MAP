@@ -9,7 +9,7 @@ import { useMapStore } from '../store/useMapStore';
 import { VesselParticulars, ClassificationSociety, VesselRegistrationStatus } from '../types/vessel';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
-import { filterAuditTrailForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
+import { filterAuditTrailForPersona, filterVesselsForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
 import { InspectionDrawer } from '../components/drawers/InspectionDrawer';
@@ -36,7 +36,11 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
     auditEvents
   } = useMapStore();
 
-  const vessel = vessels.find((v) => v.id === vesselId);
+  const isAccessible =
+    activePersona === 'Administrator' ||
+    filterVesselsForPersona(vessels, assuranceSets, activePersona).some((v) => v.id === vesselId);
+
+  const vessel = isAccessible ? vessels.find((v) => v.id === vesselId) : undefined;
 
   const [activeTab, setActiveTab] = useState<'particulars' | 'vault' | 'assurance' | 'clients' | 'crew' | 'audit' | 'inspections'>('particulars');
 
@@ -558,8 +562,28 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       });
   }, [physicalInspections, inspectionSearch, inspectionStatusFilter, inspectionSortField, inspectionSortDirection]);
 
-  if (!vessel || !formData) {
-    return <div className="p-4 text-center">Vessel not found.</div>;
+  if (!vessel || !isAccessible) {
+    return (
+      <div className="container-fluid px-4 py-5 text-center">
+        <div className="card map-card-custom p-5 mx-auto" style={{ maxWidth: '520px' }}>
+          <h4 className="fw-bold text-dark mb-2">Vessel Access Restricted</h4>
+          <p className="text-secondary small mb-4">
+            You do not have authorization to view this vessel. Vessel Admins can only view vessels owned or managed by their organization.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm mx-auto"
+            onClick={() => setCurrentHashView('vessels')}
+          >
+            &larr; Back to Fleet Registry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!formData) {
+    return <div className="p-4 text-center">Loading vessel dossier...</div>;
   }
 
   const canEditField = (field: keyof VesselParticulars): boolean => {
@@ -2043,19 +2067,21 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 </button>
               </div>
 
-              <div className="d-flex align-items-center gap-2 ms-auto">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary fw-semibold d-flex align-items-center gap-1.5"
-                  onClick={() => setShowInspectionDrawer(true)}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  New Live Inspection Checklist
-                </button>
-              </div>
+              {activePersona !== 'C Admin' && (
+                <div className="d-flex align-items-center gap-2 ms-auto">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary fw-semibold d-flex align-items-center gap-1.5"
+                    onClick={() => setShowInspectionDrawer(true)}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    New Live Inspection Checklist
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="table-responsive">

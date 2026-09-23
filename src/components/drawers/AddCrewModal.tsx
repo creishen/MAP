@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { CrewMember, STCWLayer } from '../../types/crew';
+import { filterVesselsForPersona } from '../../utils/rbacHelpers';
 
 interface AddCrewModalProps {
   isOpen: boolean;
@@ -28,7 +29,12 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
   onViewCrewDetail,
   initialVesselId,
 }) => {
-  const { vessels, addCrewMember, activePersona } = useMapStore();
+  const { vessels, assuranceSets, addCrewMember, activePersona } = useMapStore();
+  const availableVessels =
+    activePersona === 'Administrator'
+      ? vessels
+      : filterVesselsForPersona(vessels, assuranceSets, activePersona);
+
   const [fullName, setFullName] = useState('');
   const [rank, setRank] = useState('Chief Officer');
   const [nationality, setNationality] = useState('Australian');
@@ -36,7 +42,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
   const [passportNo, setPassportNo] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('1988-05-15');
   const [emergencyContact, setEmergencyContact] = useState('');
-  const [currentVesselId, setCurrentVesselId] = useState(vessels[0]?.id || '');
+  const [currentVesselId, setCurrentVesselId] = useState(availableVessels[0]?.id || '');
   const [errorMessage, setErrorMessage] = useState('');
   const [registeredCrew, setRegisteredCrew] = useState<CrewMember | null>(null);
 
@@ -371,7 +377,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
                 onChange={(e) => setCurrentVesselId(e.target.value)}
               >
                 <option value="">Ashore / Unassigned</option>
-                {vessels.map((v) => (
+                {availableVessels.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name} (IMO {v.imoNumber}) — {v.flagState}
                   </option>

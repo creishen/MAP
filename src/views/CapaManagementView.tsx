@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { useMapStore } from '../store/useMapStore';
-import { getBackButtonInfo } from '../utils/rbacHelpers';
+import { filterVesselsForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { CapaItem, CapaStatus } from '../types/capa';
 import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
@@ -26,6 +26,7 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
   const {
     capaItems,
     vessels,
+    assuranceSets,
     activePersona,
     setCurrentHashView,
     previousHashView,
@@ -33,6 +34,23 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
   } = useMapStore();
 
   const backInfo = getBackButtonInfo('inspector', 'Inspector Workspace', previousHashView, activePersona, previousEntityId);
+
+  /* filter available vessels and capas for non-admin personas */
+  const availableVessels =
+    activePersona === 'Administrator'
+      ? vessels
+      : filterVesselsForPersona(vessels, assuranceSets, activePersona);
+
+  const availableCapas =
+    activePersona === 'Administrator'
+      ? capaItems
+      : capaItems.filter((c) =>
+          availableVessels.some(
+            (v) =>
+              v.name.toLowerCase() === c.vesselName.toLowerCase() ||
+              v.id === c.vesselId
+          )
+        );
 
   /* parse vesselName prop or target CAPA ID if passed as vesselName:capaId or CAPA ID */
   const rawProp = vesselName || '';
@@ -45,7 +63,7 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
     targetCapaId = parts[1];
   } else if (rawProp.startsWith('CAPA-')) {
     targetCapaId = rawProp;
-    const foundCapa = capaItems.find((c) => c.id === rawProp);
+    const foundCapa = availableCapas.find((c) => c.id === rawProp);
     if (foundCapa) {
       targetVesselName = foundCapa.vesselName;
     }
@@ -65,10 +83,12 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
     : targetVesselName;
 
   const vesselCapas = isFleetOverview
-    ? capaItems
-    : capaItems.filter(
-      (c) => c.vesselName.toLowerCase() === selectedVesselName.toLowerCase() || c.vesselId === selectedVesselName
-    );
+    ? availableCapas
+    : availableCapas.filter(
+        (c) =>
+          c.vesselName.toLowerCase() === selectedVesselName.toLowerCase() ||
+          c.vesselId === selectedVesselName
+      );
 
   /* filter, sort & search state */
   const [activeTab, setActiveTab] = useState<'All' | CapaStatus>('All');
@@ -238,17 +258,19 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
         {/* Controls Header: Vessel Filter + Status Filter + Search + Export */}
         <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
           <div className="d-flex flex-wrap align-items-center gap-2">
-            {/* Vessel Selector Dropdown */}
+            {/* vessel selector dropdown */}
             <select
               className="form-select form-select-sm bg-white text-dark border-secondary"
               value={isFleetOverview ? 'ALL_FLEET' : selectedVesselName}
               onChange={(e) => setCurrentHashView('capas', e.target.value)}
               style={{ width: '220px' }}
             >
-              <option value="ALL_FLEET">All Fleet Vessels ({capaItems.length})</option>
-              {vessels.map((v) => {
-                const vesselCapaCount = capaItems.filter(
-                  (c) => c.vesselName.toLowerCase() === v.name.toLowerCase()
+              <option value="ALL_FLEET">
+                {activePersona === 'Submitter' ? 'All Assigned Vessels' : 'All Fleet Vessels'} ({availableCapas.length})
+              </option>
+              {availableVessels.map((v) => {
+                const vesselCapaCount = availableCapas.filter(
+                  (c) => c.vesselName.toLowerCase() === v.name.toLowerCase() || c.vesselId === v.id
                 ).length;
                 return (
                   <option key={v.id} value={v.name}>
