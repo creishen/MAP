@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { UserRolePersona } from '../../types/audit';
 import { ENABLE_ROLES_AND_PERMISSIONS } from '../../config/featureFlags';
-import { VIEW_TO_SCOPE, getEffectiveUserScopeFlags, getRoleScopeFlags } from '../../utils/permissionHelpers';
+import { VIEW_TO_SCOPE, getEffectiveUserScopeFlags, getRoleScopeFlags, isUserOverride } from '../../utils/permissionHelpers';
 
 interface NavItem {
   key: string;
@@ -70,7 +70,7 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'assurance-sets',
       label: 'Assurance Sets',
-      allowedRoles: ['Administrator', 'C Admin', 'Submitter',],
+      allowedRoles: ['Administrator', 'C Admin', 'Submitter'],
     },
     {
       key: 'documents',
@@ -85,32 +85,29 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'verifier',
       label: 'Verification Queue',
-      allowedRoles: ['Administrator'],
+      allowedRoles: ['Administrator', 'Verifier'],
       badgeText: '2',
     },
     {
       key: 'inspector',
       label: 'Physical Inspections',
-      allowedRoles: ['Administrator'],
+      allowedRoles: ['Administrator', 'Inspector'],
     },
     {
       key: 'approver',
       label: 'Approval Gate',
-      allowedRoles: ['Administrator'],
+      allowedRoles: ['Administrator', 'Approver'],
     },
     {
       key: 'capa',
       label: 'CAPA Tracker',
-      allowedRoles: ['Administrator', 'Inspector'],
-
+      allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
     },
     {
       key: 'audit',
       label: 'Audit Trail',
       allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
-
     },
-
     {
       key: 'users',
       label: 'User Management',
@@ -121,32 +118,38 @@ export const AppSidebar: React.FC = () => {
         {
           key: 'roles-permissions',
           label: 'Roles & Permissions',
-          allowedRoles: ['Administrator'] as UserRolePersona[],
+          allowedRoles: ['Administrator', 'C Admin'] as UserRolePersona[],
         },
       ]
       : []),
   ];
 
-  /* filter navigation items based on active persona rbac permissions and dynamic matrix flags */
+  /* filter navigation items using initial baseline allowedRoles overridden by matrix/user flags */
   const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
   const visibleItems = navItems.filter((item) => {
-    if (activePersona === 'Administrator') return true;
-    if (ENABLE_ROLES_AND_PERMISSIONS) {
-      const scopeKey = VIEW_TO_SCOPE[item.key];
-      if (scopeKey) {
-        const canRead = matchingUser
-          ? getEffectiveUserScopeFlags(
-              rolePermissionDefaults,
-              userPermissionOverrides,
-              matchingUser,
-              scopeKey,
-              customScopes,
-            ).read
-          : getRoleScopeFlags(rolePermissionDefaults, activePersona, scopeKey, customScopes).read;
-        return canRead;
-      }
+    const initialAllowed = item.allowedRoles.includes(activePersona);
+
+    if (!ENABLE_ROLES_AND_PERMISSIONS) return initialAllowed;
+
+    const scopeKey = VIEW_TO_SCOPE[item.key];
+    if (!scopeKey) return initialAllowed;
+
+    if (matchingUser && isUserOverride(userPermissionOverrides, matchingUser.id, scopeKey, 'read')) {
+      return getEffectiveUserScopeFlags(
+        rolePermissionDefaults,
+        userPermissionOverrides,
+        matchingUser,
+        scopeKey,
+        customScopes,
+      ).read;
     }
-    return item.allowedRoles.includes(activePersona);
+
+    const roleFlags = rolePermissionDefaults[activePersona]?.[scopeKey];
+    if (roleFlags && roleFlags.read !== undefined) {
+      return roleFlags.read;
+    }
+
+    return initialAllowed;
   });
 
   return (

@@ -252,17 +252,13 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
     case 'assurance_sets':
       if (role === 'Administrator') return fullCrud();
       if (role === 'C Admin') return createReadUpdate();
-      if (role === 'Submitter' || role === 'Verifier' || role === 'Inspector' || role === 'Approver') {
-        return readOnly();
-      }
+      if (role === 'Submitter') return readOnly();
       return emptyCrud();
 
     case 'assurance_requirements':
       if (role === 'Administrator') return fullCrud();
       if (role === 'C Admin') return createReadUpdate();
-      if (role === 'Submitter' || role === 'Verifier' || role === 'Inspector' || role === 'Approver') {
-        return readOnly();
-      }
+      if (role === 'Submitter') return readOnly();
       return emptyCrud();
 
     case 'workflow_assignment':
@@ -285,35 +281,21 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
 
     case 'crew':
       if (role === 'Administrator' || role === 'Submitter') return fullCrud();
-      if (role === 'C Admin') return readOnly();
       return emptyCrud();
 
     case 'crew_certificates':
-      if (role === 'Administrator') return fullCrud();
-      if (role === 'Submitter') return createReadUpdate();
-      if (role === 'C Admin' || role === 'Verifier' || role === 'Inspector' || role === 'Approver') {
-        return readOnly();
-      }
+      if (role === 'Administrator' || role === 'Submitter') return fullCrud();
       return emptyCrud();
 
     case 'documents':
     case 'document_vault':
-      if (role === 'Administrator') return fullCrud();
-      if (role === 'Submitter') return createReadUpdate();
-      if (role === 'C Admin' || role === 'Verifier' || role === 'Inspector' || role === 'Approver') {
-        return readOnly();
-      }
-      return emptyCrud();
-
     case 'document_linking':
       if (role === 'Administrator') return fullCrud();
       if (role === 'Submitter') return createReadUpdate();
-      if (role === 'C Admin' || role === 'Verifier' || role === 'Approver') return readOnly();
       return emptyCrud();
 
     case 'document_exceptions':
       if (role === 'Administrator' || role === 'Submitter') return readUpdate();
-      if (role === 'C Admin' || role === 'Verifier' || role === 'Approver') return readOnly();
       return emptyCrud();
 
     case 'verification_queue':

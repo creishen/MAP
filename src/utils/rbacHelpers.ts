@@ -9,7 +9,7 @@ import { AuditTrailEvent, UserRolePersona } from "../types/audit";
 import { MasterDocument } from "../types/document";
 import { VesselParticulars } from "../types/vessel";
 import { userMatchesAnyRole } from "./userRoleHelpers";
-import { VIEW_TO_SCOPE, canPerform } from "./permissionHelpers";
+import { VIEW_TO_SCOPE, canPerform, isUserOverride, getEffectiveUserScopeFlags } from "./permissionHelpers";
 import { RolePermissionMatrix, UserPermissionOverrides } from "../types/permissions";
 import { UserProfile } from "../types/user";
 
@@ -340,9 +340,9 @@ export function getBackButtonInfo(
 }
 
 /**
-  what: checks if a specific view route and optional entity ID is accessible to the specified user persona and permission matrix.
-  how: evaluates active persona and user against dynamic permission matrix scope read permissions and fallback persona rbac rules.
-  with what file: src/utils/rbacHelpers.ts used by useMapStore.ts and App.tsx.
+  what: checks if a view route is accessible to persona evaluating initial baseline rules overridden by matrix flags.
+  how: computes baseline persona route accessibility and overrides with per-user or role matrix read permission if present.
+  with what file: src/utils/rbacHelpers.ts used by App.tsx and useMapStore.ts.
 */
 export function isViewAccessibleToPersona(
   view: string,
@@ -354,124 +354,119 @@ export function isViewAccessibleToPersona(
 ): boolean {
   if (persona === "Administrator") return true;
 
-  /* if permission matrix is supplied, evaluate dynamic scope read permission */
-  if (matrix) {
-    const scopeKey = VIEW_TO_SCOPE[view];
-    if (scopeKey) {
-      const allowed = canPerform(
-        matrix,
-        overrides || {},
-        user || null,
-        persona,
-        scopeKey,
-        "read",
-      );
-      if (!allowed) return false;
-      /* check entity specific queue restrictions */
+  /* baseline initial persona route checks */
+  const getInitialAllowed = (): boolean => {
+    if (view === "roles-permissions") {
+      return ["Administrator", "C Admin"].includes(persona);
+    }
+    if (view === "users" && !["Administrator", "C Admin"].includes(persona)) return false;
+    if (view === "crew" && !["Administrator", "Submitter"].includes(persona)) return false;
+    if (view === "dashboard" || view === "audit" || view === "capa" || view === "capas") return true;
+
+    if (persona === "C Admin") {
+      if (["documents", "verifier", "approver", "inspector", "inspection"].includes(view)) {
+        return false;
+      }
+      return true;
+    }
+
+    if (persona === "Submitter") {
       if (
-        (view === "assurance-sets" && (persona === "Verifier" || persona === "Approver") && !entityId) ||
-        (view === "inspector" && persona === "Inspector" && !entityId)
+        [
+          "verifier",
+          "inspector",
+          "inspection",
+          "create-assurance-set",
+          "approver",
+          "roles-permissions",
+        ].includes(view)
       ) {
         return false;
       }
       return true;
     }
-  }
 
-  /* fallback base persona route checks when matrix is omitted */
-  if (view === "roles-permissions") {
-    return ["Administrator", "C Admin"].includes(persona);
-  }
-  if (view === "users" && !["Administrator", "C Admin"].includes(persona)) return false;
-  if (view === "crew" && !["Administrator", "Submitter"].includes(persona))
-    return false;
-  if (view === "dashboard" || view === "audit" || view === "capa" || view === "capas") return true;
-
-  if (persona === "C Admin") {
-    if (["documents", "verifier", "approver", "inspector", "inspection"].includes(view)) {
-      return false;
+    if (persona === "Verifier") {
+      if (
+        [
+          "vessels",
+          "documents",
+          "inspector",
+          "inspection",
+          "create-assurance-set",
+          "approver",
+          "users",
+          "roles-permissions",
+        ].includes(view)
+      ) {
+        return false;
+      }
+      if (view === "assurance-sets" && !entityId) {
+        return false;
+      }
+      return true;
     }
+
+    if (persona === "Inspector") {
+      if (
+        [
+          "vessels",
+          "assurance-sets",
+          "documents",
+          "verifier",
+          "create-assurance-set",
+          "approver",
+          "users",
+          "roles-permissions",
+        ].includes(view)
+      ) {
+        return false;
+      }
+      if (view === "inspector" && !entityId) {
+        return false;
+      }
+      return true;
+    }
+
+    if (persona === "Approver") {
+      if (
+        [
+          "vessels",
+          "documents",
+          "verifier",
+          "inspector",
+          "inspection",
+          "create-assurance-set",
+          "users",
+          "roles-permissions",
+        ].includes(view)
+      ) {
+        return false;
+      }
+      if (view === "assurance-sets" && !entityId) {
+        return false;
+      }
+      return true;
+    }
+
     return true;
+  };
+
+  const initialAllowed = getInitialAllowed();
+
+  /* if permission matrix is supplied, check for user override or role matrix override */
+  if (matrix) {
+    const scopeKey = VIEW_TO_SCOPE[view];
+    if (scopeKey) {
+      if (user && isUserOverride(overrides || {}, user.id, scopeKey, "read")) {
+        return getEffectiveUserScopeFlags(matrix, overrides || {}, user, scopeKey).read;
+      }
+      const roleFlags = matrix[persona]?.[scopeKey];
+      if (roleFlags && roleFlags.read !== undefined) {
+        return roleFlags.read;
+      }
+    }
   }
 
-  if (persona === "Submitter") {
-    if (
-      [
-        "verifier",
-        "inspector",
-        "inspection",
-        "create-assurance-set",
-        "approver",
-        "roles-permissions",
-      ].includes(view)
-    ) {
-      return false;
-    }
-    return true;
-  }
-
-  if (persona === "Verifier") {
-    if (
-      [
-        "vessels",
-        "documents",
-        "inspector",
-        "inspection",
-        "create-assurance-set",
-        "approver",
-        "users",
-        "roles-permissions",
-      ].includes(view)
-    ) {
-      return false;
-    }
-    if (view === "assurance-sets" && !entityId) {
-      return false;
-    }
-    return true;
-  }
-
-  if (persona === "Inspector") {
-    if (
-      [
-        "vessels",
-        "assurance-sets",
-        "documents",
-        "verifier",
-        "create-assurance-set",
-        "approver",
-        "users",
-        "roles-permissions",
-      ].includes(view)
-    ) {
-      return false;
-    }
-    if (view === "inspector" && !entityId) {
-      return false;
-    }
-    return true;
-  }
-
-  if (persona === "Approver") {
-    if (
-      [
-        "vessels",
-        "documents",
-        "verifier",
-        "inspector",
-        "inspection",
-        "create-assurance-set",
-        "users",
-        "roles-permissions",
-      ].includes(view)
-    ) {
-      return false;
-    }
-    if (view === "assurance-sets" && !entityId) {
-      return false;
-    }
-    return true;
-  }
-
-  return true;
+  return initialAllowed;
 }
