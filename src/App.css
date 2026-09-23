@@ -826,6 +826,50 @@ div.map-autofill-animate {
   background: #fffbeb;
 }
 
+.map-user-search-wrap {
+  width: 100%;
+  z-index: 30;
+}
+
+/* Parent card clips absolute dropdowns via overflow:hidden — allow overlay */
+.map-card-custom.map-user-picker-card {
+  overflow: visible;
+}
+
+.map-user-search-dropdown {
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  max-height: min(360px, 50vh);
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.map-user-search-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+}
+
+.map-user-search-option:last-child {
+  border-bottom: 0;
+}
+
+.map-user-search-option:hover,
+.map-user-search-option.is-active {
+  background: #f8fafc;
+}
+
 /* physical inspection checklist styling and responsive mobile paddings */
 .map-checklist-card {
   padding: 1.25rem !important;

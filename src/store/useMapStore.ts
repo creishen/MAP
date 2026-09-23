@@ -19,13 +19,13 @@ import { CapaItem, CapaStatus, CapaEvidenceItem } from '../types/capa';
 import { MOCK_CAPA_ITEMS } from './capaMockData';
 import {
   CrudAction,
-  PermissionCategory,
   PermissionScopeDefinition,
   RolePermissionMatrix,
   UserPermissionOverrides,
   emptyCrud,
   slugifyPermissionKey,
   ALL_ROLE_PERSONAS,
+  BUILTIN_PERMISSION_CATEGORIES,
 } from '../types/permissions';
 import {
   PERMISSION_SCOPE_CATALOG,
@@ -116,6 +116,7 @@ export interface MapStoreState {
   userPermissionOverrides: UserPermissionOverrides;
   customRoles: string[];
   customScopes: PermissionScopeDefinition[];
+  customCategories: string[];
   setRolePermissionFlag: (
     role: string,
     scopeKey: string,
@@ -133,10 +134,11 @@ export interface MapStoreState {
   ) => void;
   clearUserPermissionOverrides: (userId: string) => void;
   addCustomRole: (roleName: string) => { success: boolean; message?: string };
+  addCustomCategory: (categoryName: string) => { success: boolean; message?: string };
   addCustomScope: (input: {
     label: string;
     description: string;
-    category: PermissionCategory;
+    category: string;
   }) => { success: boolean; message?: string; key?: string };
 
   // Crew Directory State
@@ -660,6 +662,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   userPermissionOverrides: {},
   customRoles: [],
   customScopes: [],
+  customCategories: [],
   setRolePermissionFlag: (role, scopeKey, action, value) => {
     set((state) => ({
       rolePermissionDefaults: {
@@ -673,13 +676,16 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
         },
       },
     }));
+    const scopeLabel =
+      [...PERMISSION_SCOPE_CATALOG, ...get().customScopes].find((s) => s.key === scopeKey)?.label ??
+      scopeKey;
     get().logAuditEvent({
       userId: 'USR-ADMIN',
       userRole: get().activePersona,
       organization: 'Northwind Marine Pty Ltd',
       action: 'Updated Role Permission Default',
-      targetAsset: `${role} · ${scopeKey} · ${action}`,
-      justificationNotes: `Set ${action} to ${value ? 'allowed' : 'denied'} for role ${role} on scope ${scopeKey}.`,
+      targetAsset: `${role} · ${scopeLabel} · ${action}`,
+      justificationNotes: `Set ${action} to ${value ? 'allowed' : 'denied'} for role ${role} on "${scopeLabel}".`,
     });
   },
   commitRolePermissionDefaults: (matrix) => {
@@ -710,6 +716,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       userPermissionOverrides: {},
       customRoles: [],
       customScopes: [],
+      customCategories: [],
     });
     get().logAuditEvent({
       userId: 'USR-ADMIN',
@@ -717,7 +724,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       organization: 'Northwind Marine Pty Ltd',
       action: 'Reset Role Permissions to BRD Defaults',
       targetAsset: 'Role Rights Matrix',
-      justificationNotes: 'Restored BRD-seeded CRUD defaults and cleared custom roles/scopes/overrides.',
+      justificationNotes: 'Restored BRD-seeded CRUD defaults and cleared custom roles/scopes/categories/overrides.',
     });
   },
   setUserPermissionOverride: (userId, scopeKey, action, value) => {
@@ -732,13 +739,17 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
         },
       };
     });
+    const scopeLabel =
+      [...PERMISSION_SCOPE_CATALOG, ...get().customScopes].find((s) => s.key === scopeKey)?.label ??
+      scopeKey;
+    const userName = get().users.find((u) => u.id === userId)?.name ?? userId;
     get().logAuditEvent({
       userId: 'USR-ADMIN',
       userRole: get().activePersona,
       organization: 'Northwind Marine Pty Ltd',
       action: 'Updated User Permission Override',
-      targetAsset: `${userId} · ${scopeKey} · ${action}`,
-      justificationNotes: `Override ${action}=${value} for user ${userId} on scope ${scopeKey}.`,
+      targetAsset: `${userName} · ${scopeLabel} · ${action}`,
+      justificationNotes: `Override ${action}=${value} for ${userName} on "${scopeLabel}".`,
     });
   },
   clearUserPermissionOverrides: (userId) => {
@@ -781,9 +792,32 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     });
     return { success: true };
   },
+  addCustomCategory: (categoryName) => {
+    const name = categoryName.trim();
+    if (!name) return { success: false, message: 'Category name is required.' };
+    const existing = [...BUILTIN_PERMISSION_CATEGORIES, ...get().customCategories];
+    if (existing.some((c) => c.toLowerCase() === name.toLowerCase())) {
+      return { success: false, message: 'A category with this name already exists.' };
+    }
+    set((state) => ({
+      customCategories: [...state.customCategories, name],
+    }));
+    get().logAuditEvent({
+      userId: 'USR-ADMIN',
+      userRole: get().activePersona,
+      organization: 'Northwind Marine Pty Ltd',
+      action: 'Created Permission Category',
+      targetAsset: name,
+      justificationNotes: `Added permission category "${name}".`,
+    });
+    return { success: true };
+  },
   addCustomScope: ({ label, description, category }) => {
     const trimmed = label.trim();
     if (!trimmed) return { success: false, message: 'Feature / scope name is required.' };
+    const categoryName = category.trim();
+    if (!categoryName) return { success: false, message: 'Category is required.' };
+
     let key = `custom_${slugifyPermissionKey(trimmed)}`;
     const allKeys = new Set([
       ...PERMISSION_SCOPE_CATALOG.map((s) => s.key),
@@ -794,8 +828,8 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     const def: PermissionScopeDefinition = {
       key,
       label: trimmed,
-      description: description.trim() || 'Custom feature scope added by administrator.',
-      category,
+      description: description.trim() || 'Feature scope added by administrator.',
+      category: categoryName,
       isCustom: true,
     };
 
@@ -807,9 +841,14 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           [key]: emptyCrud(),
         };
       }
+      const cats = state.customCategories;
+      const known =
+        BUILTIN_PERMISSION_CATEGORIES.some((c) => c.toLowerCase() === categoryName.toLowerCase()) ||
+        cats.some((c) => c.toLowerCase() === categoryName.toLowerCase());
       return {
         customScopes: [...state.customScopes, def],
         rolePermissionDefaults: nextMatrix,
+        customCategories: known ? cats : [...cats, categoryName],
       };
     });
     get().logAuditEvent({
@@ -817,8 +856,8 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       userRole: get().activePersona,
       organization: 'Northwind Marine Pty Ltd',
       action: 'Created Custom Permission Scope',
-      targetAsset: key,
-      justificationNotes: `Added custom scope "${trimmed}" under ${category}.`,
+      targetAsset: trimmed,
+      justificationNotes: `Added permission "${trimmed}" under category "${categoryName}".`,
     });
     return { success: true, key };
   },

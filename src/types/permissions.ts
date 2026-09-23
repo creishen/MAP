@@ -46,15 +46,7 @@ export type PermissionScopeKey =
   | 'audit_trail'
   | 'compliance_export';
 
-export type PermissionCategory =
-  | 'Setup & configuration'
-  | 'Crew'
-  | 'Documents & submission'
-  | 'Verification'
-  | 'Physical inspection & CAPA'
-  | 'Approval'
-  | 'Visibility & compliance'
-  | 'Custom';
+export type PermissionCategory = string;
 
 export interface PermissionScopeDefinition {
   key: string;
@@ -93,7 +85,8 @@ export const ALL_ROLE_PERSONAS: UserRolePersona[] = [
   'Approver',
 ];
 
-export const PERMISSION_CATEGORIES: PermissionCategory[] = [
+/** Built-in module groupings (admin can add more categories at runtime) */
+export const BUILTIN_PERMISSION_CATEGORIES: string[] = [
   'Setup & configuration',
   'Crew',
   'Documents & submission',
@@ -101,8 +94,10 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
   'Physical inspection & CAPA',
   'Approval',
   'Visibility & compliance',
-  'Custom',
 ];
+
+/** @deprecated Use BUILTIN_PERMISSION_CATEGORIES — kept for older imports */
+export const PERMISSION_CATEGORIES = BUILTIN_PERMISSION_CATEGORIES;
 
 export const emptyCrud = (): CrudFlags => ({
   create: false,

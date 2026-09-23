@@ -9,9 +9,8 @@ import { useMapStore } from '../store/useMapStore';
 import { PermissionMatrix } from '../components/permissions/PermissionMatrix';
 import {
   ALL_ROLE_PERSONAS,
+  BUILTIN_PERMISSION_CATEGORIES,
   CrudAction,
-  PERMISSION_CATEGORIES,
-  PermissionCategory,
   RolePermissionMatrix,
   UserPermissionOverrides,
   emptyCrud,
@@ -26,8 +25,10 @@ import {
 } from '../utils/permissionHelpers';
 import { formatUserRoles } from '../utils/userRoleHelpers';
 import { filterUsersForPersona } from '../utils/rbacHelpers';
+import { UserProfile } from '../types/user';
 
 type SettingsTab = 'role-defaults' | 'user-permissions';
+const NEW_CATEGORY_OPTION = '__new_category__';
 
 function cloneMatrix(matrix: RolePermissionMatrix): RolePermissionMatrix {
   return JSON.parse(JSON.stringify(matrix)) as RolePermissionMatrix;
@@ -38,7 +39,7 @@ function cloneOverrides(overrides: UserPermissionOverrides): UserPermissionOverr
 }
 
 /**
-  what: Roles & Permissions settings with Save bar, Add Role, and Add Scope.
+  what: Roles & Permissions settings with Save bar, Add Role, Add Scope, and searchable user picker.
 */
 export const RolesAndPermissionsView: React.FC = () => {
   const {
@@ -48,11 +49,13 @@ export const RolesAndPermissionsView: React.FC = () => {
     userPermissionOverrides,
     customRoles,
     customScopes,
+    customCategories,
     commitRolePermissionDefaults,
     commitUserPermissionOverrides,
     resetRolePermissionsToBrd,
     clearUserPermissionOverrides,
     addCustomRole,
+    addCustomCategory,
     addCustomScope,
   } = useMapStore();
 
@@ -62,6 +65,8 @@ export const RolesAndPermissionsView: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string>(
     () => visibleUsers[0]?.id ?? '',
   );
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userPickerOpen, setUserPickerOpen] = useState(false);
 
   const [draftRoleMatrix, setDraftRoleMatrix] = useState<RolePermissionMatrix>(() =>
     cloneMatrix(rolePermissionDefaults),
@@ -76,12 +81,38 @@ export const RolesAndPermissionsView: React.FC = () => {
   const [showAddScope, setShowAddScope] = useState(false);
   const [newScopeLabel, setNewScopeLabel] = useState('');
   const [newScopeDescription, setNewScopeDescription] = useState('');
-  const [newScopeCategory, setNewScopeCategory] = useState<PermissionCategory>('Custom');
+  const [newScopeCategory, setNewScopeCategory] = useState<string>(
+    BUILTIN_PERMISSION_CATEGORIES[0],
+  );
+  const [categorySelectMode, setCategorySelectMode] = useState<'existing' | 'new'>('existing');
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   const selectedUser = useMemo(
     () => visibleUsers.find((u) => u.id === selectedUserId) ?? visibleUsers[0],
     [visibleUsers, selectedUserId],
+  );
+
+  const filteredUsers = useMemo(() => {
+    const q = userSearchQuery.trim().toLowerCase();
+    if (!q) return visibleUsers;
+    return visibleUsers.filter((u) => {
+      const haystack = [
+        u.name,
+        u.email,
+        u.organization,
+        u.departmentOrScope,
+        formatUserRoles(u.roles),
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [visibleUsers, userSearchQuery]);
+
+  const allCategories = useMemo(
+    () => [...BUILTIN_PERMISSION_CATEGORIES, ...customCategories],
+    [customCategories],
   );
 
   const canEdit = activePersona === 'Administrator';
@@ -184,22 +215,40 @@ export const RolesAndPermissionsView: React.FC = () => {
 
   const handleAddScope = () => {
     setFormError(null);
+    let category = newScopeCategory;
+    if (categorySelectMode === 'new') {
+      const catResult = addCustomCategory(newCategoryName);
+      if (!catResult.success) {
+        setFormError(catResult.message || 'Could not create category.');
+        return;
+      }
+      category = newCategoryName.trim();
+    }
     const result = addCustomScope({
       label: newScopeLabel,
       description: newScopeDescription,
-      category: newScopeCategory,
+      category,
     });
     if (!result.success) {
       setFormError(result.message || 'Could not create scope.');
       return;
     }
+    const createdLabel = newScopeLabel.trim();
     setNewScopeLabel('');
     setNewScopeDescription('');
-    setNewScopeCategory('Custom');
+    setNewScopeCategory(category);
+    setCategorySelectMode('existing');
+    setNewCategoryName('');
     setShowAddScope(false);
     setSaveMessage(
-      `Feature "${newScopeLabel.trim()}" added. Enable rights per role, then Save role defaults.`,
+      `Permission "${createdLabel}" added under "${category}". Enable rights per role, then Save.`,
     );
+  };
+
+  const selectUser = (user: UserProfile) => {
+    setSelectedUserId(user.id);
+    setUserSearchQuery('');
+    setUserPickerOpen(false);
   };
 
   return (
@@ -244,7 +293,7 @@ export const RolesAndPermissionsView: React.FC = () => {
                 onClick={() => {
                   if (
                     window.confirm(
-                      'Reset all role defaults to BRD values and clear custom roles, scopes, and user overrides?',
+                      'Reset all role defaults to BRD values and clear custom roles, scopes, categories, and user overrides?',
                     )
                   ) {
                     resetRolePermissionsToBrd();
@@ -327,26 +376,70 @@ export const RolesAndPermissionsView: React.FC = () => {
 
       {activeTab === 'user-permissions' && (
         <div className="d-flex flex-column gap-3">
-          <div className="card map-card-custom p-3 bg-white">
+          <div className="card map-card-custom map-user-picker-card p-3 bg-white">
             <div className="row g-3 align-items-end">
-              <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="perm-user">
+              <div className="col-md-7">
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="perm-user-search">
                   Registered user
                 </label>
-                <select
-                  id="perm-user"
-                  className="form-select"
-                  value={selectedUser?.id ?? ''}
-                  onChange={(e) => setSelectedUserId(e.target.value)}
-                >
-                  {visibleUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} · {formatUserRoles(u.roles)} ({u.organization})
-                    </option>
-                  ))}
-                </select>
+                <div className="map-user-search-wrap position-relative">
+                  <input
+                    id="perm-user-search"
+                    type="search"
+                    className="form-control"
+                    placeholder="Search by name, email, organization, or role…"
+                    value={
+                      userPickerOpen || userSearchQuery
+                        ? userSearchQuery
+                        : selectedUser
+                          ? `${selectedUser.name} · ${formatUserRoles(selectedUser.roles)}`
+                          : ''
+                    }
+                    onChange={(e) => {
+                      setUserSearchQuery(e.target.value);
+                      setUserPickerOpen(true);
+                    }}
+                    onFocus={() => {
+                      setUserPickerOpen(true);
+                      setUserSearchQuery('');
+                    }}
+                    onBlur={() => {
+                      window.setTimeout(() => setUserPickerOpen(false), 150);
+                    }}
+                    autoComplete="off"
+                  />
+                  {userPickerOpen && (
+                    <div className="map-user-search-dropdown" role="listbox">
+                      {filteredUsers.length === 0 ? (
+                        <div className="map-user-search-empty text-secondary small px-3 py-2">
+                          No users match “{userSearchQuery}”
+                        </div>
+                      ) : (
+                        filteredUsers.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            role="option"
+                            className={`map-user-search-option ${u.id === selectedUser?.id ? 'is-active' : ''}`}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => selectUser(u)}
+                          >
+                            <span className="fw-semibold text-dark d-block">{u.name}</span>
+                            <span className="small text-secondary">
+                              {u.email} · {formatUserRoles(u.roles)} · {u.organization}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="form-text">
+                  {visibleUsers.length} user{visibleUsers.length === 1 ? '' : 's'} available
+                  {userSearchQuery.trim() ? ` · showing ${filteredUsers.length}` : ''}
+                </div>
               </div>
-              <div className="col-md-6">
+              <div className="col-md-5">
                 {selectedUser && (
                   <div className="d-flex flex-wrap align-items-center gap-2 justify-content-md-end">
                     <span className="small text-secondary">
@@ -376,7 +469,7 @@ export const RolesAndPermissionsView: React.FC = () => {
               </div>
             </div>
             <div className="form-text mt-2">
-
+              Personal Create / View / Update / Delete for this user on top of their role defaults.
               Save to apply. Use Reset to role defaults to clear personal changes.
             </div>
           </div>
@@ -475,13 +568,23 @@ export const RolesAndPermissionsView: React.FC = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Create feature / scope</h5>
-                <button type="button" className="btn-close" aria-label="Close" onClick={() => setShowAddScope(false)} />
+                <h5 className="modal-title">Create permission</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label="Close"
+                  onClick={() => {
+                    setShowAddScope(false);
+                    setCategorySelectMode('existing');
+                    setNewCategoryName('');
+                    setFormError(null);
+                  }}
+                />
               </div>
               <div className="modal-body d-flex flex-column gap-3">
                 <div>
                   <label className="form-label" htmlFor="new-scope-label">
-                    Feature name
+                    Permission name
                   </label>
                   <input
                     id="new-scope-label"
@@ -511,24 +614,54 @@ export const RolesAndPermissionsView: React.FC = () => {
                   <select
                     id="new-scope-cat"
                     className="form-select"
-                    value={newScopeCategory}
-                    onChange={(e) => setNewScopeCategory(e.target.value as PermissionCategory)}
+                    value={categorySelectMode === 'new' ? NEW_CATEGORY_OPTION : newScopeCategory}
+                    onChange={(e) => {
+                      if (e.target.value === NEW_CATEGORY_OPTION) {
+                        setCategorySelectMode('new');
+                        return;
+                      }
+                      setCategorySelectMode('existing');
+                      setNewScopeCategory(e.target.value);
+                    }}
                   >
-                    {PERMISSION_CATEGORIES.map((cat) => (
+                    {allCategories.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
+                        {customCategories.includes(cat) ? '' : ''}
                       </option>
                     ))}
+                    <option value={NEW_CATEGORY_OPTION}>+ Create new category</option>
                   </select>
+                  {categorySelectMode === 'new' && (
+                    <input
+                      className="form-control mt-2"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="New category name (e.g. Charter operations)"
+                      aria-label="New category name"
+                    />
+                  )}
+                  <div className="form-text">
+                    Pick an existing module group or create a new category for future permissions.
+                  </div>
                 </div>
                 {formError && <div className="text-danger small">{formError}</div>}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowAddScope(false)}>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => {
+                    setShowAddScope(false);
+                    setCategorySelectMode('existing');
+                    setNewCategoryName('');
+                    setFormError(null);
+                  }}
+                >
                   Cancel
                 </button>
                 <button type="button" className="btn btn-primary" onClick={handleAddScope}>
-                  Create feature
+                  Create permission
                 </button>
               </div>
             </div>
