@@ -10,6 +10,7 @@ import { UserProfile, UserRolePersona } from '../../types/user';
 import { RoleName } from '../../types/permissions';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 import { EditUserModal } from '../drawers/EditUserModal';
+import { canPerform } from '../../utils/permissionHelpers';
 
 import { filterUsersForPersona } from '../../utils/rbacHelpers';
 import { formatUserRoles, userHasRole, userMatchesAnyRole } from '../../utils/userRoleHelpers';
@@ -33,7 +34,15 @@ interface UserTableProps {
   with what file: src/components/tables/UserTable.tsx loaded by UserManagementView.tsx.
 */
 export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab = 'ALL' }) => {
-  const { users, updateUserStatus, activePersona, customRoles } = useMapStore();
+  const {
+    users,
+    updateUserStatus,
+    activePersona,
+    customRoles,
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    customScopes,
+  } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
@@ -43,7 +52,29 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
 
-  const canManageUsers = activePersona === 'Administrator' || activePersona === 'C Admin';
+  const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
+  const canCreateUser =
+    activePersona === 'Administrator' ||
+    canPerform(
+      rolePermissionDefaults,
+      userPermissionOverrides,
+      matchingUser,
+      activePersona,
+      'users',
+      'create',
+      customScopes,
+    );
+  const canUpdateUser =
+    activePersona === 'Administrator' ||
+    canPerform(
+      rolePermissionDefaults,
+      userPermissionOverrides,
+      matchingUser,
+      activePersona,
+      'users',
+      'update',
+      customScopes,
+    );
 
   const visibleUsers = filterUsersForPersona(users, activePersona);
 
@@ -243,7 +274,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
           </div>
 
           {/* Add User Action Button */}
-          {canManageUsers && onAddUser && (
+          {canCreateUser && onAddUser && (
             <button
               type="button"
               className="btn btn-sm btn-primary"
@@ -322,7 +353,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
                     {u.lastActive}
                   </td>
                   <td className="text-end">
-                    {canManageUsers && (
+                    {canUpdateUser && (
                       <div className="d-flex align-items-center justify-content-end gap-2">
                         <button
                           type="button"

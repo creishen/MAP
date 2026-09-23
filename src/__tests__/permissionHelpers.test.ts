@@ -5,6 +5,7 @@ import {
   getEffectiveUserScopeFlags,
   getRoleScopeFlags,
 } from '../utils/permissionHelpers';
+import { isViewAccessibleToPersona } from '../utils/rbacHelpers';
 
 describe('permissionDefaults and helpers', () => {
   const matrix = buildBrdRolePermissionDefaults();
@@ -63,5 +64,20 @@ describe('permissionDefaults and helpers', () => {
       expect(flags.update).toBe(false);
       expect(flags.delete).toBe(false);
     }
+  });
+
+  it('dynamically updates view accessibility when permission matrix read access is granted or revoked', () => {
+    const customMatrix = JSON.parse(JSON.stringify(matrix));
+
+    // Default Verifier cannot access vessels
+    expect(isViewAccessibleToPersona('vessels', null, 'Verifier', customMatrix)).toBe(false);
+
+    // Grant Verifier read access on vessels
+    customMatrix['Verifier']['vessels'] = { create: false, read: true, update: false, delete: false };
+    expect(isViewAccessibleToPersona('vessels', null, 'Verifier', customMatrix)).toBe(true);
+
+    // Revoke Submitter read access on vessels
+    customMatrix['Submitter']['vessels'] = { create: false, read: false, update: false, delete: false };
+    expect(isViewAccessibleToPersona('vessels', null, 'Submitter', customMatrix)).toBe(false);
   });
 });

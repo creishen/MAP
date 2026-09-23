@@ -127,23 +127,26 @@ export const AppSidebar: React.FC = () => {
       : []),
   ];
 
-  /* filter navigation items based on active persona rbac permissions */
+  /* filter navigation items based on active persona rbac permissions and dynamic matrix flags */
   const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
   const visibleItems = navItems.filter((item) => {
-    if (!item.allowedRoles.includes(activePersona)) return false;
-    if (!ENABLE_ROLES_AND_PERMISSIONS) return true;
-    const scopeKey = VIEW_TO_SCOPE[item.key];
-    if (!scopeKey) return true;
-    if (matchingUser) {
-      return getEffectiveUserScopeFlags(
-        rolePermissionDefaults,
-        userPermissionOverrides,
-        matchingUser,
-        scopeKey,
-        customScopes,
-      ).read;
+    if (activePersona === 'Administrator') return true;
+    if (ENABLE_ROLES_AND_PERMISSIONS) {
+      const scopeKey = VIEW_TO_SCOPE[item.key];
+      if (scopeKey) {
+        const canRead = matchingUser
+          ? getEffectiveUserScopeFlags(
+              rolePermissionDefaults,
+              userPermissionOverrides,
+              matchingUser,
+              scopeKey,
+              customScopes,
+            ).read
+          : getRoleScopeFlags(rolePermissionDefaults, activePersona, scopeKey, customScopes).read;
+        return canRead;
+      }
     }
-    return getRoleScopeFlags(rolePermissionDefaults, activePersona, scopeKey, customScopes).read;
+    return item.allowedRoles.includes(activePersona);
   });
 
   return (

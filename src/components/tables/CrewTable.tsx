@@ -9,6 +9,7 @@ import { useMapStore } from '../../store/useMapStore';
 import { CrewMember, CrewComplianceStatus } from '../../types/crew';
 import { formatMaritimeDate } from '../../utils/formatters';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
+import { canPerform } from '../../utils/permissionHelpers';
 
 type CrewSortField =
   | 'id'
@@ -34,7 +35,14 @@ export const CrewTable: React.FC<CrewTableProps> = ({
   onRegisterCrew,
   onAddDocumentCrew,
 }) => {
-  const { crew, activePersona } = useMapStore();
+  const {
+    crew,
+    users,
+    activePersona,
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    customScopes,
+  } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [rankFilter, setRankFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -42,8 +50,29 @@ export const CrewTable: React.FC<CrewTableProps> = ({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
-  const canManageCrew = activePersona === 'Submitter' || activePersona === 'C Admin';
-  const canRegisterCrew = activePersona !== 'Submitter';
+  const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
+  const canRegisterCrew =
+    activePersona === 'Administrator' ||
+    canPerform(
+      rolePermissionDefaults,
+      userPermissionOverrides,
+      matchingUser,
+      activePersona,
+      'crew',
+      'create',
+      customScopes,
+    );
+  const canManageCrew =
+    activePersona === 'Administrator' ||
+    canPerform(
+      rolePermissionDefaults,
+      userPermissionOverrides,
+      matchingUser,
+      activePersona,
+      'crew',
+      'update',
+      customScopes,
+    );
 
   const filteredCrew = crew.filter((c) => {
     const term = searchTerm.toLowerCase();

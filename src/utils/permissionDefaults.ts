@@ -21,8 +21,8 @@ import {
 export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   {
     key: 'vessels',
-    label: 'Fleet / vessel registry',
-    description: 'Register vessels and view or amend particulars across identification categories.',
+    label: 'Fleet / Vessel Registry (Sidepanel Page)',
+    description: 'Controls showing/hiding the Vessels sidepanel button and fleet registry page access.',
     category: 'Setup & configuration',
   },
   {
@@ -35,8 +35,8 @@ export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   },
   {
     key: 'assurance_sets',
-    label: 'Assurance Sets',
-    description: 'Create, view, edit, or cancel assurance campaigns linked to vessels.',
+    label: 'Assurance Sets (Sidepanel Page)',
+    description: 'Controls showing/hiding the Assurance Sets sidepanel button and campaign view access.',
     category: 'Setup & configuration',
   },
   {
@@ -59,14 +59,14 @@ export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   },
   {
     key: 'users',
-    label: 'User accounts',
-    description: 'Invite, view, edit, and deactivate organization and third-party users.',
+    label: 'User Accounts (Sidepanel Page)',
+    description: 'Controls showing/hiding the User Management sidepanel button and directory page access.',
     category: 'Setup & configuration',
   },
   {
     key: 'role_rights',
-    label: 'Role rights matrix',
-    description: 'View and edit role defaults, user overrides, and custom scopes.',
+    label: 'Role Rights Matrix (Sidepanel Page)',
+    description: 'Controls showing/hiding the Roles & Permissions sidepanel button and matrix settings.',
     category: 'Setup & configuration',
   },
   {
@@ -79,8 +79,8 @@ export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   },
   {
     key: 'crew',
-    label: 'Crew directory',
-    description: 'Maintain seafarer roster: add, view, edit, and offboard crew.',
+    label: 'Crew Directory (Sidepanel Page)',
+    description: 'Controls showing/hiding the Crew Directory sidepanel button and seafarer roster page access.',
     category: 'Crew',
   },
   {
@@ -91,8 +91,8 @@ export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   },
   {
     key: 'documents',
-    label: 'Document library',
-    description: 'Upload, view, version, and delete vessel/crew certificates.',
+    label: 'Document Library (Sidepanel Page)',
+    description: 'Controls showing/hiding the Document Library sidepanel button and vault page access.',
     category: 'Documents & submission',
     hardDeny: {
       'C Admin': ['create', 'update', 'delete'],
@@ -129,8 +129,8 @@ export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   },
   {
     key: 'verification_queue',
-    label: 'Verification queue',
-    description: 'Open the verifier work queue for pending documents.',
+    label: 'Verification Queue (Sidepanel Page)',
+    description: 'Controls showing/hiding the Verification Queue sidepanel button and verifier workspace.',
     category: 'Verification',
     lockCreate: true,
     lockDelete: true,
@@ -153,8 +153,8 @@ export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   },
   {
     key: 'inspection_workspace',
-    label: 'Physical inspections workspace',
-    description: 'Access inspector workspace for assigned on-site surveys (UC-09).',
+    label: 'Physical Inspections (Sidepanel Page)',
+    description: 'Controls showing/hiding the Physical Inspections sidepanel button and inspector workspace.',
     category: 'Physical inspection & CAPA',
   },
   {
@@ -179,14 +179,14 @@ export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   },
   {
     key: 'capa',
-    label: 'CAPA tracker',
-    description: 'Create and track corrective and preventive actions.',
+    label: 'CAPA Tracker (Sidepanel Page)',
+    description: 'Controls showing/hiding the CAPA Tracker sidepanel button and corrective actions page access.',
     category: 'Physical inspection & CAPA',
   },
   {
     key: 'approval_gate',
-    label: 'Approval gate',
-    description: 'Open the approver dashboard for verified dossiers (UC-10).',
+    label: 'Approval Gate (Sidepanel Page)',
+    description: 'Controls showing/hiding the Approval Gate sidepanel button and approver dashboard page access.',
     category: 'Approval',
     lockCreate: true,
     lockDelete: true,
@@ -209,8 +209,8 @@ export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   },
   {
     key: 'dashboard',
-    label: 'Dashboard',
-    description: 'Access the role-tailored command dashboard.',
+    label: 'Dashboard (Sidepanel Page)',
+    description: 'Controls showing/hiding the Dashboard sidepanel button and command view page access.',
     category: 'Visibility & compliance',
     lockCreate: true,
     lockUpdate: true,
@@ -218,8 +218,8 @@ export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   },
   {
     key: 'audit_trail',
-    label: 'Immutable audit trail',
-    description: 'View and search tamper-evident audit logs. Update/Delete are never allowed.',
+    label: 'Immutable Audit Trail (Sidepanel Page)',
+    description: 'Controls showing/hiding the Audit Trail sidepanel button and logs view page access.',
     category: 'Visibility & compliance',
     lockCreate: true,
     lockUpdate: true,

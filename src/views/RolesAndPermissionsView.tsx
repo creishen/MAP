@@ -258,7 +258,7 @@ export const RolesAndPermissionsView: React.FC = () => {
           <div>
             <h3 className="fw-bold text-primary m-0">Roles &amp; Permissions</h3>
             <div className="text-secondary small mt-1">
-              Edit user permissions, then click <strong>Save changes</strong>.
+              Configure role defaults and per-user overrides. Toggling <strong>View</strong> rights directly controls showing or hiding sidepanel buttons and page access for each role. Click <strong>Save changes</strong> to apply updates.
             </div>
           </div>
           <div className="d-flex flex-wrap gap-2">

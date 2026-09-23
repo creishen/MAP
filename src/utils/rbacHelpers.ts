@@ -9,6 +9,9 @@ import { AuditTrailEvent, UserRolePersona } from "../types/audit";
 import { MasterDocument } from "../types/document";
 import { VesselParticulars } from "../types/vessel";
 import { userMatchesAnyRole } from "./userRoleHelpers";
+import { VIEW_TO_SCOPE, canPerform } from "./permissionHelpers";
+import { RolePermissionMatrix, UserPermissionOverrides } from "../types/permissions";
+import { UserProfile } from "../types/user";
 
 /**
   what: checks if an assurance set is assigned to the specified user persona role.
@@ -337,16 +340,45 @@ export function getBackButtonInfo(
 }
 
 /**
-  what: checks if a specific view route and optional entity ID is accessible to the specified user persona.
-  how: checks view path against persona RBAC restrictions for vessels, assurance-sets, documents, verifier, inspector, and crew screens.
+  what: checks if a specific view route and optional entity ID is accessible to the specified user persona and permission matrix.
+  how: evaluates active persona and user against dynamic permission matrix scope read permissions and fallback persona rbac rules.
   with what file: src/utils/rbacHelpers.ts used by useMapStore.ts and App.tsx.
 */
 export function isViewAccessibleToPersona(
   view: string,
   entityId: string | undefined | null,
   persona: UserRolePersona,
+  matrix?: RolePermissionMatrix,
+  overrides?: UserPermissionOverrides,
+  user?: Pick<UserProfile, 'id' | 'roles'> | null,
 ): boolean {
   if (persona === "Administrator") return true;
+
+  /* if permission matrix is supplied, evaluate dynamic scope read permission */
+  if (matrix) {
+    const scopeKey = VIEW_TO_SCOPE[view];
+    if (scopeKey) {
+      const allowed = canPerform(
+        matrix,
+        overrides || {},
+        user || null,
+        persona,
+        scopeKey,
+        "read",
+      );
+      if (!allowed) return false;
+      /* check entity specific queue restrictions */
+      if (
+        (view === "assurance-sets" && (persona === "Verifier" || persona === "Approver") && !entityId) ||
+        (view === "inspector" && persona === "Inspector" && !entityId)
+      ) {
+        return false;
+      }
+      return true;
+    }
+  }
+
+  /* fallback base persona route checks when matrix is omitted */
   if (view === "roles-permissions") {
     return ["Administrator", "C Admin"].includes(persona);
   }

@@ -12,6 +12,7 @@ import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 import { getDaysUntilExpiry } from '../../utils/formatters';
 
 import { filterVesselsForPersona } from '../../utils/rbacHelpers';
+import { canPerform } from '../../utils/permissionHelpers';
 
 type VesselSortField =
   | 'name'
@@ -41,7 +42,16 @@ interface VesselTableProps {
   with what file: src/components/tables/VesselTable.tsx loaded by FleetRegistryView.tsx.
 */
 export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegisterVessel, filterMode }) => {
-  const { vessels, assuranceSets, setActiveVesselId, activePersona } = useMapStore();
+  const {
+    vessels,
+    assuranceSets,
+    setActiveVesselId,
+    activePersona,
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    customScopes,
+    users,
+  } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [flagFilter, setFlagFilter] = useState('ALL');
   const [classFilter, setClassFilter] = useState('ALL');
@@ -50,8 +60,18 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
-  // BR-4: Client Admin (C Admin) or Inspector cannot register new vessels
-  const canRegister = activePersona === 'Administrator';
+  const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
+  const canRegister =
+    activePersona === 'Administrator' ||
+    canPerform(
+      rolePermissionDefaults,
+      userPermissionOverrides,
+      matchingUser,
+      activePersona,
+      'vessels',
+      'create',
+      customScopes,
+    );
 
   const baseVessels =
     activePersona === 'Submitter'
