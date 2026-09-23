@@ -376,7 +376,7 @@ export const RolesAndPermissionsView: React.FC = () => {
               </div>
             </div>
             <div className="form-text mt-2">
-              Personal Create / View / Update / Delete for this user on top of their role defaults.
+
               Save to apply. Use Reset to role defaults to clear personal changes.
             </div>
           </div>
