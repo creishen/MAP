@@ -1,6 +1,6 @@
 /*
   file summary: helpers to resolve effective CRUD permissions from role defaults and user overrides.
-  responsibilities: merges role matrix with per-user overrides, applies hard BRD denies and scope locks.
+  responsibilities: merges role matrix with per-user overrides; applies BRD lock/hardDeny guards on catalog scopes.
   role in system: consumed by RolesAndPermissionsView, AppSidebar, and rbacHelpers.
 */
 
@@ -15,6 +15,7 @@ import {
   UserPermissionOverrides,
   emptyCrud,
 } from '../types/permissions';
+import { getScopeDefinition } from './permissionDefaults';
 
 /**
   what: merges base CRUD flags with a partial override patch.
@@ -30,15 +31,30 @@ export function mergeCrudFlags(base: CrudFlags, patch?: Partial<CrudFlags>): Cru
 }
 
 /**
-  what: formerly applied BRD lock/hardDeny rules; now a pass-through so Super Admin controls all flags.
+  what: applies catalog lock flags and hardDeny rules for a role onto CRUD flags.
 */
 export function applyPermissionGuards(
-  _scopeKey: string,
-  _role: string,
+  scopeKey: string,
+  role: string,
   flags: CrudFlags,
-  _extraScopes: PermissionScopeDefinition[] = [],
+  extraScopes: PermissionScopeDefinition[] = [],
 ): CrudFlags {
-  return { ...flags };
+  const def = getScopeDefinition(scopeKey, extraScopes);
+  const next = { ...flags };
+
+  if (def?.lockCreate) next.create = false;
+  if (def?.lockRead) next.read = false;
+  if (def?.lockUpdate) next.update = false;
+  if (def?.lockDelete) next.delete = false;
+
+  const denied = def?.hardDeny?.[role];
+  if (denied) {
+    for (const action of denied) {
+      next[action] = false;
+    }
+  }
+
+  return next;
 }
 
 /**
@@ -63,9 +79,10 @@ export function getRoleScopeFlags(
   matrix: RolePermissionMatrix,
   role: string,
   scopeKey: string,
-  _extraScopes: PermissionScopeDefinition[] = [],
+  extraScopes: PermissionScopeDefinition[] = [],
 ): CrudFlags {
-  return matrix[role]?.[scopeKey] ?? emptyCrud();
+  const raw = matrix[role]?.[scopeKey] ?? emptyCrud();
+  return applyPermissionGuards(scopeKey, role, raw, extraScopes);
 }
 
 /**
@@ -84,7 +101,13 @@ export function getEffectiveUserScopeFlags(
     user.roles.map((role) => getRoleScopeFlags(matrix, role, scopeKey, extraScopes)),
   );
   const patch = overrides[user.id]?.[scopeKey];
-  return mergeCrudFlags(fromRoles, patch);
+  const merged = mergeCrudFlags(fromRoles, patch);
+
+  let guarded = merged;
+  for (const role of user.roles) {
+    guarded = applyPermissionGuards(scopeKey, role, guarded, extraScopes);
+  }
+  return guarded;
 }
 
 /**

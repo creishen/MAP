@@ -32,6 +32,7 @@ import {
   buildBrdRolePermissionDefaults,
   buildEmptyFlagsForCatalog,
 } from '../utils/permissionDefaults';
+import { applyPermissionGuards } from '../utils/permissionHelpers';
 
 export interface MapStoreState {
 
@@ -670,15 +671,21 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   customScopes: [],
   customCategories: [],
   setRolePermissionFlag: (role, scopeKey, action, value) => {
+    const guarded = applyPermissionGuards(
+      scopeKey,
+      role,
+      {
+        ...(get().rolePermissionDefaults[role]?.[scopeKey] ?? emptyCrud()),
+        [action]: value,
+      },
+      get().customScopes,
+    );
     set((state) => ({
       rolePermissionDefaults: {
         ...state.rolePermissionDefaults,
         [role]: {
           ...state.rolePermissionDefaults[role],
-          [scopeKey]: {
-            ...(state.rolePermissionDefaults[role]?.[scopeKey] ?? emptyCrud()),
-            [action]: value,
-          },
+          [scopeKey]: guarded,
         },
       },
     }));

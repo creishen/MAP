@@ -17,9 +17,11 @@ import {
 } from '../types/permissions';
 import {
   countEnabledRights,
+  getScopeDefinition,
   PERMISSION_SCOPE_CATALOG,
 } from '../utils/permissionDefaults';
 import {
+  applyPermissionGuards,
   getEffectiveUserScopeFlags,
   getRoleScopeFlags,
 } from '../utils/permissionHelpers';
@@ -153,14 +155,31 @@ export const RolesAndPermissionsView: React.FC = () => {
     return counts;
   }, [allRoles, draftRoleMatrix]);
 
+  const isActionLocked = (scopeKey: string, action: CrudAction, role?: string): boolean => {
+    const def = getScopeDefinition(scopeKey, customScopes);
+    if (!def) return false;
+    if (action === 'create' && def.lockCreate) return true;
+    if (action === 'read' && def.lockRead) return true;
+    if (action === 'update' && def.lockUpdate) return true;
+    if (action === 'delete' && def.lockDelete) return true;
+    if (role && def.hardDeny?.[role]?.includes(action)) return true;
+    return false;
+  };
+
   const toggleRoleDraft = (scopeKey: string, action: CrudAction, value: boolean) => {
     setDraftRoleMatrix((prev) => {
       const current = prev[selectedRole]?.[scopeKey] ?? emptyCrud();
+      const guarded = applyPermissionGuards(
+        scopeKey,
+        selectedRole,
+        { ...current, [action]: value },
+        customScopes,
+      );
       return {
         ...prev,
         [selectedRole]: {
           ...(prev[selectedRole] || {}),
-          [scopeKey]: { ...current, [action]: value },
+          [scopeKey]: guarded,
         },
       };
     });
@@ -365,10 +384,12 @@ export const RolesAndPermissionsView: React.FC = () => {
 
           <PermissionMatrix
             catalog={catalog}
+            contextRole={selectedRole}
             readOnly={!canEdit}
             getFlags={(scopeKey) =>
               getRoleScopeFlags(draftRoleMatrix, selectedRole, scopeKey, customScopes)
             }
+            isLocked={(scopeKey, action) => isActionLocked(scopeKey, action, selectedRole)}
             onToggle={toggleRoleDraft}
           />
         </div>
@@ -477,6 +498,7 @@ export const RolesAndPermissionsView: React.FC = () => {
           {selectedUser ? (
             <PermissionMatrix
               catalog={catalog}
+              contextRole={selectedUser.roles[0]}
               readOnly={!canEdit}
               getFlags={(scopeKey) =>
                 getEffectiveUserScopeFlags(
@@ -486,6 +508,9 @@ export const RolesAndPermissionsView: React.FC = () => {
                   scopeKey,
                   customScopes,
                 )
+              }
+              isLocked={(scopeKey, action) =>
+                selectedUser.roles.some((role) => isActionLocked(scopeKey, action, role))
               }
               onToggle={toggleUserDraft}
             />

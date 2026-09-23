@@ -1,6 +1,6 @@
 /*
   file summary: clean single-subject permission table (Feature | Create | Read | Update | Delete).
-  responsibilities: renders categorized scopes with circular checkboxes; all verbs editable by Super Admin.
+  responsibilities: renders categorized scopes with circular checkboxes; BRD locks disable non-applicable verbs.
   role in system: used by RolesAndPermissionsView for one selected role or one selected user.
 */
 
@@ -14,8 +14,10 @@ import {
 
 interface PermissionMatrixProps {
   catalog: PermissionScopeDefinition[];
+  contextRole?: string;
   getFlags: (scopeKey: string) => CrudFlags;
   onToggle: (scopeKey: string, action: CrudAction, value: boolean) => void;
+  isLocked?: (scopeKey: string, action: CrudAction) => boolean;
   readOnly?: boolean;
 }
 
@@ -26,13 +28,45 @@ const ACTION_LABEL: Record<CrudAction, string> = {
   delete: 'Delete',
 };
 
+function lockReason(
+  scopeKey: string,
+  action: CrudAction,
+  catalog: PermissionScopeDefinition[],
+  role?: string,
+): string | null {
+  const def = catalog.find((s) => s.key === scopeKey);
+  if (!def) return null;
+
+  if (action === 'create' && def.lockCreate) {
+    return 'Create is not applicable for this scope (BRD workflow rule).';
+  }
+  if (action === 'read' && def.lockRead) {
+    return 'View is locked for this scope.';
+  }
+  if (action === 'update' && def.lockUpdate) {
+    return 'Update is locked — BRD immutable or view-only rule.';
+  }
+  if (action === 'delete' && def.lockDelete) {
+    return 'Delete is locked — BRD immutable or N/A for this workflow.';
+  }
+  if (role && def.hardDeny?.[role]?.includes(action)) {
+    if (role === 'C Admin') {
+      return 'Locked: C Admin cannot mutate Vessel Provider documents (UC-03 / UC-11).';
+    }
+    return `Locked by BRD hard deny for ${role}.`;
+  }
+  return null;
+}
+
 /**
-  what: renders a readable Feature × Create/Read/Update/Delete table for one role or user.
+  what: renders a readable Feature × Create/View/Update/Delete table for one role or user.
 */
 export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
   catalog,
+  contextRole,
   getFlags,
   onToggle,
+  isLocked,
   readOnly = false,
 }) => {
   const categories = Array.from(new Set(catalog.map((s) => s.category)));
@@ -68,40 +102,50 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({
                         <div className="map-perm-flat-label">{scope.label}</div>
                         <div className="map-perm-flat-desc">{scope.description}</div>
                       </td>
-                      {CRUD_ACTIONS.map((action) => (
-                        <td key={action} className="map-perm-flat-action">
-                          <button
-                            type="button"
-                            className={[
-                              'map-perm-circle',
-                              flags[action] ? 'is-checked' : '',
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
-                            disabled={readOnly}
-                            title={`${scope.label}: ${ACTION_LABEL[action]}`}
-                            aria-label={`${scope.label} ${ACTION_LABEL[action]}`}
-                            aria-pressed={flags[action]}
-                            onClick={() => {
-                              if (readOnly) return;
-                              onToggle(scope.key, action, !flags[action]);
-                            }}
-                          >
-                            {flags[action] && (
-                              <svg
-                                className="map-perm-circle-check"
-                                viewBox="0 0 16 16"
-                                aria-hidden="true"
-                              >
-                                <path
-                                  fill="currentColor"
-                                  d="M6.2 11.4 2.8 8l1.1-1.1 2.3 2.3 5-5L12.3 5.3z"
-                                />
-                              </svg>
-                            )}
-                          </button>
-                        </td>
-                      ))}
+                      {CRUD_ACTIONS.map((action) => {
+                        const locked = isLocked?.(scope.key, action) ?? false;
+                        const reason = locked
+                          ? lockReason(scope.key, action, catalog, contextRole)
+                          : null;
+                        const title =
+                          reason ?? `${scope.label}: ${ACTION_LABEL[action]}`;
+
+                        return (
+                          <td key={action} className="map-perm-flat-action">
+                            <button
+                              type="button"
+                              className={[
+                                'map-perm-circle',
+                                flags[action] ? 'is-checked' : '',
+                                locked ? 'is-locked' : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                              disabled={readOnly || locked}
+                              title={title}
+                              aria-label={`${scope.label} ${ACTION_LABEL[action]}${locked ? ' (locked)' : ''}`}
+                              aria-pressed={flags[action]}
+                              onClick={() => {
+                                if (readOnly || locked) return;
+                                onToggle(scope.key, action, !flags[action]);
+                              }}
+                            >
+                              {flags[action] && (
+                                <svg
+                                  className="map-perm-circle-check"
+                                  viewBox="0 0 16 16"
+                                  aria-hidden="true"
+                                >
+                                  <path
+                                    fill="currentColor"
+                                    d="M6.2 11.4 2.8 8l1.1-1.1 2.3 2.3 5-5L12.3 5.3z"
+                                  />
+                                </svg>
+                              )}
+                            </button>
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })}
