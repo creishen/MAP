@@ -80,4 +80,27 @@ describe('permissionDefaults and helpers', () => {
     customMatrix['Submitter']['vessels'] = { create: false, read: false, update: false, delete: false };
     expect(isViewAccessibleToPersona('vessels', null, 'Submitter', customMatrix)).toBe(false);
   });
+
+  it('disables physical inspections for Approver in default permission matrix', () => {
+    const approverInspection = getRoleScopeFlags(matrix, 'Approver', 'inspection_workspace');
+    expect(approverInspection).toEqual({
+      create: false,
+      read: false,
+      update: false,
+      delete: false,
+    });
+    expect(isViewAccessibleToPersona('inspector', null, 'Approver', matrix)).toBe(false);
+  });
+
+  it('disables Roles & Permissions access for C Admin by default', () => {
+    const cAdminRights = getRoleScopeFlags(matrix, 'C Admin', 'role_rights');
+    expect(cAdminRights).toEqual({
+      create: false,
+      read: false,
+      update: false,
+      delete: false,
+    });
+    expect(isViewAccessibleToPersona('roles-permissions', null, 'C Admin', matrix)).toBe(false);
+  });
 });
+

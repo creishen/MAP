@@ -357,7 +357,7 @@ export function isViewAccessibleToPersona(
   /* baseline initial persona route checks */
   const getInitialAllowed = (): boolean => {
     if (view === "roles-permissions") {
-      return ["Administrator", "C Admin"].includes(persona);
+      return ["Administrator"].includes(persona);
     }
     if (view === "users" && !["Administrator", "C Admin"].includes(persona)) return false;
     if (view === "crew" && !["Administrator", "Submitter"].includes(persona)) return false;

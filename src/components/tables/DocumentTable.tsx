@@ -10,6 +10,7 @@ import { MasterDocument, ComplianceState } from '../../types/document';
 import { ConfidenceBadge } from '../common/ConfidenceBadge';
 import { formatMaritimeDate } from '../../utils/formatters';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
+import { canPerform } from '../../utils/permissionHelpers';
 
 type SortField =
   | 'title'
@@ -37,7 +38,14 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   onOpenVersionHistory,
   onUploadDocument,
 }) => {
-  const { documents, activePersona } = useMapStore();
+  const {
+    documents,
+    activePersona,
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    customScopes,
+    users,
+  } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -45,7 +53,18 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
-  const canUpload = activePersona === 'Administrator' || activePersona === 'Submitter';
+  const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
+  const canUpload =
+    activePersona === 'Administrator' ||
+    canPerform(
+      rolePermissionDefaults,
+      userPermissionOverrides,
+      matchingUser,
+      activePersona,
+      'documents',
+      'create',
+      customScopes,
+    );
 
   const filteredDocs = documents.filter((d) => {
     const matchesSearch =

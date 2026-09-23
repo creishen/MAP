@@ -271,7 +271,6 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
 
     case 'role_rights':
       if (role === 'Administrator') return fullCrud();
-      if (role === 'C Admin') return readOnly();
       return emptyCrud();
 
     case 'users':
@@ -314,19 +313,18 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
     case 'inspection_findings':
     case 'inspection_evidence':
       if (role === 'Administrator' || role === 'Inspector') return fullCrud();
-      if (role === 'Approver') return readOnly();
+      /* physical inspections disabled for approver role */
       return emptyCrud();
 
     case 'post_inspection_review':
       if (role === 'Administrator' || role === 'Inspector') return readUpdate();
-      if (role === 'Approver') return readOnly();
-      /* Verifier off by default — grant via user override when assigned */
+      /* physical inspections disabled for approver role */
       return emptyCrud();
 
     case 'capa':
       if (role === 'Administrator') return fullCrud();
       if (role === 'Inspector') return createReadUpdate();
-      if (role === 'C Admin' || role === 'Verifier' || role === 'Approver') return readOnly();
+      if (role === 'C Admin') return readOnly();
       return emptyCrud();
 
     case 'approval_gate':

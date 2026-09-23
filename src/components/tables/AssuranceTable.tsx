@@ -12,6 +12,7 @@ import { formatMaritimeDate } from '../../utils/formatters';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 
 import { isAssuranceSetAssignedToPersona } from '../../utils/rbacHelpers';
+import { canPerform } from '../../utils/permissionHelpers';
 
 type AssuranceSortField =
   | 'id'
@@ -32,14 +33,33 @@ interface AssuranceTableProps {
   with what file: src/components/tables/AssuranceTable.tsx loaded by AssuranceSetsView.tsx.
 */
 export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onInitiateSet }) => {
-  const { assuranceSets, activePersona, setCurrentHashView } = useMapStore();
+  const {
+    assuranceSets,
+    activePersona,
+    setCurrentHashView,
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    customScopes,
+    users,
+  } = useMapStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('ALL');
   const [sortField, setSortField] = useState<AssuranceSortField>('id');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
-  const canInitiate = activePersona === 'Administrator' || activePersona === 'C Admin';
+  const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
+  const canInitiate =
+    activePersona === 'Administrator' ||
+    canPerform(
+      rolePermissionDefaults,
+      userPermissionOverrides,
+      matchingUser,
+      activePersona,
+      'assurance_sets',
+      'create',
+      customScopes,
+    );
 
   const filteredSets = assuranceSets.filter((s) => {
     const isAssigned = isAssuranceSetAssignedToPersona(s, activePersona);

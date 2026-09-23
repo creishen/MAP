@@ -118,7 +118,7 @@ export const AppSidebar: React.FC = () => {
         {
           key: 'roles-permissions',
           label: 'Roles & Permissions',
-          allowedRoles: ['Administrator', 'C Admin'] as UserRolePersona[],
+          allowedRoles: ['Administrator'] as UserRolePersona[],
         },
       ]
       : []),
@@ -127,6 +127,12 @@ export const AppSidebar: React.FC = () => {
   /* filter navigation items using initial baseline allowedRoles overridden by matrix/user flags */
   const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
   const visibleItems = navItems.filter((item) => {
+    /* hide dedicated sidepanel button if the page is rendered directly as that role's dashboard */
+    if (activePersona === 'Verifier' && item.key === 'verifier') return false;
+    if (activePersona === 'Inspector' && item.key === 'inspector') return false;
+    if (activePersona === 'Approver' && item.key === 'approver') return false;
+    if (activePersona === 'Approver' && item.key === 'inspector') return false;
+
     const initialAllowed = item.allowedRoles.includes(activePersona);
 
     if (!ENABLE_ROLES_AND_PERMISSIONS) return initialAllowed;

@@ -441,27 +441,39 @@ export const ApproverDashboardView: React.FC = () => {
       {/* top statistics summary row */}
       <div className="row g-3">
         <div className="col-md-3 col-6">
-          <div className="map-approval-stat-card">
-            <div className="text-secondary small font-mono-code mb-1">Total Approval Requests</div>
-            <div className="h3 fw-bold text-dark mb-0">{totalCampaigns}</div>
+          <div className="card map-card-custom p-3">
+            <div className="text-secondary small text-uppercase fw-bold mb-1" style={{ letterSpacing: '0.05em' }}>
+              Total Approval Requests
+            </div>
+            <div className="display-6 fw-bold text-dark font-mono-code mt-1">{totalCampaigns}</div>
+            <div className="text-muted small mt-1">Assigned Campaigns</div>
           </div>
         </div>
         <div className="col-md-3 col-6">
-          <div className="map-approval-stat-card">
-            <div className="text-secondary small font-mono-code mb-1">Pending Sign-off</div>
-            <div className="h3 fw-bold text-warning mb-0">{pendingApprovals}</div>
+          <div className="card map-card-custom p-3">
+            <div className="text-secondary small text-uppercase fw-bold mb-1" style={{ letterSpacing: '0.05em' }}>
+              Pending Sign-off
+            </div>
+            <div className="display-6 fw-bold text-warning font-mono-code mt-1">{pendingApprovals}</div>
+            <div className="text-muted small mt-1">Awaiting Final Decision</div>
           </div>
         </div>
         <div className="col-md-3 col-6">
-          <div className="map-approval-stat-card">
-            <div className="text-secondary small font-mono-code mb-1">Approved & Certified</div>
-            <div className="h3 fw-bold text-success mb-0">{approvedCount}</div>
+          <div className="card map-card-custom p-3">
+            <div className="text-secondary small text-uppercase fw-bold mb-1" style={{ letterSpacing: '0.05em' }}>
+              Approved &amp; Certified
+            </div>
+            <div className="display-6 fw-bold text-success font-mono-code mt-1">{approvedCount}</div>
+            <div className="text-muted small mt-1">Issued Assurance Certificates</div>
           </div>
         </div>
         <div className="col-md-3 col-6">
-          <div className="map-approval-stat-card">
-            <div className="text-secondary small font-mono-code mb-1">Returned / Rejected</div>
-            <div className="h3 fw-bold text-danger mb-0">{returnedCount}</div>
+          <div className="card map-card-custom p-3">
+            <div className="text-secondary small text-uppercase fw-bold mb-1" style={{ letterSpacing: '0.05em' }}>
+              Returned / Rejected
+            </div>
+            <div className="display-6 fw-bold text-danger font-mono-code mt-1">{returnedCount}</div>
+            <div className="text-muted small mt-1">Sent Back for Correction</div>
           </div>
         </div>
       </div>
