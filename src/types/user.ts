@@ -13,13 +13,16 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  /** BRD personas and any admin-created custom roles */
+  /* brd personas and any admin-created custom roles */
   roles: RoleName[];
   userType: UserType;
   organization: string;
   departmentOrScope: string;
   status: 'Active' | 'Pending Invitation' | 'Inactive';
   lastActive: string;
+  /* persona or role that created or invited this user profile */
+  createdBy?: string;
+  invitedBy?: string;
 }
 
 export type { RoleName, UserRolePersona };

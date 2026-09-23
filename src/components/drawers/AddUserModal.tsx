@@ -75,6 +75,8 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       departmentOrScope: departmentOrScope.trim() || (userType === 'Organization' ? (isCAdmin ? 'Client Operations' : 'Internal Operations') : 'External Stakeholder Scope'),
       status: userType === 'Third-Party' ? 'Pending Invitation' : 'Active',
       lastActive: userType === 'Third-Party' ? 'Invitation Sent' : 'Just Now',
+      createdBy: activePersona,
+      invitedBy: userType === 'Third-Party' ? activePersona : undefined,
     };
 
     addUser(newUser);

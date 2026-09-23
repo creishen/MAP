@@ -1364,6 +1364,8 @@ export const MOCK_USERS: import('../types/user').UserProfile[] = [
     departmentOrScope: 'Charter Vetting & Commercial Ops',
     status: 'Pending Invitation',
     lastActive: 'Invitation Sent',
+    createdBy: 'C Admin',
+    invitedBy: 'C Admin',
   },
   {
     id: 'USR-206',

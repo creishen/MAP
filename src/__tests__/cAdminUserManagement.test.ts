@@ -35,7 +35,7 @@ describe('C Admin User Management & RBAC Isolation', () => {
     expect(roleKeys).toContain('Approver');
   });
 
-  it('should filter out Administrator users from C Admin visible directory', () => {
+  it('should filter out Administrator and uninvited users from C Admin visible directory', () => {
     const mockUsers: UserProfile[] = [
       {
         id: 'USR-ADMIN',
@@ -69,6 +69,19 @@ describe('C Admin User Management & RBAC Isolation', () => {
         departmentOrScope: 'Statutory Verification',
         status: 'Active',
         lastActive: '1 hr ago',
+        createdBy: 'C Admin',
+        invitedBy: 'C Admin',
+      },
+      {
+        id: 'USR-UNRELATED',
+        name: 'Unrelated Operator',
+        email: 'operator@northwind.com',
+        roles: ['Submitter'],
+        userType: 'Organization',
+        organization: 'Northwind Marine Pty Ltd',
+        departmentOrScope: 'Fleet Operations',
+        status: 'Active',
+        lastActive: '2 hrs ago',
       },
     ];
 
@@ -76,6 +89,7 @@ describe('C Admin User Management & RBAC Isolation', () => {
     const visibleIds = visibleToCAdmin.map((u) => u.id);
 
     expect(visibleIds).not.toContain('USR-ADMIN');
+    expect(visibleIds).not.toContain('USR-UNRELATED');
     expect(visibleIds).toContain('USR-CLIENT');
     expect(visibleIds).toContain('USR-VERIFIER');
   });
@@ -102,9 +116,53 @@ describe('C Admin User Management & RBAC Isolation', () => {
     expect(addedUser?.name).toBe('Captain Robert Shaw');
     expect(addedUser?.status).toBe('Pending Invitation');
     expect(addedUser?.roles).toEqual(['Inspector']);
+    expect(addedUser?.createdBy).toBe('C Admin');
 
     const visibleUsers = filterUsersForPersona(updatedUsers, 'C Admin');
     expect(visibleUsers.some((u) => u.id === 'USR-TEST-INVITE')).toBe(true);
+  });
+
+  it('should guarantee C Admin sees only C Admin users and users created/invited by C Admin', () => {
+    const mockUsers: UserProfile[] = [
+      {
+        id: 'USR-CADMIN-SELF',
+        name: 'Self C Admin',
+        email: 'cadmin.self@chevron.com',
+        roles: ['C Admin'],
+        userType: 'Organization',
+        organization: 'Chevron Australia',
+        departmentOrScope: 'Vetting',
+        status: 'Active',
+        lastActive: 'Just Now',
+      },
+      {
+        id: 'USR-ADDED-BY-CADMIN',
+        name: 'Invited Verifier',
+        email: 'invited@bv.com',
+        roles: ['Verifier'],
+        userType: 'Third-Party',
+        organization: 'Bureau Veritas',
+        departmentOrScope: 'Audits',
+        status: 'Pending Invitation',
+        lastActive: 'Invitation Sent',
+        createdBy: 'C Admin',
+        invitedBy: 'C Admin',
+      },
+      {
+        id: 'USR-OTHER-SYSTEM-USER',
+        name: 'Other System User',
+        email: 'other@northwind.com',
+        roles: ['Submitter', 'Verifier'],
+        userType: 'Organization',
+        organization: 'Northwind Marine',
+        departmentOrScope: 'Operations',
+        status: 'Active',
+        lastActive: '1 day ago',
+      },
+    ];
+
+    const visibleUsers = filterUsersForPersona(mockUsers, 'C Admin');
+    expect(visibleUsers.map((u) => u.id)).toEqual(['USR-CADMIN-SELF', 'USR-ADDED-BY-CADMIN']);
   });
 
   it('should guarantee that building roles for C Admin excludes Platform Administrator', () => {

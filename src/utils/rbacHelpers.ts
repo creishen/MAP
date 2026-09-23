@@ -139,8 +139,8 @@ export function filterVesselsForPersona(
 }
 
 /**
-  what: filters list of users based on active user persona RBAC rules.
-  how: returns all users for Administrator, and for C Admin returns relevant organization and third-party operational stakeholders while hiding platform administrators.
+  what: filters list of users based on active user persona rbac rules.
+  how: returns all users for administrator, and for c admin returns only themselves and users they added or invited.
   with what file: src/utils/rbacHelpers.ts consumed by UserManagementView.tsx and UserTable.tsx.
 */
 export function filterUsersForPersona(
@@ -151,12 +151,9 @@ export function filterUsersForPersona(
   if (persona === "C Admin") {
     return users.filter(
       (u) =>
-        !u.roles.includes("Administrator") &&
-        (userMatchesAnyRole(u, ["C Admin", "Inspector", "Verifier", "Submitter", "Approver"]) ||
-          u.organization.includes("Southern Basin") ||
-          u.organization.includes("Chevron") ||
-          u.organization.includes("Woodside") ||
-          u.userType === "Third-Party")
+        userMatchesAnyRole(u, ["C Admin"]) ||
+        u.createdBy === "C Admin" ||
+        u.invitedBy === "C Admin"
     );
   }
   return users;

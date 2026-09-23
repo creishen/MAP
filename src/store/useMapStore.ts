@@ -626,17 +626,23 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set((state) => ({ auditEvents: [newEvent, ...state.auditEvents] }));
   },
 
-  // User Management
+  /* user management store state and actions */
   users: MOCK_USERS,
   addUser: (newUser) => {
-    set((state) => ({ users: [newUser, ...state.users] }));
+    const activePersona = get().activePersona;
+    const preparedUser: UserProfile = {
+      ...newUser,
+      createdBy: newUser.createdBy || activePersona,
+      invitedBy: newUser.invitedBy || (newUser.status === 'Pending Invitation' ? activePersona : undefined),
+    };
+    set((state) => ({ users: [preparedUser, ...state.users] }));
     get().logAuditEvent({
       userId: 'USR-CURRENT',
-      userRole: get().activePersona,
+      userRole: activePersona,
       organization: 'Northwind Marine Pty Ltd',
-      action: `Provisioned New User Profile (${newUser.userType})`,
-      targetAsset: `${newUser.name} (${newUser.email})`,
-      justificationNotes: `Added ${newUser.userType} user assigned as ${newUser.roles.join(', ')} for ${newUser.organization}.`,
+      action: `Provisioned New User Profile (${preparedUser.userType})`,
+      targetAsset: `${preparedUser.name} (${preparedUser.email})`,
+      justificationNotes: `Added ${preparedUser.userType} user assigned as ${preparedUser.roles.join(', ')} for ${preparedUser.organization}.`,
     });
   },
   updateUser: (updatedUser) => {
