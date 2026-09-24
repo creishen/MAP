@@ -1226,7 +1226,7 @@ export const MOCK_AUDIT_TRAIL: AuditTrailEvent[] = [
     timestampUtc: '2026-09-19T08:15:30Z',
     userId: 'USR-ADMIN-01',
     userRole: 'Administrator',
-    organization: 'Pacific Ocean Logistics Pty Ltd',
+    organization: 'Northwind Marine Pty Ltd',
     action: 'Registered Unique Vessel Record',
     targetAsset: 'MV Pacific Endeavour (IMO 9123456)',
     justificationNotes: 'Initial vessel registration across all 11 particulars categories.',
@@ -1246,7 +1246,7 @@ export const MOCK_AUDIT_TRAIL: AuditTrailEvent[] = [
     timestampUtc: '2026-09-19T10:05:44Z',
     userId: 'USR-SUBMIT-01',
     userRole: 'Submitter',
-    organization: 'Pacific Ocean Logistics Pty Ltd',
+    organization: 'Northwind Marine Pty Ltd',
     action: 'Uploaded Document Revision v1.1',
     targetAsset: 'DOC-2026-001 (Certificate of Class)',
     fieldDelta: {

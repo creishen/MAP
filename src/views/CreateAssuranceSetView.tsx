@@ -11,6 +11,7 @@ import { UserProfile } from '../types/user';
 import { filterVesselsForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 import { usersWithRole, getAssuranceAssignmentWarnings, hasBlockingAssuranceAssignmentConflict } from '../utils/userRoleHelpers';
 import { calculateAssuranceSetReadiness } from '../utils/readinessHelpers';
+import { isDuplicateCampaignTitle, generateUniqueAssuranceSetId, generateUniqueRequirementId } from '../utils/validation';
 
 interface MasterDocItem {
   id: string;
@@ -43,16 +44,20 @@ interface CreateAssuranceSetViewProps {
 
 export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ templateSetId }) => {
   const { vessels, assuranceSets, addAssuranceSet, activePersona, setCurrentHashView, previousHashView, previousEntityId, users } = useMapStore();
+  const isClientAdmin = activePersona === 'C Admin';
 
   const availableVessels =
     activePersona === 'Administrator'
       ? vessels
       : filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
+  const defaultCharterer = isClientAdmin ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd';
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(templateSetId || '');
-  const [title, setTitle] = useState('');
   const [vesselId, setVesselId] = useState(availableVessels[0]?.id || vessels[0]?.id || '');
-  const [charterer, setCharterer] = useState('Chevron Australia Pty Ltd');
+  const [charterer, setCharterer] = useState(defaultCharterer);
+  const [title, setTitle] = useState(
+    () => `${defaultCharterer} - ${availableVessels[0]?.name || vessels[0]?.name || 'Vessel'} Charter Vetting`
+  );
   const [startDate, setStartDate] = useState('2026-11-01');
   const [endDate, setEndDate] = useState('2027-11-01');
 
@@ -69,8 +74,6 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     setAnimatingFields(new Set(fieldIds));
     setTimeout(() => setAnimatingFields(new Set()), 750);
   }, []);
-
-  const isClientAdmin = activePersona === 'C Admin';
 
   /* master document toggles state */
   const [docToggles, setDocToggles] = useState<Record<string, boolean>>(() => {
@@ -114,14 +117,29 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
   /* apply template auto-fill data */
   const applyTemplateData = (targetSet: AssuranceSet) => {
     setVesselId(targetSet.vesselId);
-    setTitle(`${targetSet.title} (C Admin Charter Vetting)`);
     if (targetSet.charterWindowStart) setStartDate(targetSet.charterWindowStart);
     if (targetSet.charterWindowEnd) setEndDate(targetSet.charterWindowEnd);
     setInspectionRequired(isClientAdmin ? false : targetSet.mandatoryInspectionRequired);
 
     /* extract charterer from template set */
-    const templateCharterer = targetSet.charterer || targetSet.initiatorOrg || 'Chevron Australia Pty Ltd';
+    const templateCharterer = targetSet.charterer || targetSet.initiatorOrg || (isClientAdmin ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd');
     setCharterer(templateCharterer);
+
+    /* automatic naming: always Charterer org + whatever */
+    const targetVesselObj = vessels.find((v) => v.id === targetSet.vesselId) || selectedVessel;
+    const vesselDisplayName = targetSet.vesselName || targetVesselObj?.name || 'Vessel';
+
+    const baseSubject = targetSet.title
+      .replace(new RegExp(`^${templateCharterer}\\s*[-–:]*\\s*`, 'i'), '')
+      .replace(/^Chevron Australia( Pty Ltd)?\s*[-–:]*\s*/i, '')
+      .replace(/^Northwind Marine( Pty Ltd)?\s*[-–:]*\s*/i, '')
+      .replace(/^Woodside Energy( Ltd)?\s*[-–:]*\s*/i, '')
+      .replace(/^Inpex( Operations Australia)?\s*[-–:]*\s*/i, '')
+      .replace(/\s*\(C Admin Charter Vetting\)/i, '')
+      .trim();
+
+    const cleanSubject = baseSubject || `${vesselDisplayName} Charter Vetting`;
+    setTitle(`${templateCharterer} - ${cleanSubject}`);
 
     /* map master document toggles based on existing template requirements */
     const updatedToggles: Record<string, boolean> = {};
@@ -265,6 +283,12 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     e.preventDefault();
     if (!title.trim() || !selectedVessel) return;
 
+    const duplicateCheck = isDuplicateCampaignTitle(title, assuranceSets);
+    if (duplicateCheck.isDuplicate) {
+      setAssignmentError(duplicateCheck.reason || 'Campaign title already exists. Please use a unique title.');
+      return;
+    }
+
     if (
       hasBlockingAssuranceAssignmentConflict({
         verifierId: verificationRequired ? assignedVerifier : undefined,
@@ -279,12 +303,13 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     setAssignmentError('');
 
     const isClientAdmin = activePersona === 'C Admin';
+    const uniqueSetId = generateUniqueAssuranceSetId(assuranceSets);
 
-    /* construct enabled requirements list (excluding physical inspection checklists for c admin) */
+    /* construct enabled requirements list with guaranteed unique transactional requirement ids */
     const selectedRequirements: AssuranceRequirement[] = INITIAL_MASTER_DOCS
       .filter((doc) => docToggles[doc.id] && (!isClientAdmin || doc.type !== 'Inspection'))
-      .map((doc) => ({
-        id: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
+      .map((doc, idx) => ({
+        id: generateUniqueRequirementId(uniqueSetId, idx),
         category: doc.category,
         title: doc.title,
         isMandatory: true,
@@ -294,15 +319,18 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
       }));
 
     /* determine assigned stakeholders with organization attribution */
+    const initiatorOrg = isClientAdmin ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd';
+    const effectiveCharterer = charterer.trim() || initiatorOrg;
+
     const newSet: AssuranceSet = {
-      id: `AS-2026-${Math.floor(100 + Math.random() * 900)}`,
-      title,
+      id: uniqueSetId,
+      title: title.trim(),
       vesselId: selectedVessel.id,
       vesselName: selectedVessel.name,
       imoNumber: selectedVessel.imoNumber,
-      initiatorOrg: isClientAdmin ? 'Chevron Australia Pty Ltd' : 'Pacific Ocean Logistics',
+      initiatorOrg,
       initiatorRole: isClientAdmin ? 'C Admin · Client Created' : 'Vessel Provider Admin',
-      charterer: charterer || (isClientAdmin ? 'Chevron Australia Pty Ltd' : 'Pacific Ocean Logistics'),
+      charterer: effectiveCharterer,
       charterWindowStart: startDate,
       charterWindowEnd: endDate,
       stage: 'Initiated',
@@ -417,12 +445,17 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     <input
                       id="grid-campaign-title"
                       type="text"
-                      className={`form-control bg-white text-dark border-secondary-subtle${animatingFields.has('grid-campaign-title') ? ' map-autofill-animate' : ''}`}
+                      className={`form-control bg-white text-dark border-secondary-subtle${animatingFields.has('grid-campaign-title') ? ' map-autofill-animate' : ''}${isDuplicateCampaignTitle(title, assuranceSets).isDuplicate ? ' is-invalid' : ''}`}
                       placeholder="e.g. Chevron Gorgon Charter Vetting 2026"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       required
                     />
+                    {isDuplicateCampaignTitle(title, assuranceSets).isDuplicate && (
+                      <div className="invalid-feedback d-block small mt-1">
+                        {isDuplicateCampaignTitle(title, assuranceSets).reason}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-12">
@@ -465,7 +498,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     <input
                       type="text"
                       className="form-control bg-light text-secondary border-secondary-subtle"
-                      value={activePersona === 'C Admin' ? 'Chevron Australia Pty Ltd' : 'Pacific Ocean Logistics'}
+                      value={activePersona === 'C Admin' ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd'}
                       disabled
                     />
                   </div>

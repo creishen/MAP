@@ -5,8 +5,16 @@
 */
 
 import { describe, it, expect } from 'vitest';
-import { validateImoNumber, isDuplicateVessel, checkCharterBufferPassed } from '../utils/validation';
+import {
+  validateImoNumber,
+  isDuplicateVessel,
+  checkCharterBufferPassed,
+  isDuplicateCampaignTitle,
+  generateUniqueAssuranceSetId,
+  generateUniqueRequirementId,
+} from '../utils/validation';
 import { VesselParticulars } from '../types/vessel';
+import { AssuranceSet } from '../types/assurance';
 
 describe('Maritime Validation Utilities', () => {
   it('should validate valid 7-digit IMO numbers', () => {
@@ -47,4 +55,60 @@ describe('Maritime Validation Utilities', () => {
     // Expiry in 2026 vs Charter End in 2027 => Buffer Failed
     expect(checkCharterBufferPassed('2026-11-30', '2027-11-01')).toBe(false);
   });
+
+  /**
+    what: tests duplicate campaign name detection in assurance set workflows.
+    how: checks exact, whitespace-padded, and case-insensitive matching against existing assurance sets.
+    with what file: src/__tests__/validation.test.ts testing src/utils/validation.ts.
+  */
+  it('should detect duplicate campaign titles and allow unique titles', () => {
+    const existingSets: Partial<AssuranceSet>[] = [
+      { id: 'AS-2026-001', title: 'Chevron Gorgon Charter Vetting' },
+      { id: 'AS-2026-002', title: 'Woodside Scarborough Towing Campaign' },
+    ];
+
+    /* exact match */
+    const dup1 = isDuplicateCampaignTitle('Chevron Gorgon Charter Vetting', existingSets as AssuranceSet[]);
+    expect(dup1.isDuplicate).toBe(true);
+    expect(dup1.reason).toContain('Chevron Gorgon Charter Vetting');
+
+    /* case-insensitive match */
+    const dup2 = isDuplicateCampaignTitle('chevron gorgon charter vetting', existingSets as AssuranceSet[]);
+    expect(dup2.isDuplicate).toBe(true);
+
+    /* whitespace padded match */
+    const dup3 = isDuplicateCampaignTitle('   Woodside Scarborough Towing Campaign   ', existingSets as AssuranceSet[]);
+    expect(dup3.isDuplicate).toBe(true);
+
+    /* unique title */
+    const unique = isDuplicateCampaignTitle('Inpex Ichthys Supply Support 2026', existingSets as AssuranceSet[]);
+    expect(unique.isDuplicate).toBe(false);
+
+    /* excluding own set id during updates */
+    const ownUpdate = isDuplicateCampaignTitle('Chevron Gorgon Charter Vetting', existingSets as AssuranceSet[], 'AS-2026-001');
+    expect(ownUpdate.isDuplicate).toBe(false);
+  });
+
+  /**
+    what: tests collision-proof generation of unique transactional assurance set ids.
+    how: analyzes existing set ids and generates next sequential formatted identifier.
+    with what file: src/__tests__/validation.test.ts testing src/utils/validation.ts.
+  */
+  it('should generate guaranteed unique transactional assurance set IDs and requirement IDs', () => {
+    const existingSets: Partial<AssuranceSet>[] = [
+      { id: 'AS-2026-001', title: 'Campaign 1' },
+      { id: 'AS-2026-002', title: 'Campaign 2' },
+      { id: 'AS-2026-003', title: 'Campaign 3' },
+    ];
+
+    const newId = generateUniqueAssuranceSetId(existingSets as AssuranceSet[]);
+    expect(newId).toBe(`AS-${new Date().getFullYear()}-004`);
+
+    /* requirement id generation */
+    const req1 = generateUniqueRequirementId(newId, 0);
+    const req2 = generateUniqueRequirementId(newId, 1);
+    expect(req1).toBe('REQ-004-01');
+    expect(req2).toBe('REQ-004-02');
+  });
 });
+

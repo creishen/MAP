@@ -223,7 +223,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   </div>
                   <div className="border-bottom pb-1.5">
                     <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Submitter:</div>
-                    <div className="fw-bold text-dark">{assuranceSet.assignedSubmitter || 'M. Chen (Pacific Ocean Logistics Operations)'}</div>
+                    <div className="fw-bold text-dark">{assuranceSet.assignedSubmitter || 'M. Chen (Northwind Marine Operations)'}</div>
                   </div>
                   <div className="border-bottom pb-1.5">
                     <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Verifier:</div>

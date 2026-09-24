@@ -26,20 +26,20 @@ describe('Assurance Set Template Charterer Inclusion', () => {
 
     expect(templateCharterer).toBeDefined();
 
-    /* construct new assurance set from template */
+    /* construct new assurance set from template with Charterer org in title and Northwind Marine initiator org for admin */
     const newSetFromTemplate: AssuranceSet = {
       id: 'AS-2026-999',
-      title: `${templateSet.title} (C Admin Charter Vetting)`,
+      title: `${templateCharterer} - ${templateSet.vesselName} Charter Vetting`,
       vesselId: templateSet.vesselId,
       vesselName: templateSet.vesselName,
       imoNumber: templateSet.imoNumber,
-      initiatorOrg: 'Chevron Australia Pty Ltd',
-      initiatorRole: 'C Admin · Client Created',
+      initiatorOrg: 'Northwind Marine Pty Ltd',
+      initiatorRole: 'Vessel Provider Admin',
       charterer: templateCharterer,
       charterWindowStart: templateSet.charterWindowStart,
       charterWindowEnd: templateSet.charterWindowEnd,
       stage: 'Initiated',
-      readinessScore: 0,
+      readinessScore: 10,
       mandatoryInspectionRequired: templateSet.mandatoryInspectionRequired,
       inspectionCompleted: false,
       requirements: templateSet.requirements,
@@ -53,5 +53,8 @@ describe('Assurance Set Template Charterer Inclusion', () => {
     const addedSet = useMapStore.getState().assuranceSets.find((s) => s.id === 'AS-2026-999');
     expect(addedSet).toBeDefined();
     expect(addedSet?.charterer).toBe(templateCharterer);
+    expect(addedSet?.initiatorOrg).toBe('Northwind Marine Pty Ltd');
+    expect(addedSet?.title).toBe(`${templateCharterer} - ${templateSet.vesselName} Charter Vetting`);
+    expect(addedSet?.title).not.toContain('(C Admin Charter Vetting)');
   });
 });

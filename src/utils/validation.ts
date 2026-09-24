@@ -5,6 +5,7 @@
 */
 
 import { VesselParticulars } from '../types/vessel';
+import { AssuranceSet } from '../types/assurance';
 
 /**
   what: validates if a string is a valid 7-digit maritime imo number.
@@ -49,6 +50,77 @@ export function isDuplicateVessel(
 }
 
 /**
+  what: checks if an assurance campaign title already exists in active assurance sets to prevent duplicate campaigns.
+  how: compares normalized, trimmed, case-insensitive campaign titles against existing sets.
+  with what file: src/utils/validation.ts used by CreateAssuranceSetView.tsx, AssuranceModal.tsx, and useMapStore.ts.
+*/
+export function isDuplicateCampaignTitle(
+  title: string,
+  existingSets: AssuranceSet[],
+  excludeSetId?: string
+): { isDuplicate: boolean; reason?: string } {
+  const cleanTitle = title.trim().toLowerCase();
+  if (!cleanTitle) {
+    return { isDuplicate: false };
+  }
+
+  const match = existingSets.find(
+    (s) => s.title.trim().toLowerCase() === cleanTitle && s.id !== excludeSetId
+  );
+
+  if (match) {
+    return {
+      isDuplicate: true,
+      reason: `A campaign with the title "${match.title}" already exists (Assurance Set ID: ${match.id}). Campaign titles must be unique.`,
+    };
+  }
+
+  return { isDuplicate: false };
+}
+
+/**
+  what: generates a guaranteed unique, collision-proof transactional assurance set id.
+  how: inspects existing assurance set ids, finds the maximum numeric sequence for the current year, and formats as AS-YYYY-XXX with collision check.
+  with what file: src/utils/validation.ts used by CreateAssuranceSetView.tsx, AssuranceModal.tsx, and useMapStore.ts.
+*/
+export function generateUniqueAssuranceSetId(existingSets: AssuranceSet[]): string {
+  const currentYear = new Date().getFullYear();
+  const yearPrefix = `AS-${currentYear}-`;
+  const existingIds = new Set(existingSets.map((s) => s.id));
+
+  let maxIndex = 0;
+  existingSets.forEach((set) => {
+    if (set.id && set.id.startsWith(yearPrefix)) {
+      const numPart = parseInt(set.id.replace(yearPrefix, ''), 10);
+      if (!isNaN(numPart) && numPart > maxIndex) {
+        maxIndex = numPart;
+      }
+    }
+  });
+
+  let nextIndex = maxIndex + 1;
+  let candidateId = `${yearPrefix}${String(nextIndex).padStart(3, '0')}`;
+
+  /* collision safety loop to ensure transaction uniqueness */
+  while (existingIds.has(candidateId)) {
+    nextIndex++;
+    candidateId = `${yearPrefix}${String(nextIndex).padStart(3, '0')}`;
+  }
+
+  return candidateId;
+}
+
+/**
+  what: generates a unique transactional requirement identifier scoped to the parent assurance set.
+  how: formats requirement code using set numerical suffix and requirement index.
+  with what file: src/utils/validation.ts used by CreateAssuranceSetView.tsx and AssuranceModal.tsx.
+*/
+export function generateUniqueRequirementId(setId: string, index: number): string {
+  const numericSuffix = setId.replace(/^AS-\d{4}-/, '').replace(/^AS-/, '');
+  return `REQ-${numericSuffix}-${String(index + 1).padStart(2, '0')}`;
+}
+
+/**
   what: checks if a certificate expiry date satisfies the mandatory 6-month (180 days) charter buffer rule.
   how: calculates the difference in days between expiry date and charter window end date.
   with what file: src/utils/validation.ts used by DocumentTable.tsx, DocumentDetailView.tsx, and AssuranceDetailView.tsx.
@@ -69,3 +141,4 @@ export function validatePhoneNumber(phone: string): boolean {
   const phoneRegex = /^\+?[1-9]\d{1,14}$/;
   return phoneRegex.test(phone.replace(/[\s-]/g, ''));
 }
+

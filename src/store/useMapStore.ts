@@ -11,7 +11,7 @@ import { AssuranceSet, AssuranceStage } from '../types/assurance';
 import { MasterDocument } from '../types/document';
 import { MOCK_VESSELS, MOCK_ASSURANCE_SETS, MOCK_DOCUMENTS, MOCK_AUDIT_TRAIL, MOCK_USERS } from './mockData';
 import { MOCK_CREW } from './crewMockData';
-import { isDuplicateVessel } from '../utils/validation';
+import { isDuplicateVessel, isDuplicateCampaignTitle, generateUniqueAssuranceSetId } from '../utils/validation';
 import { isViewAccessibleToPersona } from '../utils/rbacHelpers';
 import { UserProfile } from '../types/user';
 import { CrewMember, STCWDocumentItem } from '../types/crew';
@@ -258,7 +258,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     get().logAuditEvent({
       userId: 'USR-CURRENT',
       userRole: get().activePersona,
-      organization: get().activePersona === 'Administrator' ? 'Northwind Marine Pty Ltd' : 'Pacific Ocean Logistics',
+      organization: get().activePersona === 'Administrator' ? 'Northwind Marine Pty Ltd' : 'Northwind Marine Pty Ltd',
       action: 'Registered Unique Vessel Record',
       targetAsset: `${newVessel.name} (IMO ${newVessel.imoNumber})`,
       justificationNotes: `Registered vessel under ${newVessel.flagState} flag.`,
@@ -275,7 +275,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     get().logAuditEvent({
       userId: 'USR-CURRENT',
       userRole: get().activePersona,
-      organization: get().activePersona === 'C Admin' ? 'Chevron Australia' : 'Pacific Ocean Logistics',
+      organization: get().activePersona === 'C Admin' ? 'Chevron Australia' : 'Northwind Marine Pty Ltd',
       action: 'Updated Vessel Specifications',
       targetAsset: `${updatedVessel.name} (IMO ${updatedVessel.imoNumber})`,
       justificationNotes: `Updated vessel particulars for ${updatedVessel.name}`,
@@ -291,8 +291,20 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   // Assurance Sets
   assuranceSets: MOCK_ASSURANCE_SETS,
   addAssuranceSet: (newSet) => {
+    const existingSets = get().assuranceSets;
+    const titleCheck = isDuplicateCampaignTitle(newSet.title, existingSets, newSet.id);
+    if (titleCheck.isDuplicate) {
+      console.warn(`[MAP Duplicate Guard] ${titleCheck.reason}`);
+      return;
+    }
+
+    const uniqueId = existingSets.some((s) => s.id === newSet.id)
+      ? generateUniqueAssuranceSetId(existingSets)
+      : newSet.id || generateUniqueAssuranceSetId(existingSets);
+
     const computedSet: AssuranceSet = {
       ...newSet,
+      id: uniqueId,
       readinessScore: calculateAssuranceSetReadiness(newSet),
     };
     set((state) => ({ assuranceSets: [...state.assuranceSets, computedSet] }));
@@ -301,8 +313,8 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       userRole: get().activePersona,
       organization: newSet.initiatorOrg,
       action: 'Initiated Assurance Set',
-      targetAsset: `${newSet.id} (${newSet.title})`,
-      justificationNotes: `Created assurance set for vessel ${newSet.vesselName}`,
+      targetAsset: `${computedSet.id} (${computedSet.title})`,
+      justificationNotes: `Created assurance set for vessel ${computedSet.vesselName}`,
     });
   },
   updateAssuranceStage: (setId, stage) => {

@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { AssuranceSet, AssuranceRequirement } from '../../types/assurance';
 import { filterVesselsForPersona } from '../../utils/rbacHelpers';
+import { isDuplicateCampaignTitle, generateUniqueAssuranceSetId, generateUniqueRequirementId } from '../../utils/validation';
 
 interface AssuranceModalProps {
   isOpen: boolean;
@@ -47,12 +48,14 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
       ? vessels
       : filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
-  const [title, setTitle] = useState('');
+  const isClient = activePersona === 'C Admin';
+  const defaultOrg = isClient ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd';
   const [vesselId, setVesselId] = useState(availableVessels[0]?.id || vessels[0]?.id || '');
+  const [title, setTitle] = useState(
+    () => `${defaultOrg} - ${availableVessels[0]?.name || vessels[0]?.name || 'Vessel'} Charter Vetting`
+  );
   const [startDate, setStartDate] = useState('2026-11-01');
   const [endDate, setEndDate] = useState('2027-11-01');
-
-  const isClient = activePersona === 'C Admin';
 
   /* master document toggles state */
   const [docToggles, setDocToggles] = useState<Record<string, boolean>>(() => {
@@ -88,11 +91,18 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
     e.preventDefault();
     if (!title.trim() || !selectedVessel) return;
 
-    /* construct enabled requirements list (excluding inspection checklists for c admin) */
+    const duplicateCheck = isDuplicateCampaignTitle(title, assuranceSets);
+    if (duplicateCheck.isDuplicate) {
+      return;
+    }
+
+    const uniqueSetId = generateUniqueAssuranceSetId(assuranceSets);
+
+    /* construct enabled requirements list with guaranteed unique transactional requirement ids */
     const selectedRequirements: AssuranceRequirement[] = INITIAL_MASTER_DOCS
       .filter((doc) => docToggles[doc.id] && (!isClient || doc.type !== 'Inspection'))
-      .map((doc) => ({
-        id: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
+      .map((doc, idx) => ({
+        id: generateUniqueRequirementId(uniqueSetId, idx),
         category: doc.category,
         title: doc.title,
         isMandatory: true,
@@ -101,19 +111,22 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
         verifierStatus: 'Pending',
       }));
 
+    const initiatorOrg = isClient ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd';
+    const effectiveCharterer = isClient ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd';
+
     const newSet: AssuranceSet = {
-      id: `AS-2026-${Math.floor(100 + Math.random() * 900)}`,
-      title,
+      id: uniqueSetId,
+      title: title.trim(),
       vesselId: selectedVessel.id,
       vesselName: selectedVessel.name,
       imoNumber: selectedVessel.imoNumber,
-      initiatorOrg: isClient ? 'Chevron Australia Pty Ltd' : 'Pacific Ocean Logistics',
+      initiatorOrg,
       initiatorRole: isClient ? 'C Admin · Client Created' : 'Vessel Provider Admin',
-      charterer: isClient ? 'Chevron Australia Pty Ltd' : 'Pacific Ocean Logistics',
+      charterer: effectiveCharterer,
       charterWindowStart: startDate,
       charterWindowEnd: endDate,
       stage: 'Initiated',
-      readinessScore: 0,
+      readinessScore: 10,
       mandatoryInspectionRequired: isClient ? false : inspectionRequired,
       inspectionCompleted: false,
       requirements: selectedRequirements,
@@ -156,12 +169,17 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
                     <input
                       id="campaign-title"
                       type="text"
-                      className="form-control form-control-sm bg-white text-dark border-secondary-subtle"
+                      className={`form-control form-control-sm bg-white text-dark border-secondary-subtle${isDuplicateCampaignTitle(title, assuranceSets).isDuplicate ? ' is-invalid' : ''}`}
                       placeholder="e.g. Chevron Gorgon Charter Vetting 2026"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       required
                     />
+                    {isDuplicateCampaignTitle(title, assuranceSets).isDuplicate && (
+                      <div className="invalid-feedback d-block small mt-1">
+                        {isDuplicateCampaignTitle(title, assuranceSets).reason}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-12 col-md-6">

@@ -369,8 +369,8 @@ export function getBackButtonInfo(
   if (previousHashView === "approver") {
     return {
       label: previousEntityId
-        ? "← Back to Approval Detail"
-        : "← Back to Approval Requests",
+        ? "Back to Approval Detail"
+        : "Back to Approval Requests",
       targetView: "approver",
       targetEntityId: previousEntityId,
     };

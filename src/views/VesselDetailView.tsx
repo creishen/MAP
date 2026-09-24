@@ -502,7 +502,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
           inspectorRole: 'Senior Offshore Surveyor',
           date: '10 Sep 2026',
           location: 'Fremantle Port Outer Anchorage, WA',
-          client: 'Pacific Ocean Logistics Pty Ltd',
+          client: 'Northwind Marine Pty Ltd',
           status: 'Completed',
           findingsSummary: {
             satisfactory: 14,

@@ -102,16 +102,6 @@ export const ApproverDashboardView: React.FC = () => {
 
     return (
       <div className="d-flex flex-column gap-4">
-        {/* back button row */}
-        <div>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-secondary font-mono-code"
-            onClick={() => setCurrentHashView('approver')}
-          >
-            ← Back to Approval Requests
-          </button>
-        </div>
 
         {/* top header banner for detail page */}
         <div className="d-flex flex-wrap align-items-center justify-between gap-3">
