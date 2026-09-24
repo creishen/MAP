@@ -24,6 +24,9 @@ export interface AssuranceRequirement {
 }
 
 export interface AssuranceSet {
+  stakeholders: any;
+  assignedStakeholders: any;
+  createdByPersona: string;
   id: string; // e.g. AS-2026-001
   title: string; // e.g. Chevron Gorgon Charter Vetting
   vesselId: string;

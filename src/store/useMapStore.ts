@@ -458,7 +458,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       });
 
       return {
-        documents: [...state.documents, doc],
+        documents: state.documents.some((d) => d.id === doc.id) ? state.documents : [...state.documents, doc],
         assuranceSets: updatedSets,
       };
     });

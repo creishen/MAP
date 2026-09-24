@@ -22,7 +22,24 @@ export function isAssuranceSetAssignedToPersona(
   set: AssuranceSet,
   persona: UserRolePersona,
 ): boolean {
-  if (persona === "Administrator") return true;
+  if (persona === "Administrator") {
+    /* administrator only sees assurance sets they made (northwind marine) or made by c admin for the admin's vessels (VESSEL-005 MV Atlantic Ocean) */
+    const isNorthwindVessel =
+      set.vesselId === "VESSEL-005" ||
+      Boolean(set.vesselName?.toLowerCase().includes("atlantic ocean"));
+
+    const isNorthwindStakeholder =
+      Boolean(set.initiatorOrg?.toLowerCase().includes("northwind")) ||
+      Boolean(set.assignedSubmitter?.toLowerCase().includes("northwind")) ||
+      Boolean(set.stakeholders?.submitterOrg?.toLowerCase().includes("northwind")) ||
+      Boolean(set.assignedStakeholders?.some((s: { company: string; }) => s.company?.toLowerCase().includes("northwind")));
+
+    const isMadeByAdmin =
+      Boolean(set.createdByPersona === "Administrator") ||
+      Boolean(set.initiatorRole?.toLowerCase().includes("northwind"));
+
+    return isNorthwindVessel || isNorthwindStakeholder || isMadeByAdmin;
+  }
   if (persona === "Submitter") {
     /* submitter / vessel admin can only access assurance sets for their own organization */
     const isAssignedToOrg = Boolean(
@@ -60,7 +77,13 @@ export function isAssuranceSetAssignedToPersona(
     return (
       set.initiatorRole === "C Admin · Client Created" ||
       set.initiatorOrg === "Chevron Australia Pty Ltd" ||
-      set.charterer === "Chevron Australia Pty Ltd"
+      set.charterer === "Chevron Australia Pty Ltd" ||
+      set.charterer === "Southern Basin Energy Pty Ltd" ||
+      set.initiatorOrg === "Southern Basin Energy Pty Ltd" ||
+      set.initiatorOrg === "Woodside Energy Ltd" ||
+      set.charterer === "Woodside Energy Ltd" ||
+      set.initiatorOrg === "Inpex Operations Australia" ||
+      set.charterer === "Inpex Operations Australia"
     );
   }
   return true;

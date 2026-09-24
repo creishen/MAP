@@ -37,40 +37,28 @@ export const FleetRegistryView: React.FC = () => {
   return (
     <div className="d-flex flex-column gap-3">
       {/* Top Tab Bar: All Fleet Vessels vs Chartered Vessels */}
-      <div className="card map-card-custom p-3 bg-white">
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-          <div>
-            <h4 className="fw-bold text-primary m-0">Vessel Fleet Master</h4>
-            <div className="text-secondary small">
-              {activePersona === 'Submitter'
-                ? 'Directory of vessels owned and managed by your marine provider organization'
-                : activeTab === 'all'
-                  ? 'Comprehensive directory of vessels registered across marine providers & operators'
-                  : 'Active chartered vessels under assurance monitoring, documents, and physical inspections'}
-            </div>
-          </div>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
 
-          {activePersona === 'C Admin' && (
-            <div className="nav nav-pills bg-light p-1 rounded-3 border">
-              <button
-                type="button"
-                className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeTab === 'all' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
-                style={{ fontSize: '0.8rem' }}
-                onClick={() => setActiveTab('all')}
-              >
-                All Fleet Vessels ({vessels.length})
-              </button>
-              <button
-                type="button"
-                className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeTab === 'chartered' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
-                style={{ fontSize: '0.8rem' }}
-                onClick={() => setActiveTab('chartered')}
-              >
-                Chartered Vessels ({charteredCount})
-              </button>
-            </div>
-          )}
-        </div>
+        {activePersona === 'C Admin' && (
+          <div className="nav nav-pills bg-light p-1 rounded-3 border">
+            <button
+              type="button"
+              className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeTab === 'all' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
+              style={{ fontSize: '0.8rem' }}
+              onClick={() => setActiveTab('all')}
+            >
+              All Fleet Vessels ({vessels.length})
+            </button>
+            <button
+              type="button"
+              className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeTab === 'chartered' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
+              style={{ fontSize: '0.8rem' }}
+              onClick={() => setActiveTab('chartered')}
+            >
+              Chartered Vessels ({charteredCount})
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Vessels Table with inline Search, Export (CSV/PDF), and Register buttons */}

@@ -35,7 +35,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   requirementTitle,
   defaultVesselId,
 }) => {
-  const { vessels, addDocument, uploadDocumentForRequirement, addDocumentVersion, verifyDocument, activePersona } =
+  const { vessels, documents, addDocument, uploadDocumentForRequirement, addDocumentVersion, verifyDocument, activePersona } =
     useMapStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,8 +74,40 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isPendingVerification, setIsPendingVerification] = useState(false);
 
+  const [uploadOption, setUploadOption] = useState<'new_file' | 'unassigned_doc'>('new_file');
+  const [selectedUnassignedDocId, setSelectedUnassignedDocId] = useState<string>('');
+
+  /* filter unassigned master documents available in library to link to requirement */
+  const unassignedDocuments = documents.filter((doc) => {
+    if (vesselId && doc.vesselId && doc.vesselId !== vesselId) return false;
+    return true;
+  });
+
+  /*
+    what: handles selecting an existing unassigned document from the document library.
+    how: populates certificate metadata fields and prepares document linking for assurance requirement.
+    with what file: src/components/drawers/DocumentUploadModal.tsx.
+  */
+  const handleSelectUnassignedDoc = (docId: string) => {
+    setSelectedUnassignedDocId(docId);
+    const found = documents.find((d) => d.id === docId);
+    if (found) {
+      setTitle(found.title);
+      setEntityType(found.entityType);
+      if (found.vesselId) setVesselId(found.vesselId);
+      setCertificateNo(found.certificateNo);
+      setIssuingAuthority(found.issuingAuthority);
+      setExpiryDate(found.expiryDate);
+      setFileName(found.versions[0]?.fileName || `${found.title}.pdf`);
+      setIsAiExtracted(true);
+      setAiOcrConfidence(found.ocrConfidence || 99.2);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
+      setUploadOption('new_file');
+      setSelectedUnassignedDocId('');
       if (existingDocument) {
         setTitle(existingDocument.title);
         setEntityType(existingDocument.entityType);
@@ -640,71 +672,142 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Drag and Drop / Clickable File Upload Dropzone */}
-                  <div>
-                    <label className="form-label text-dark fw-bold small mb-1">
-                      Select Document File *
-                    </label>
-                    <div
-                      className={`p-4 border border-2 border-dashed rounded text-center transition-all ${isDraggingOver
-                        ? 'border-primary bg-primary-subtle'
-                        : fileName
-                          ? 'border-success bg-light'
-                          : 'border-secondary-subtle bg-light hover-bg-gray'
-                        }`}
-                      style={{ cursor: isUploading || isExtractingAi ? 'not-allowed' : 'pointer' }}
-                      onClick={() => {
-                        if (!isUploading && !isExtractingAi) {
-                          fileInputRef.current?.click();
-                        }
-                      }}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                    >
-                      <div className="d-flex flex-column align-items-center justify-content-center gap-2">
-                        <div className="rounded-circle bg-white p-2 border shadow-2xs">
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" y1="3" x2="12" y2="15" />
-                          </svg>
-                        </div>
-                        <div>
-                          <div className="fw-bold text-dark mb-0.5" style={{ fontSize: '0.825rem' }}>
-                            {fileName ? (
-                              <span className="text-success font-mono-code">{fileName}</span>
-                            ) : (
-                              <span>Drag &amp; drop file here, or <span className="text-primary text-decoration-underline">browse files</span></span>
-                            )}
+                  {/* Upload Source Segmented Option Controls for Admin & Submitter */}
+                  {!existingDocument && (
+                    <div>
+                      <label className="form-label text-dark fw-bold small mb-1.5">
+                        Upload Option *
+                      </label>
+                      <div className="btn-group w-100 p-1 bg-light border rounded-3" role="group">
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${uploadOption === 'new_file' ? 'btn-primary active text-white fw-bold' : 'btn-light text-secondary'}`}
+                          style={{ fontSize: '0.78rem' }}
+                          onClick={() => {
+                            setUploadOption('new_file');
+                            setSelectedUnassignedDocId('');
+                          }}
+                        >
+                          Upload New Document
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${uploadOption === 'unassigned_doc' ? 'btn-primary active text-white fw-bold' : 'btn-light text-secondary'}`}
+                          style={{ fontSize: '0.78rem' }}
+                          onClick={() => setUploadOption('unassigned_doc')}
+                        >
+                          Use Unassigned Document ({unassignedDocuments.length})
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Option 2: Select Unassigned Document from Library */}
+                  {!existingDocument && uploadOption === 'unassigned_doc' && (
+                    <div className="p-3 bg-light border rounded-3 d-flex flex-column gap-2.5">
+                      <label className="form-label text-dark fw-bold small m-0" htmlFor="unassigned-doc-select">
+                        Select Unassigned Document from Library *
+                      </label>
+                      <select
+                        id="unassigned-doc-select"
+                        className="form-select form-select-sm font-mono-code bg-white text-dark border-secondary"
+                        value={selectedUnassignedDocId}
+                        onChange={(e) => handleSelectUnassignedDoc(e.target.value)}
+                        required
+                      >
+                        <option value="">-- Choose unassigned document from vault --</option>
+                        {unassignedDocuments.map((doc) => (
+                          <option key={doc.id} value={doc.id}>
+                            {doc.title} — {doc.certificateNo || doc.id} ({doc.issuingAuthority})
+                          </option>
+                        ))}
+                      </select>
+
+                      {selectedUnassignedDocId ? (
+                        <div className="d-flex flex-column gap-1 p-2.5 bg-white border rounded small font-mono-code text-muted">
+                          <div className="d-flex align-items-center justify-content-between">
+                            <span className="badge bg-success text-white">Selected Library Document</span>
+                            <span className="fw-bold text-dark">{selectedUnassignedDocId}</span>
                           </div>
-                          <div className="text-secondary small" style={{ fontSize: '0.725rem' }}>
-                            Supports PDF, PNG, JPG, DOCX (Max 25MB)
+                          <div className="text-secondary small">
+                            Certificate: <strong>{certificateNo || 'N/A'}</strong> · Authority: <strong>{issuingAuthority || 'IACS'}</strong> · Expiry: <strong>{expiryDate}</strong>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-muted small font-mono-code" style={{ fontSize: '0.725rem' }}>
+                          Select an existing unassigned statutory document from the vault to immediately link it to this assurance requirement.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Option 1: Drag and Drop / Clickable File Upload Dropzone */}
+                  {(!existingDocument && uploadOption === 'new_file') || existingDocument ? (
+                    <div>
+                      <label className="form-label text-dark fw-bold small mb-1">
+                        Select Document File *
+                      </label>
+                      <div
+                        className={`p-4 border border-2 border-dashed rounded text-center transition-all ${isDraggingOver
+                          ? 'border-primary bg-primary-subtle'
+                          : fileName
+                            ? 'border-success bg-light'
+                            : 'border-secondary-subtle bg-light hover-bg-gray'
+                          }`}
+                        style={{ cursor: isUploading || isExtractingAi ? 'not-allowed' : 'pointer' }}
+                        onClick={() => {
+                          if (!isUploading && !isExtractingAi) {
+                            fileInputRef.current?.click();
+                          }
+                        }}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                      >
+                        <div className="d-flex flex-column align-items-center justify-content-center gap-2">
+                          <div className="rounded-circle bg-white p-2 border shadow-2xs">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="17 8 12 3 7 8" />
+                              <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="fw-bold text-dark mb-0.5" style={{ fontSize: '0.825rem' }}>
+                              {fileName ? (
+                                <span className="text-success font-mono-code">{fileName}</span>
+                              ) : (
+                                <span>Drag &amp; drop file here, or <span className="text-primary text-decoration-underline">browse files</span></span>
+                              )}
+                            </div>
+                            <div className="text-secondary small" style={{ fontSize: '0.725rem' }}>
+                              Supports PDF, PNG, JPG, DOCX (Max 25MB)
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Quick File Selection Chips */}
-                    <div className="d-flex align-items-center gap-1.5 flex-wrap mt-2">
-                      <span className="text-secondary small me-1" style={{ fontSize: '0.7rem' }}>
-                        Sample file attach:
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
-                        style={{ fontSize: '0.675rem' }}
-                        onClick={() =>
-                          handleSampleFileClick(
-                            `IOPP_MARPOL_Annex1_Certificate_2026.pdf`
-                          )
-                        }
-                        disabled={isUploading || isExtractingAi}
-                      >
-                        + IOPP_MARPOL_Annex1_Certificate_2026.pdf
-                      </button>
+                      {/* Quick File Selection Chips */}
+                      <div className="d-flex align-items-center gap-1.5 flex-wrap mt-2">
+                        <span className="text-secondary small me-1" style={{ fontSize: '0.7rem' }}>
+                          Sample file attach:
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
+                          style={{ fontSize: '0.675rem' }}
+                          onClick={() =>
+                            handleSampleFileClick(
+                              `IOPP_MARPOL_Annex1_Certificate_2026.pdf`
+                            )
+                          }
+                          disabled={isUploading || isExtractingAi}
+                        >
+                          + IOPP_MARPOL_Annex1_Certificate_2026.pdf
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
 
                   {/* reason for revision / change summary field - only rendered when uploading a revision to an existing document */}
                   {existingDocument && (

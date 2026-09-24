@@ -515,8 +515,6 @@ export const ApproverDashboardView: React.FC = () => {
                 <th>Campaign Title</th>
                 <th>Vessel Name & IMO</th>
                 <th>Initiator / Submitter</th>
-                <th>Readiness Index</th>
-                <th>Stage</th>
                 <th>Sign-off Status</th>
                 <th className="text-end">Actions</th>
               </tr>
@@ -524,7 +522,7 @@ export const ApproverDashboardView: React.FC = () => {
             <tbody>
               {filteredSets.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-4 text-secondary font-mono-code">
+                  <td colSpan={7} className="text-center py-4 text-secondary font-mono-code">
                     No matching approval requests found.
                   </td>
                 </tr>
@@ -546,15 +544,6 @@ export const ApproverDashboardView: React.FC = () => {
                       </td>
                       <td className="small font-mono-code text-secondary">
                         {set.assignedSubmitter || set.initiatorOrg}
-                      </td>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <ReadinessGauge score={set.readinessScore} size="sm" />
-                          <span className="fw-bold text-dark small">{set.readinessScore}%</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="badge bg-light text-dark border font-mono-code">{set.stage}</span>
                       </td>
                       <td>
                         {set.approverDecision === 'Approved' ? (

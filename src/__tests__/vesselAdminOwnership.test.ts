@@ -43,15 +43,50 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
     });
   });
 
-  it('allows administrator to view all vessels in the fleet registry', () => {
+  it('restricts administrator view to ONLY vessels owned by northwind marine pty ltd', () => {
     const adminVessels = filterVesselsForPersona(
       MOCK_VESSELS,
       MOCK_ASSURANCE_SETS,
       'Administrator'
     );
 
-    expect(adminVessels.length).toBe(MOCK_VESSELS.length);
-    expect(adminVessels.length).toBe(7);
+    /* administrator belongs to northwind marine pty ltd */
+    expect(adminVessels.length).toBe(1);
+    expect(adminVessels[0].id).toBe('VESSEL-005');
+    expect(adminVessels[0].registeredOwner).toBe('Northwind Marine Pty Ltd');
+
+    /* verify competitor vessels are not visible to administrator */
+    const competitorVesselIds = ['VESSEL-001', 'VESSEL-002', 'VESSEL-003', 'VESSEL-004', 'VESSEL-006', 'VESSEL-007'];
+    competitorVesselIds.forEach((id) => {
+      const found = adminVessels.find((v) => v.id === id);
+      expect(found).toBeUndefined();
+    });
+  });
+
+  it('restricts administrator assurance sets to only those created by admin or created by c admin for northwind vessels', () => {
+    /* verify each mock assurance set against administrator persona */
+    const adminVisibleSets = MOCK_ASSURANCE_SETS.filter((set) =>
+      isAssuranceSetAssignedToPersona(set, 'Administrator')
+    );
+
+    /* AS-2026-005 is for VESSEL-005 (MV Atlantic Ocean owned by Northwind) */
+    expect(adminVisibleSets.length).toBeGreaterThan(0);
+    adminVisibleSets.forEach((set) => {
+      const isNorthwindVessel = set.vesselId === 'VESSEL-005';
+      const isNorthwindSubmitter =
+        set.stakeholders?.submitterOrg?.toLowerCase().includes('northwind') ||
+        set.assignedStakeholders?.some((s: { role: string; company: string; }) => s.role === 'Submitter' && s.company?.toLowerCase().includes('northwind'));
+      const isCreatedByAdmin = set.createdByPersona === 'Administrator' || set.createdByPersona === 'Submitter';
+
+      expect(isNorthwindVessel || isNorthwindSubmitter || isCreatedByAdmin).toBe(true);
+    });
+
+    /* competitor vessel sets must be excluded from administrator view */
+    const competitorSetIds = ['AS-2026-001', 'AS-2026-002', 'AS-2026-003', 'AS-2026-004', 'AS-2026-006'];
+    competitorSetIds.forEach((id) => {
+      const found = adminVisibleSets.find((s) => s.id === id);
+      expect(found).toBeUndefined();
+    });
   });
 
   it('allows c admin to view ALL vessels under the platform', () => {
