@@ -70,7 +70,7 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'assurance-sets',
       label: 'Assurance Sets',
-      allowedRoles: ['Administrator', 'C Admin', 'Submitter'],
+      allowedRoles: ['Administrator', 'Submitter'],
     },
     {
       key: 'documents',
@@ -115,12 +115,12 @@ export const AppSidebar: React.FC = () => {
     },
     ...(ENABLE_ROLES_AND_PERMISSIONS
       ? [
-          {
-            key: 'roles-permissions',
-            label: 'Roles & Permissions',
-            allowedRoles: ['Administrator'] as UserRolePersona[],
-          },
-        ]
+        {
+          key: 'roles-permissions',
+          label: 'Roles & Permissions',
+          allowedRoles: ['Administrator'] as UserRolePersona[],
+        },
+      ]
       : []),
   ];
 

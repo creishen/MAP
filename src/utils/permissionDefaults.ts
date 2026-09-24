@@ -261,6 +261,10 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
       return emptyCrud();
 
     case 'assurance_sets':
+      if (role === 'Administrator') return createReadUpdate();
+      if (role === 'Submitter') return readOnly();
+      return emptyCrud();
+
     case 'assurance_requirements':
       if (role === 'Administrator' || role === 'C Admin') return createReadUpdate();
       if (role === 'Submitter') return readOnly();
@@ -303,7 +307,7 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
     case 'documents':
     case 'document_linking':
       if (role === 'Administrator' || role === 'Submitter') return createReadUpdate();
-      if (role === 'Verifier') return readOnly();
+
       return emptyCrud();
 
     case 'document_vault':
