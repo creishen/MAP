@@ -154,3 +154,45 @@ html, body {
   animation: mapCriteriaReveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.65s both;
 }
 
+/* universal form input error validation styling and shake animation */
+@keyframes mapInputShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-4px);
+  }
+  40%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+.is-invalid,
+.map-input-error,
+.form-control.is-invalid,
+.form-select.is-invalid,
+.form-control.map-input-error,
+.form-select.map-input-error {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 1px #dc2626 !important;
+  animation: mapInputShake 0.35s ease-in-out;
+}
+
+.is-invalid:focus,
+.map-input-error:focus,
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2) !important;
+}
+
+/* universal required indicator styling across all forms and modals */
+.text-danger,
+.req-star,
+label > .text-danger,
+label .req-star {
+  color: #dc2626 !important;
+  font-weight: 700;
+}
+
+

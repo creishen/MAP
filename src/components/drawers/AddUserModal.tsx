@@ -34,6 +34,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
   const [organization, setOrganization] = useState('');
   const [departmentOrScope, setDepartmentOrScope] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   if (!isOpen) return null;
 
@@ -51,6 +52,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setHasAttemptedSubmit(true);
 
     const resolvedOrg = isOrgMember ? defaultOrgName : organization.trim();
 
@@ -141,7 +143,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
 
             {/* User Type Selection */}
             <div>
-              <label className="form-label small fw-semibold text-secondary mb-1">User Classification / Type *</label>
+              <label className="form-label small fw-semibold text-secondary mb-1">User Classification / Type <span className="text-danger">*</span></label>
               <div className="d-flex gap-3">
                 <div className="form-check">
                   <input
@@ -175,11 +177,11 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
             {/* Full Name & Email */}
             <div className="row g-3">
               <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="user-name">Full Name *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="user-name">Full Name <span className="text-danger">*</span></label>
                 <input
                   id="user-name"
                   type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary ${hasAttemptedSubmit && !name.trim() ? 'is-invalid' : ''}`}
                   placeholder="e.g. Captain H. Vance"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -188,11 +190,11 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
               </div>
 
               <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="user-email">Email Address *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="user-email">Email Address <span className="text-danger">*</span></label>
                 <input
                   id="user-email"
                   type="email"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary ${hasAttemptedSubmit && (!email.trim() || !!users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())) ? 'is-invalid' : ''}`}
                   placeholder="name@organization.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -217,14 +219,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
 
               <div className="col-md-6">
                 <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="user-org">
-                  Organization Name *
+                  Organization Name <span className="text-danger">*</span>
                 </label>
                 <input
                   id="user-org"
                   type="text"
                   className={`form-control form-control-sm text-dark border-secondary ${
                     isOrgMember ? 'bg-light text-secondary' : 'bg-white'
-                  }`}
+                  } ${hasAttemptedSubmit && !isOrgMember && !organization.trim() ? 'is-invalid' : ''}`}
                   placeholder={isOrgMember ? defaultOrgName : 'e.g. DNV / Bureau Veritas'}
                   value={isOrgMember ? defaultOrgName : organization}
                   onChange={(e) => setOrganization(e.target.value)}

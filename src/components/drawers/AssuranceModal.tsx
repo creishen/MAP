@@ -70,6 +70,7 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
   const [verificationRequired, setVerificationRequired] = useState(true);
   const [inspectionRequired, setInspectionRequired] = useState(true);
   const [approvalRequired, setApprovalRequired] = useState(true);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   if (!isOpen) return null;
 
@@ -85,7 +86,8 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !selectedVessel) return;
+    setHasAttemptedSubmit(true);
+    if (!title.trim() || !startDate || !endDate || !selectedVessel) return;
 
     const duplicateCheck = isDuplicateCampaignTitle(title, assuranceSets);
     if (duplicateCheck.isDuplicate) {
@@ -160,12 +162,12 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
                 <div className="row g-3">
                   <div className="col-12 col-md-6">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="campaign-title">
-                      Campaign / Set Title *
+                      Campaign / Set Title <span className="text-danger">*</span>
                     </label>
                     <input
                       id="campaign-title"
                       type="text"
-                      className={`form-control form-control-sm bg-white text-dark border-secondary-subtle${isDuplicateCampaignTitle(title, assuranceSets).isDuplicate ? ' is-invalid' : ''}`}
+                      className={`form-control form-control-sm bg-white text-dark border-secondary-subtle${isDuplicateCampaignTitle(title, assuranceSets).isDuplicate || (hasAttemptedSubmit && !title.trim()) ? ' is-invalid' : ''}`}
                       placeholder="e.g. Chevron Gorgon Charter Vetting 2026"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -180,7 +182,7 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
 
                   <div className="col-12 col-md-6">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="target-vessel">
-                      Target Vessel *
+                      Target Vessel <span className="text-danger">*</span>
                     </label>
                     <select
                       id="target-vessel"
@@ -204,12 +206,12 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
                 <div className="row g-3">
                   <div className="col-12 col-md-6">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="charter-start">
-                      Charter Start Date *
+                      Charter Start Date <span className="text-danger">*</span>
                     </label>
                     <input
                       id="charter-start"
                       type="date"
-                      className="form-control form-control-sm bg-white text-dark border-secondary-subtle font-mono-code"
+                      className={`form-control form-control-sm bg-white text-dark border-secondary-subtle font-mono-code ${hasAttemptedSubmit && !startDate ? 'is-invalid' : ''}`}
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
                       required
@@ -217,12 +219,12 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
                   </div>
                   <div className="col-12 col-md-6">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="charter-end">
-                      Charter End Date *
+                      Charter End Date <span className="text-danger">*</span>
                     </label>
                     <input
                       id="charter-end"
                       type="date"
-                      className="form-control form-control-sm bg-white text-dark border-secondary-subtle font-mono-code"
+                      className={`form-control form-control-sm bg-white text-dark border-secondary-subtle font-mono-code ${hasAttemptedSubmit && !endDate ? 'is-invalid' : ''}`}
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
                       required

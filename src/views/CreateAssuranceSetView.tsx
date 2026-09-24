@@ -101,6 +101,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
   const [assignedInspector, setAssignedInspector] = useState(inspectorUsers[0]?.id || '');
   const [assignedApprover, setAssignedApprover] = useState(approverUsers[0]?.id || '');
   const [assignmentError, setAssignmentError] = useState('');
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   const selectedVessel = vessels.find((v) => v.id === vesselId) || vessels[0];
   const tempSetId = 'AS-2041';
@@ -280,6 +281,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setHasAttemptedSubmit(true);
     if (!title.trim() || !selectedVessel) return;
 
     const duplicateCheck = isDuplicateCampaignTitle(title, assuranceSets);
@@ -443,12 +445,12 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
 
                   <div className="col-12">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="grid-campaign-title">
-                      Campaign / Set Title *
+                      Campaign / Set Title <span className="text-danger">*</span>
                     </label>
                     <input
                       id="grid-campaign-title"
                       type="text"
-                      className={`form-control bg-white text-dark border-secondary-subtle${animatingFields.has('grid-campaign-title') ? ' map-autofill-animate' : ''}${isDuplicateCampaignTitle(title, assuranceSets).isDuplicate ? ' is-invalid' : ''}`}
+                      className={`form-control bg-white text-dark border-secondary-subtle${animatingFields.has('grid-campaign-title') ? ' map-autofill-animate' : ''}${isDuplicateCampaignTitle(title, assuranceSets).isDuplicate || (hasAttemptedSubmit && !title.trim()) ? ' is-invalid' : ''}`}
                       placeholder="e.g. Chevron Gorgon Charter Vetting 2026"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -464,12 +466,12 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                   {!isClientAdmin && (
                     <div className="col-12">
                       <label className="form-label text-secondary small fw-semibold" htmlFor="grid-charterer-org">
-                        Charterer Organization *
+                        Charterer Organization <span className="text-danger">*</span>
                       </label>
                       <input
                         id="grid-charterer-org"
                         type="text"
-                        className={`form-control bg-white text-dark border-secondary-subtle${animatingFields.has('grid-charterer-org') ? ' map-autofill-animate' : ''}`}
+                        className={`form-control bg-white text-dark border-secondary-subtle${animatingFields.has('grid-charterer-org') ? ' map-autofill-animate' : ''}${hasAttemptedSubmit && !charterer.trim() ? ' is-invalid' : ''}`}
                         placeholder="e.g. Chevron Australia Pty Ltd"
                         value={charterer}
                         onChange={(e) => setCharterer(e.target.value)}
@@ -480,7 +482,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
 
                   <div className="col-12">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="grid-target-vessel">
-                      Target Vessel *
+                      Target Vessel <span className="text-danger">*</span>
                     </label>
                     <select
                       id="grid-target-vessel"
@@ -532,12 +534,12 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                 <div className="row g-3">
                   <div className="col-12 col-md-6">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="grid-charter-start">
-                      Charter Start Date *
+                      Charter Start Date <span className="text-danger">*</span>
                     </label>
                     <input
                       id="grid-charter-start"
                       type="date"
-                      className={`form-control bg-white text-dark border-secondary-subtle font-mono-code${animatingFields.has('grid-charter-start') ? ' map-autofill-animate' : ''}`}
+                      className={`form-control bg-white text-dark border-secondary-subtle font-mono-code${animatingFields.has('grid-charter-start') ? ' map-autofill-animate' : ''}${hasAttemptedSubmit && !startDate ? ' is-invalid' : ''}`}
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
                       required
@@ -546,12 +548,12 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
 
                   <div className="col-12 col-md-6">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="grid-charter-end">
-                      Charter End Date *
+                      Charter End Date <span className="text-danger">*</span>
                     </label>
                     <input
                       id="grid-charter-end"
                       type="date"
-                      className={`form-control bg-white text-dark border-secondary-subtle font-mono-code${animatingFields.has('grid-charter-end') ? ' map-autofill-animate' : ''}`}
+                      className={`form-control bg-white text-dark border-secondary-subtle font-mono-code${animatingFields.has('grid-charter-end') ? ' map-autofill-animate' : ''}${hasAttemptedSubmit && !endDate ? ' is-invalid' : ''}`}
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
                       required
@@ -591,7 +593,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     <div className="p-3 border rounded-3 bg-light-subtle">
                       <div className="d-flex align-items-center justify-content-between mb-2">
                         <label className="form-label text-slate-900 fw-bold mb-0 small" htmlFor="grid-assign-submitter">
-                          Assigned Submitter *
+                          Assigned Submitter <span className="text-danger">*</span>
                         </label>
                         <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill" style={{ fontSize: '0.65rem' }}>
                           Submitter Role
@@ -623,7 +625,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                       <div className="p-3 border rounded-3 bg-light-subtle">
                         <div className="d-flex align-items-center justify-content-between mb-2">
                           <label className="form-label text-slate-900 fw-bold mb-0 small" htmlFor="grid-assign-verifier">
-                            Assigned Verifier *
+                            Assigned Verifier <span className="text-danger">*</span>
                           </label>
                           <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill" style={{ fontSize: '0.65rem' }}>
                             Verifier Role
@@ -656,7 +658,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                       <div className="p-3 border rounded-3 bg-light-subtle">
                         <div className="d-flex align-items-center justify-content-between mb-2">
                           <label className="form-label text-slate-900 fw-bold mb-0 small" htmlFor="grid-assign-inspector">
-                            Assigned Inspector *
+                            Assigned Inspector <span className="text-danger">*</span>
                           </label>
                           <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill" style={{ fontSize: '0.65rem' }}>
                             Inspector Role
@@ -689,7 +691,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                       <div className="p-3 border rounded-3 bg-light-subtle">
                         <div className="d-flex align-items-center justify-content-between mb-2">
                           <label className="form-label text-slate-900 fw-bold mb-0 small" htmlFor="grid-assign-approver">
-                            Assigned Approver *
+                            Assigned Approver <span className="text-danger">*</span>
                           </label>
                           <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style={{ fontSize: '0.65rem' }}>
                             Approver Role

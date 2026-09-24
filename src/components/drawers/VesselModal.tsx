@@ -828,7 +828,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
               {/* STEP 1: Identification & Classification */}
               {currentStep === 1 && (
                 <div className="d-flex flex-column gap-3">
-                  {renderAiDocumentIntakeCard('Identification & Classification (Cat 1-2)', 1)}
+                  {renderAiDocumentIntakeCard('Identification & Classification', 1)}
 
                   <div className="text-uppercase text-primary small fw-bold">
                     Section 1: Vessel Identification
@@ -836,10 +836,10 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
 
                   <div className="row g-2">
                     <div className={`col-md-4 ${revealedVesselFields.name ? 'ai-field-reveal ai-field-highlight' : ''}`}>
-                      <label className="form-label text-secondary small fw-semibold">Vessel Name *</label>
+                      <label className="form-label text-secondary small fw-semibold">Vessel Name <span className="text-danger">*</span></label>
                       <input
                         type="text"
-                        className={`form-control form-control-sm${animatingFields.has('vessel-name') ? ' map-autofill-animate' : ''}`}
+                        className={`form-control form-control-sm ${errorMessage && !name.trim() ? 'is-invalid' : ''}${animatingFields.has('vessel-name') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. MV Pacific Supporter"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
@@ -867,10 +867,10 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                     </div>
 
                     <div className={`col-md-3 ${revealedVesselFields.imoNumber ? 'ai-field-reveal ai-field-highlight' : ''}`}>
-                      <label className="form-label text-secondary small fw-semibold">IMO Number (7 Digits) *</label>
+                      <label className="form-label text-secondary small fw-semibold">IMO Number (7 Digits) <span className="text-danger">*</span></label>
                       <input
                         type="text"
-                        className={`form-control form-control-sm font-mono-code${animatingFields.has('imo-number') ? ' map-autofill-animate' : ''}`}
+                        className={`form-control form-control-sm font-mono-code ${errorMessage && (!imoNumber.trim() || !validateImoNumber(imoNumber)) ? 'is-invalid' : ''}${animatingFields.has('imo-number') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. 9481234"
                         value={imoNumber}
                         onChange={(e) => setImoNumber(e.target.value)}
@@ -878,10 +878,10 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                       />
                     </div>
                     <div className={`col-md-3 ${revealedVesselFields.officialRegNumber ? 'ai-field-reveal ai-field-highlight' : ''}`}>
-                      <label className="form-label text-secondary small fw-semibold">Official Registration Number *</label>
+                      <label className="form-label text-secondary small fw-semibold">Official Registration Number <span className="text-danger">*</span></label>
                       <input
                         type="text"
-                        className={`form-control form-control-sm font-mono-code${animatingFields.has('official-reg-number') ? ' map-autofill-animate' : ''}`}
+                        className={`form-control form-control-sm font-mono-code ${errorMessage && !officialRegNumber.trim() ? 'is-invalid' : ''}${animatingFields.has('official-reg-number') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. OSV-99-2023"
                         value={officialRegNumber}
                         onChange={(e) => setOfficialRegNumber(e.target.value)}
@@ -1023,7 +1023,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
               {/* STEP 2: Construction, Ownership, Management & Title */}
               {currentStep === 2 && (
                 <div className="d-flex flex-column gap-3">
-                  {renderAiDocumentIntakeCard('Construction, Ownership & Title (Cat 3-6)', 2)}
+                  {renderAiDocumentIntakeCard('Construction, Ownership & Title', 2)}
                   <div className="text-uppercase text-primary small fw-bold">
                     Section 3: Construction & Dimensions
                   </div>
@@ -1102,10 +1102,10 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                   </div>
                   <div className="row g-2">
                     <div className={`col-md-6 ${revealedVesselFields.registeredOwner ? 'ai-field-reveal ai-field-highlight' : ''}`}>
-                      <label className="form-label text-secondary small fw-semibold">Registered Owner Name *</label>
+                      <label className="form-label text-secondary small fw-semibold">Registered Owner Name <span className="text-danger">*</span></label>
                       <input
                         type="text"
-                        className={`form-control form-control-sm${animatingFields.has('registered-owner') ? ' map-autofill-animate' : ''}`}
+                        className={`form-control form-control-sm ${errorMessage && !registeredOwner.trim() ? 'is-invalid' : ''}${animatingFields.has('registered-owner') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. Pacific Ocean Logistics Pty Ltd"
                         value={registeredOwner}
                         onChange={(e) => setRegisteredOwner(e.target.value)}
@@ -1201,7 +1201,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
               {/* STEP 3: Insurance, Crew, Safety & Environmental */}
               {currentStep === 3 && (
                 <div className="d-flex flex-column gap-3">
-                  {renderAiDocumentIntakeCard('Safety, Crew, Insurance & Environment (Cat 8-10)', 3)}
+                  {renderAiDocumentIntakeCard('Safety, Crew, Insurance & Environment', 3)}
                   <div className="text-uppercase text-primary small fw-bold">
                     Section 8: Insurance & Financial Security
                   </div>
@@ -1307,7 +1307,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
               {/* STEP 4: Initial Statutory Certificates & File Attachments */}
               {currentStep === 4 && (
                 <div className="d-flex flex-column gap-3">
-                  {renderAiDocumentIntakeCard('Statutory Certificates & Master Documents (Cat 7 & 11)', 4)}
+                  {renderAiDocumentIntakeCard('Statutory Certificates & Master Documents', 4)}
                   <div className="text-uppercase text-primary small fw-bold">
                     Section 7 & 11: Statutory Certificates & Master Documents
                   </div>
@@ -1415,7 +1415,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
 
                     <div className="text-secondary mt-1">TARGET STAGE: Registration Stage {pendingVerificationState.stepNumber}</div>
                     <div className="text-secondary">EXTRACTABLE FIELDS: Vessel Name, IMO Number, Flag State, Classification Society, Year Built, GT/DWT</div>
-                    
+
                     {/* OCR Criteria with universal staggered animation */}
                     <div className="d-flex flex-column gap-2 mt-2.5 p-2 bg-light rounded border font-sans">
                       <div className="map-criteria-item-1 d-flex align-items-center gap-2 small" style={{ fontSize: '0.725rem', color: '#475569' }}>

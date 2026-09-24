@@ -44,6 +44,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
   const [emergencyContact, setEmergencyContact] = useState('');
   const [currentVesselId, setCurrentVesselId] = useState(availableVessels[0]?.id || '');
   const [errorMessage, setErrorMessage] = useState('');
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [registeredCrew, setRegisteredCrew] = useState<CrewMember | null>(null);
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
     } else {
       setRegisteredCrew(null);
       setErrorMessage('');
+      setHasAttemptedSubmit(false);
     }
   }, [isOpen, initialVesselId, vessels]);
 
@@ -66,6 +68,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setHasAttemptedSubmit(true);
 
     if (!canManage) {
       setErrorMessage('Permission Denied: Registering new crew members is restricted exclusively to Administrator or Submitter roles.');
@@ -279,11 +282,11 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
             {/* Full Name & Rank */}
             <div className="row g-3">
               <div className="col-md-7">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-fullname">Full Name *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-fullname">Full Name <span className="text-danger">*</span></label>
                 <input
                   id="crew-fullname"
                   type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary ${hasAttemptedSubmit && !fullName.trim() ? 'is-invalid' : ''}`}
                   placeholder="e.g. Capt. James Cook"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -292,7 +295,7 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
               </div>
 
               <div className="col-md-5">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-rank">Rank / Position *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-rank">Rank / Position <span className="text-danger">*</span></label>
                 <select
                   id="crew-rank"
                   className="form-select form-select-sm bg-white text-dark border-secondary"
@@ -313,11 +316,11 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
             {/* Nationality & Seaman's Book No */}
             <div className="row g-3">
               <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-nat">Nationality *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-nat">Nationality <span className="text-danger">*</span></label>
                 <input
                   id="crew-nat"
                   type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary ${hasAttemptedSubmit && !nationality.trim() ? 'is-invalid' : ''}`}
                   placeholder="e.g. Australian"
                   value={nationality}
                   onChange={(e) => setNationality(e.target.value)}
@@ -326,11 +329,11 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
               </div>
 
               <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-sb">Seaman's Discharge Book No *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-sb">Seaman's Discharge Book No <span className="text-danger">*</span></label>
                 <input
                   id="crew-sb"
                   type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary font-mono-code ${hasAttemptedSubmit && !seamansBookNo.trim() ? 'is-invalid' : ''}`}
                   placeholder="e.g. SB-AU-990412"
                   value={seamansBookNo}
                   onChange={(e) => setSeamansBookNo(e.target.value)}
@@ -342,11 +345,11 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
             {/* Passport No & Date of Birth */}
             <div className="row g-3">
               <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-passport">Passport Number *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-passport">Passport Number <span className="text-danger">*</span></label>
                 <input
                   id="crew-passport"
                   type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary font-mono-code ${hasAttemptedSubmit && !passportNo.trim() ? 'is-invalid' : ''}`}
                   placeholder="e.g. PA-AU-8819023"
                   value={passportNo}
                   onChange={(e) => setPassportNo(e.target.value)}
@@ -355,11 +358,11 @@ export const AddCrewModal: React.FC<AddCrewModalProps> = ({
               </div>
 
               <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-dob">Date of Birth *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="crew-dob">Date of Birth <span className="text-danger">*</span></label>
                 <input
                   id="crew-dob"
                   type="date"
-                  className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
+                  className={`form-control form-control-sm bg-white text-dark border-secondary font-mono-code ${hasAttemptedSubmit && !dateOfBirth.trim() ? 'is-invalid' : ''}`}
                   value={dateOfBirth}
                   onChange={(e) => setDateOfBirth(e.target.value)}
                   required

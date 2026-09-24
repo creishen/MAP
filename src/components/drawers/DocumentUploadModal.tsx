@@ -74,6 +74,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const [statusMessage, setStatusMessage] = useState('');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isPendingVerification, setIsPendingVerification] = useState(false);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const [uploadOption, setUploadOption] = useState<'new_file' | 'unassigned_doc'>('new_file');
   const [selectedUnassignedDocId, setSelectedUnassignedDocId] = useState<string>('');
@@ -83,6 +85,24 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     if (vesselId && doc.vesselId && doc.vesselId !== vesselId) return false;
     return true;
   });
+
+  /*
+    what: triggers brief shimmer sweep across newly extracted or populated form fields.
+    how: populates animatingFields set and clears each field after 800ms.
+    with what file: src/components/drawers/DocumentUploadModal.tsx.
+  */
+  const triggerAutofillAnimation = (fieldIds: string[]) => {
+    fieldIds.forEach((id) => {
+      setAnimatingFields((prev) => new Set(prev).add(id));
+      setTimeout(() => {
+        setAnimatingFields((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }, 850);
+    });
+  };
 
   /*
     what: handles selecting an existing unassigned document from the document library.
@@ -103,6 +123,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       setIsAiExtracted(true);
       setIsNewExtractionAnimate(true);
       setAiOcrConfidence(found.ocrConfidence || 99.2);
+      setRevealedFields({ certNo: true, authority: true, expiry: true, summary: true });
+      triggerAutofillAnimation(['doc-title', 'doc-cert-no', 'doc-issuing-authority', 'doc-expiry-date', 'doc-vessel']);
     }
   };
 
@@ -111,6 +133,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       setUploadOption('new_file');
       setSelectedUnassignedDocId('');
       setIsNewExtractionAnimate(false);
+      setHasAttemptedSubmit(false);
+      setErrorMessage('');
       if (existingDocument) {
         setTitle(existingDocument.title);
         setEntityType(existingDocument.entityType);
@@ -270,6 +294,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setHasAttemptedSubmit(true);
     if (!canUpload || !title.trim()) return;
 
     const finalCertNo = certificateNo.trim() || `DNV-STAT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -708,20 +733,17 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
 
                 {/* Column 2 (Right): Document Upload Panel */}
                 <div className={hasExtractedSpecs ? "col-lg-5 col-md-6 ps-md-4 d-flex flex-column gap-3" : "col-12 d-flex flex-column gap-3"}>
-                  <div className="fw-bold text-dark border-bottom pb-2" style={{ fontSize: '0.95rem' }}>
-                    Document Upload &amp; Re-upload Panel
-                  </div>
 
                   {/* Document Title & Entity Type (Same Row) */}
                   <div className="row g-2">
                     <div className="col-md-6">
                       <label className="form-label text-secondary small fw-semibold" htmlFor="doc-title">
-                        Document Title *
+                        Document Title <span className="text-danger">*</span>
                       </label>
                       <input
                         id="doc-title"
                         type="text"
-                        className="form-control form-control-sm bg-white text-dark border-secondary"
+                        className={`form-control form-control-sm bg-white text-dark border-secondary ${hasAttemptedSubmit && !title.trim() ? 'is-invalid' : ''}${animatingFields.has('doc-title') ? ' map-autofill-animate' : ''}`}
                         placeholder="e.g. Certificate of Class"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
@@ -731,7 +753,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                     </div>
                     <div className="col-md-6">
                       <label className="form-label text-secondary small fw-semibold" htmlFor="doc-type">
-                        Entity Type *
+                        Entity Type <span className="text-danger">*</span>
                       </label>
                       <select
                         id="doc-type"
@@ -745,20 +767,15 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                       </select>
                     </div>
                   </div>
-                  {/* Option 1: Drag and Drop / Clickable File Upload Dropzone */}
+                  {/* Option B: Drag & Drop / Clickable File Upload for AI Extraction */}
                   {(!existingDocument && uploadOption === 'new_file') || existingDocument ? (
-                    <div>
-                      <label className="form-label text-dark fw-bold small mb-1">
-                        Select Document File *
+                    <div className="w-100 d-flex flex-column">
+                      <label className="form-label text-secondary small fw-semibold mb-1 text-truncate">
+                        Option B: Drag &amp; Drop / Click File
                       </label>
                       <div
-                        className={`p-4 border border-2 border-dashed rounded text-center transition-all ${isDraggingOver
-                          ? 'border-primary bg-primary-subtle'
-                          : fileName
-                            ? 'border-success bg-light'
-                            : 'border-secondary-subtle bg-light hover-bg-gray'
-                          }`}
-                        style={{ cursor: isUploading || isExtractingAi ? 'not-allowed' : 'pointer' }}
+                        className="border border-dashed border-primary rounded bg-white p-2 text-center cursor-pointer hover-bg-light transition-all d-flex align-items-center justify-content-center gap-2 w-100"
+                        style={{ borderStyle: 'dashed', borderWidth: '1.5px', height: '38px', cursor: isUploading || isExtractingAi ? 'not-allowed' : 'pointer' }}
                         onClick={() => {
                           if (!isUploading && !isExtractingAi) {
                             fileInputRef.current?.click();
@@ -768,33 +785,24 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
                       >
-                        <div className="d-flex flex-column align-items-center justify-content-center gap-2">
-                          <div className="rounded-circle bg-white p-2 border shadow-2xs">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                              <polyline points="17 8 12 3 7 8" />
-                              <line x1="12" y1="3" x2="12" y2="15" />
-                            </svg>
-                          </div>
-                          <div>
-                            <div className="fw-bold text-dark mb-0.5" style={{ fontSize: '0.825rem' }}>
-                              {fileName ? (
-                                <span className="text-success font-mono-code">{fileName}</span>
-                              ) : (
-                                <span>Drag &amp; drop file here, or <span className="text-primary text-decoration-underline">browse files</span></span>
-                              )}
-                            </div>
-                            <div className="text-secondary small" style={{ fontSize: '0.725rem' }}>
-                              Supports PDF, PNG, JPG, DOCX (Max 25MB)
-                            </div>
-                          </div>
-                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary flex-shrink-0">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="17 8 12 3 7 8" />
+                          <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        <span className="small text-dark fw-semibold text-truncate" style={{ fontSize: '0.8125rem' }}>
+                          {fileName ? (
+                            <span className="text-success font-mono-code">{fileName}</span>
+                          ) : (
+                            <span>Drop document file here or <span className="text-primary text-decoration-underline">browse</span></span>
+                          )}
+                        </span>
                       </div>
 
                       {/* Quick File Selection Chips */}
-                      <div className="d-flex align-items-center gap-1.5 flex-wrap mt-2">
+                      <div className="d-flex align-items-center gap-1.5 flex-wrap mt-1.5">
                         <span className="text-secondary small me-1" style={{ fontSize: '0.7rem' }}>
-                          Sample file attach:
+                          Sample attach:
                         </span>
                         <button
                           type="button"

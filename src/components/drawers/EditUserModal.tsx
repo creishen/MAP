@@ -36,6 +36,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
   const [departmentOrScope, setDepartmentOrScope] = useState('');
   const [status, setStatus] = useState<UserProfile['status']>('Active');
   const [errorMessage, setErrorMessage] = useState('');
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   /* autofill animation state for pre-filled user fields */
   const [isJustLoaded, setIsJustLoaded] = useState(false);
@@ -61,6 +62,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       setDepartmentOrScope(user.departmentOrScope);
       setStatus(user.status);
       setErrorMessage('');
+      setHasAttemptedSubmit(false);
       setIsJustLoaded(true);
       const timer = setTimeout(() => setIsJustLoaded(false), 750);
       return () => clearTimeout(timer);
@@ -81,6 +83,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setHasAttemptedSubmit(true);
 
     const resolvedOrg = isOrgMember ? defaultOrgName : organization.trim();
 
@@ -156,7 +159,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
 
             {/* User Type Selection */}
             <div>
-              <label className="form-label small fw-semibold text-secondary mb-1">User Classification / Type *</label>
+              <label className="form-label small fw-semibold text-secondary mb-1">User Classification / Type <span className="text-danger">*</span></label>
               <div className="d-flex gap-3">
                 <div className="form-check">
                   <input
@@ -190,11 +193,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
             {/* Full Name & Email */}
             <div className="row g-3">
               <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="edit-user-name">Full Name *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="edit-user-name">Full Name <span className="text-danger">*</span></label>
                 <input
                   id="edit-user-name"
                   type="text"
-                  className={`form-control form-control-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''}`}
+                  className={`form-control form-control-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''} ${hasAttemptedSubmit && !name.trim() ? 'is-invalid' : ''}`}
                   placeholder="e.g. Captain H. Vance"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -203,11 +206,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
               </div>
 
               <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="edit-user-email">Email Address *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="edit-user-email">Email Address <span className="text-danger">*</span></label>
                 <input
                   id="edit-user-email"
                   type="email"
-                  className={`form-control form-control-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''}`}
+                  className={`form-control form-control-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''} ${hasAttemptedSubmit && !email.trim() ? 'is-invalid' : ''}`}
                   placeholder="name@organization.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -231,12 +234,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
               </div>
 
               <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="edit-user-org">Organization Name *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="edit-user-org">Organization Name <span className="text-danger">*</span></label>
                 <input
                   id="edit-user-org"
                   type="text"
                   className={`form-control form-control-sm text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''} ${isOrgMember ? 'bg-light text-secondary' : 'bg-white'
-                    }`}
+                    } ${hasAttemptedSubmit && !isOrgMember && !organization.trim() ? 'is-invalid' : ''}`}
                   placeholder={isOrgMember ? defaultOrgName : 'e.g. DNV / Bureau Veritas'}
                   value={isOrgMember ? defaultOrgName : organization}
                   onChange={(e) => setOrganization(e.target.value)}
@@ -262,7 +265,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
               </div>
 
               <div className="col-md-5">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="edit-user-status">Account Status *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="edit-user-status">Account Status <span className="text-danger">*</span></label>
                 <select
                   id="edit-user-status"
                   className={`form-select form-select-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''}`}
