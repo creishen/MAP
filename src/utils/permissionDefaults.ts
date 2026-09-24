@@ -280,9 +280,9 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
       return emptyCrud();
 
     case 'users':
-      /* administrator has full crud; c admin can create and read own-created users (restricted to verifier, approver, inspector roles only) */
+      /* administrator has full crud; c admin can create, read, and update own-created users (restricted to verifier, approver, inspector roles only) */
       if (role === 'Administrator') return fullCrud();
-      if (role === 'C Admin') return { create: true, read: true, update: false, delete: false };
+      if (role === 'C Admin') return { create: true, read: true, update: true, delete: false };
       return emptyCrud();
 
     case 'role_rights':

@@ -74,7 +74,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       ? operationalRoles.filter((r) => r !== 'C Admin' && r !== 'Submitter')
       : operationalRoles;
 
-    const roles = buildRolesFromForm(effectivePlatformAdmin, effectiveOperationalRoles);
+    const roles = isCAdmin && user.roles.includes('C Admin')
+      ? ['C Admin']
+      : buildRolesFromForm(effectivePlatformAdmin, effectiveOperationalRoles);
     if (roles.length === 0) {
       setErrorMessage('Select at least one platform or operational role for this user.');
       return;

@@ -8,7 +8,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { useMapStore } from '../store/useMapStore';
 import { filterUsersForPersona } from '../utils/rbacHelpers';
 import { getOperationalRoleOptions, buildRolesFromForm } from '../utils/userRoleHelpers';
-import { UserProfile } from '../types/user';
+import { UserProfile, UserRolePersona } from '../types/user';
 
 describe('C Admin & Vessel Admin User Management & RBAC Isolation', () => {
   beforeEach(() => {
@@ -218,4 +218,82 @@ describe('C Admin & Vessel Admin User Management & RBAC Isolation', () => {
     expect(effectiveRoles).toContain('Verifier');
     expect(effectiveRoles).toContain('Inspector');
   });
+
+  /**
+    what: tests that there is exactly one c admin in the system mock data and that users under them have valid operational roles.
+    how: checks mock data users collection to assert only one c admin exists, and asserts all mock users created by c admin have roles among verifier, inspector, or approver.
+    with what file: src/__tests__/cAdminUserManagement.test.ts testing mockData.ts and rbacHelpers.ts.
+  */
+  it('should ensure there is exactly one C Admin and all users created under them belong to allowed operational roles', () => {
+    const storeUsers = useMapStore.getState().users;
+    const cAdmins = storeUsers.filter((u) => u.roles.includes('C Admin'));
+
+    /* exactly one c admin */
+    expect(cAdmins.length).toBe(1);
+    expect(cAdmins[0].name).toBe('S. Basin');
+
+    /* users created by c admin */
+    const usersUnderCAdmin = storeUsers.filter((u) => u.createdBy === 'C Admin');
+    expect(usersUnderCAdmin.length).toBeGreaterThanOrEqual(3);
+
+    const allowedOperationalRoles: UserRolePersona[] = ['Verifier', 'Inspector', 'Approver'];
+
+    usersUnderCAdmin.forEach((user) => {
+      /* no c admin or administrator role permitted for provisioned mock users */
+      expect(user.roles).not.toContain('C Admin');
+      expect(user.roles).not.toContain('Administrator');
+      expect(user.roles).not.toContain('Submitter');
+
+      /* must have at least one allowed operational role */
+      const hasAllowedRole = user.roles.some((r) => allowedOperationalRoles.includes(r as UserRolePersona));
+      expect(hasAllowedRole).toBe(true);
+    });
+
+    /* visible to c admin in user management */
+    const visibleToCAdmin = filterUsersForPersona(storeUsers, 'C Admin');
+    expect(visibleToCAdmin.some((u) => u.id === 'USR-201')).toBe(true);
+    expect(visibleToCAdmin.some((u) => u.id === 'USR-205')).toBe(true);
+    expect(visibleToCAdmin.some((u) => u.id === 'USR-207')).toBe(true);
+    expect(visibleToCAdmin.some((u) => u.id === 'USR-208')).toBe(true);
+  });
+
+  /**
+    what: tests that c admin can edit and deactivate users created under their administrative boundary.
+    how: updates user profile attributes via updateUser and toggles active/inactive status via updateUserStatus.
+    with what file: src/__tests__/cAdminUserManagement.test.ts testing useMapStore.ts.
+  */
+  it('should allow C Admin to edit and deactivate/reactivate users they had created', () => {
+    const store = useMapStore.getState();
+
+    /* 1. edit user created by c admin */
+    const targetUser = store.users.find((u) => u.id === 'USR-205');
+    expect(targetUser).toBeDefined();
+    expect(targetUser?.createdBy).toBe('C Admin');
+
+    const updatedData: UserProfile = {
+      ...targetUser!,
+      name: 'D. Harrison (Lead Verifier)',
+      departmentOrScope: 'Senior Statutory Marine Auditor',
+      roles: ['Verifier', 'Inspector'],
+    };
+
+    store.updateUser(updatedData);
+
+    const afterEdit = useMapStore.getState().users.find((u) => u.id === 'USR-205');
+    expect(afterEdit?.name).toBe('D. Harrison (Lead Verifier)');
+    expect(afterEdit?.departmentOrScope).toBe('Senior Statutory Marine Auditor');
+    expect(afterEdit?.roles).toEqual(['Verifier', 'Inspector']);
+
+    /* 2. deactivate user created by c admin */
+    store.updateUserStatus('USR-205', 'Inactive');
+    const afterDeactivate = useMapStore.getState().users.find((u) => u.id === 'USR-205');
+    expect(afterDeactivate?.status).toBe('Inactive');
+
+    /* 3. reactivate user created by c admin */
+    store.updateUserStatus('USR-205', 'Active');
+    const afterReactivate = useMapStore.getState().users.find((u) => u.id === 'USR-205');
+    expect(afterReactivate?.status).toBe('Active');
+  });
 });
+
+

@@ -94,17 +94,24 @@ flowchart TD
   - Cannot violate segregation of duties where hard BRD policy locks apply.
 
 ### 3.2. C Admin (Client Admin / Charterer)
-- **Primary Stakeholder**: Charterer, Energy Major, or Cargo Owner Assurance Lead.
+- **Primary Stakeholder**: Charterer, Energy Major, or Cargo Owner Assurance Lead (`S. Basin` - Single C Admin in system).
+- **Single C Admin Rule**: The platform maintains exactly one Client Admin (`C Admin`) account representing the lead charterer organization (`Southern Basin Energy`).
+- **User Provisioning & Management Privileges**:
+  - C Admin is authorized to provision/invite mock users under their administrative boundary.
+  - Allowed Operational Roles for C Admin Provisioning: **Verifier**, **Inspector**, and **Approver** (e.g. Third-party auditors, surveyors, and client approvers).
+  - Edit & Lifecycle Controls: C Admin can edit profile details (name, email, roles, organization, scope) and toggle account status (**Active** $\leftrightarrow$ **Inactive** / Deactivate) for any user created under their boundary.
+  - Prohibited Roles for Provisioning: Cannot provision `Administrator`, `C Admin`, or `Submitter` accounts.
 - **Permitted Actions**:
   - View fleet readiness overview and track assurance pipeline stages.
   - Initiate client-specific Assurance Sets with customized compliance requirements.
   - Monitor live validation scores, verification stages, and inspection progress.
   - Review CAPA items and flag resolved findings for physical re-inspection.
+  - Manage, invite, edit, and deactivate third-party auditors and client approvers in the User Management Directory (`/users`).
   - Access read-only views of vessel particulars, crew lists, and approved dossiers.
 - **Prohibited Actions**:
   - **Strict Prohibition**: Cannot upload, edit, replace, or delete provider-owned certificates or documents.
   - Cannot register vessels or modify master vessel particulars.
-  - Cannot perform user administration or role allocation for the vessel provider.
+  - Cannot perform user administration or role allocation for the vessel provider's internal staff.
   - Cannot directly approve assurance sets unless granted delegated approver authority.
 
 ### 3.3. Submitter

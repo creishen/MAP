@@ -55,6 +55,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
   const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
   const canCreateUser =
     activePersona === 'Administrator' ||
+    activePersona === 'C Admin' ||
     canPerform(
       rolePermissionDefaults,
       userPermissionOverrides,
@@ -66,6 +67,7 @@ export const UserTable: React.FC<UserTableProps> = ({ onAddUser, roleCategoryTab
     );
   const canUpdateUser =
     activePersona === 'Administrator' ||
+    activePersona === 'C Admin' ||
     canPerform(
       rolePermissionDefaults,
       userPermissionOverrides,

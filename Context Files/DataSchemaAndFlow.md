@@ -261,6 +261,12 @@ export interface CapaItem {
 
 ### 2.6. User Profile & Audit Trail Schemas
 - **Definition Files**: [src/types/user.ts](file:///c:/mapFiles/MAP/src/types/user.ts) and [src/types/audit.ts](file:///c:/mapFiles/MAP/src/types/audit.ts)
+- **Single C Admin Rule**: Exactly one user account holds the `C Admin` persona (`S. Basin`, `USR-201`).
+- **C Admin Mock Users**: Users created under C Admin (`createdBy: 'C Admin'`) belong strictly to the 3 permitted operational roles:
+  1. `USR-205` (`D. Harrison` - `Verifier`)
+  2. `USR-207` (`Capt. Robert Shaw` - `Inspector`)
+  3. `USR-208` (`Elena Gomez` - `Approver`)
+- **C Admin Edit & Deactivation**: C Admin possesses update rights (`update: true`) on their created users in the `users` permission scope, allowing them to edit profile metadata and deactivate (`status: 'Inactive'`) or reactivate (`status: 'Active'`) accounts directly from the User Table.
 
 ```typescript
 export interface UserProfile {
@@ -303,16 +309,16 @@ export interface AuditTrailEvent {
 
 ## 3. Cross-Entity Data Connectivity and References
 
-| Source Entity | Field / Foreign Key | Target Entity | Relationship Type | System Purpose & Data Integrity |
-| :--- | :--- | :--- | :---: | :--- |
-| **AssuranceSet** | `vesselId` | `Vessel.id` | N : 1 | Links campaign to vessel asset; pulls vessel particulars and synchronizes overall readiness. |
-| **AssuranceRequirement** | `documentId` / `linkedDocumentId` | `MasterDocument.id` | N : 1 | Binds statutory requirement to specific uploaded file in vault; evaluates verification status. |
-| **MasterDocument** | `vesselId` | `Vessel.id` | N : 1 | Associates certificate with vessel; scopes document visibility in vessel details. |
-| **CrewMember** | `currentVesselId` | `Vessel.id` | N : 1 | Links crew member to active vessel; matches master name (`masterName`) and safe manning. |
-| **STCWDocumentItem** | `id` | `MasterDocument.id` | 1 : 1 | Synchronizes crew credentials with the central document library directory (`state.documents`). |
-| **CrewVesselAssignment** | `vesselId` | `Vessel.id` | N : 1 | Historical sea service tracking across fleet assets. |
-| **CapaItem** | `vesselId` | `Vessel.id` | N : 1 | Associates inspection non-conformances with specific vessel and inspection checklists. |
-| **AuditTrailEvent** | `userId` | `UserProfile.id` | N : 1 | Logs immutable history of who performed actions, their role, and timestamps. |
+| Source Entity            | Field / Foreign Key               | Target Entity       | Relationship Type | System Purpose & Data Integrity                                                                |
+| :----------------------- | :-------------------------------- | :------------------ | :---------------: | :--------------------------------------------------------------------------------------------- |
+| **AssuranceSet**         | `vesselId`                        | `Vessel.id`         |       N : 1       | Links campaign to vessel asset; pulls vessel particulars and synchronizes overall readiness.   |
+| **AssuranceRequirement** | `documentId` / `linkedDocumentId` | `MasterDocument.id` |       N : 1       | Binds statutory requirement to specific uploaded file in vault; evaluates verification status. |
+| **MasterDocument**       | `vesselId`                        | `Vessel.id`         |       N : 1       | Associates certificate with vessel; scopes document visibility in vessel details.              |
+| **CrewMember**           | `currentVesselId`                 | `Vessel.id`         |       N : 1       | Links crew member to active vessel; matches master name (`masterName`) and safe manning.       |
+| **STCWDocumentItem**     | `id`                              | `MasterDocument.id` |       1 : 1       | Synchronizes crew credentials with the central document library directory (`state.documents`). |
+| **CrewVesselAssignment** | `vesselId`                        | `Vessel.id`         |       N : 1       | Historical sea service tracking across fleet assets.                                           |
+| **CapaItem**             | `vesselId`                        | `Vessel.id`         |       N : 1       | Associates inspection non-conformances with specific vessel and inspection checklists.         |
+| **AuditTrailEvent**      | `userId`                          | `UserProfile.id`    |       N : 1       | Logs immutable history of who performed actions, their role, and timestamps.                   |
 
 ---
 
