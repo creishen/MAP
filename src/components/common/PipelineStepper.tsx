@@ -4,57 +4,122 @@
   role in system: header stepper for assurance detail view and command center.
 */
 
-import React from 'react';
-import { AssuranceStage } from '../../types/assurance';
+import { AssuranceSet, AssuranceStage } from '../../types/assurance';
 
 interface PipelineStepperProps {
   currentStage: AssuranceStage;
   readinessScore?: number;
   onStageSelect?: (stage: AssuranceStage) => void;
   orientation?: 'horizontal' | 'vertical';
+  assuranceSet?: Partial<AssuranceSet>;
+  workflowConfig?: {
+    verificationRequired?: boolean;
+    mandatoryInspectionRequired?: boolean;
+    formalApprovalRequired?: boolean;
+  };
 }
 
 /**
-  what: renders visual progress stepper for assurance pipeline lifecycle stages.
-  how: maps stage index order and applies active/completed css styles to each stage step in horizontal or vertical orientation; when readiness is 100% or stage is approved, marks all stages completed and checked with no active highlights.
-  with what file: src/components/common/PipelineStepper.tsx used by AssuranceDetailView.tsx.
+  what: renders visual progress stepper for assurance pipeline lifecycle stages dynamically tailored to workflow policy requirements.
+  how: checks verification, visual inspection, and formal approval configuration flags to construct dynamic steps:
+       1. initiated
+       2. validation
+       3. verification (included if verification required)
+       4. visual inspection (included if inspection required)
+       5. approval / certified (included if formal approval required)
+  with what file: src/components/common/PipelineStepper.tsx used by AssuranceDetailView.tsx and dashboard.
 */
 export const PipelineStepper: React.FC<PipelineStepperProps> = ({
   currentStage,
   readinessScore,
   onStageSelect,
   orientation = 'horizontal',
+  assuranceSet,
+  workflowConfig,
 }) => {
   const isFullyApproved =
     (readinessScore !== undefined && readinessScore >= 100) ||
     currentStage === 'Approved' ||
     currentStage === 'Certified';
 
-  const stages: { stage: AssuranceStage; label: string; num: number }[] = [
-    { stage: 'Initiated', label: 'Initiated', num: 1 },
-    { stage: 'Validation', label: 'Validation', num: 2 },
-    { stage: 'Verification', label: 'Verification', num: 3 },
-    { stage: 'Inspection', label: 'Inspection', num: 4 },
-    { stage: 'Certified', label: isFullyApproved ? 'Approved' : 'Approval', num: 5 },
-  ];
+  /* resolve workflow requirements based on passed props and assurance set properties */
+  const isVerificationRequired =
+    workflowConfig?.verificationRequired !== undefined
+      ? workflowConfig.verificationRequired
+      : assuranceSet?.verificationRequired !== undefined
+        ? assuranceSet.verificationRequired
+        : Boolean(assuranceSet?.assignedVerifier || true);
+
+  const isInspectionRequired =
+    workflowConfig?.mandatoryInspectionRequired !== undefined
+      ? workflowConfig.mandatoryInspectionRequired
+      : assuranceSet?.mandatoryInspectionRequired !== undefined
+        ? assuranceSet.mandatoryInspectionRequired
+        : false;
+
+  const isApprovalRequired =
+    workflowConfig?.formalApprovalRequired !== undefined
+      ? workflowConfig.formalApprovalRequired
+      : assuranceSet?.formalApprovalRequired !== undefined
+        ? assuranceSet.formalApprovalRequired
+        : Boolean(assuranceSet?.assignedApprover || true);
+
+  /* build dynamic workflow stages */
+  const stages: { stage: AssuranceStage; label: string; num: number }[] = [];
+  let stepNum = 1;
+
+  stages.push({ stage: 'Initiated', label: 'Initiated', num: stepNum++ });
+  stages.push({ stage: 'Validation', label: 'Validation', num: stepNum++ });
+
+  if (isVerificationRequired) {
+    stages.push({ stage: 'Verification', label: 'Verification', num: stepNum++ });
+  }
+
+  if (isInspectionRequired) {
+    stages.push({ stage: 'Inspection', label: 'Inspection', num: stepNum++ });
+  }
+
+  if (isApprovalRequired) {
+    stages.push({
+      stage: 'Approval',
+      label: isFullyApproved ? 'Approved' : 'Approval',
+      num: stepNum++,
+    });
+  } else {
+    stages.push({
+      stage: 'Certified',
+      label: 'Certified',
+      num: stepNum++,
+    });
+  }
 
   const getStageIndex = (stage: AssuranceStage): number => {
-    switch (stage) {
-      case 'Initiated':
-        return 0;
-      case 'Validation':
-        return 1;
-      case 'Verification':
-        return 2;
-      case 'Inspection':
-        return 3;
-      case 'Approval':
-      case 'Certified':
-      case 'Approved':
-        return 4;
-      default:
-        return 0;
+    if (isFullyApproved) return stages.length;
+
+    /* direct match in dynamic stages array */
+    const directIdx = stages.findIndex((s) => s.stage === stage);
+    if (directIdx >= 0) return directIdx;
+
+    /* fallback aliases for approval/certified/approved */
+    if (stage === 'Approved' || stage === 'Certified') {
+      return stages.length - 1;
     }
+    if (stage === 'Approval') {
+      const appIdx = stages.findIndex((s) => s.stage === 'Approval' || s.stage === 'Certified');
+      if (appIdx >= 0) return appIdx;
+    }
+    if (stage === 'Inspection') {
+      const insIdx = stages.findIndex((s) => s.stage === 'Inspection');
+      if (insIdx >= 0) return insIdx;
+      const appIdx = stages.findIndex((s) => s.stage === 'Approval' || s.stage === 'Certified');
+      if (appIdx >= 0) return appIdx;
+    }
+    if (stage === 'Verification') {
+      const verIdx = stages.findIndex((s) => s.stage === 'Verification');
+      if (verIdx >= 0) return verIdx;
+    }
+
+    return 0;
   };
 
   const currentIdx = getStageIndex(currentStage);

@@ -170,10 +170,12 @@ export const VerifierWorkspaceView: React.FC = () => {
       case 'Verified':
         return 'bg-success text-white';
       case 'Correction Requested':
+        return 'bg-warning text-dark';
+      case 'Rejected':
         return 'bg-danger text-white';
       case 'Pending':
       default:
-        return 'bg-warning text-dark';
+        return 'bg-info text-dark';
     }
   };
 
@@ -212,6 +214,7 @@ export const VerifierWorkspaceView: React.FC = () => {
               <option value="ALL">All Statuses</option>
               <option value="Pending">Submitted</option>
               <option value="Correction Requested">Correction Requested</option>
+              <option value="Rejected">Rejected</option>
               <option value="Verified">Verified</option>
             </select>
           </div>

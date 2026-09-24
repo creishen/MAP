@@ -23,6 +23,7 @@ export const ApproverDashboardView: React.FC = () => {
   const {
     assuranceSets,
     setApproverDecision,
+    denyRequirementByApprover,
     activePersona,
     vessels,
     documents,
@@ -41,10 +42,12 @@ export const ApproverDashboardView: React.FC = () => {
   const assignedSets = assuranceSets.filter((s) => {
     const isAssigned = isAssuranceSetAssignedToPersona(s, activePersona);
     if (activePersona === 'Approver') {
+      const isVerificationReq = s.verificationRequired !== false;
       const isVerifiedAndReady =
         s.stage === 'Approval' ||
         s.stage === 'Approved' ||
         s.approverDecision !== 'Pending' ||
+        !isVerificationReq ||
         (s.requirements.length > 0 &&
           s.requirements.every((r) => !r.isMandatory || r.verifierStatus === 'Verified' || r.isFulfilled));
       return isAssigned && isVerifiedAndReady;
@@ -57,17 +60,33 @@ export const ApproverDashboardView: React.FC = () => {
     ? assuranceSets.find((s) => s.id === currentEntityId)
     : undefined;
 
-  /* check approval blocking logic: any unverified or missing mandatory requirement blocks sign-off */
+  /* check approval blocking logic: workflow requirements override verifier check if verificationRequired is false */
+  const isVerificationRequired = selectedSet ? selectedSet.verificationRequired !== false : true;
+  const isInspectionRequired = selectedSet ? Boolean(selectedSet.mandatoryInspectionRequired) : false;
+
   const unfulfilledMandatory = selectedSet
-    ? selectedSet.requirements.filter((r) => r.isMandatory && !r.isFulfilled)
+    ? selectedSet.requirements.filter((r) => {
+        if (!r.isMandatory) return false;
+        if (!isVerificationRequired) {
+          /* verification overridden by workflow requirements */
+          return false;
+        }
+        return !r.isFulfilled && r.verifierStatus !== 'Verified';
+      })
     : [];
-  const isApprovalBlocked = unfulfilledMandatory.length > 0;
+
+  const isInspectionBlocked = Boolean(isInspectionRequired && selectedSet && !selectedSet.inspectionCompleted);
+  const isApprovalBlocked = unfulfilledMandatory.length > 0 || isInspectionBlocked;
 
   const handleDecision = (decision: 'Approved' | 'Returned for Correction' | 'Rejected') => {
     if (!selectedSet) return;
 
     if (decision === 'Approved' && isApprovalBlocked) {
-      setFeedbackMessage('Approval Blocked: Mandatory statutory requirements remain unverified or expired.');
+      if (isInspectionBlocked) {
+        setFeedbackMessage('Approval Blocked: Mandatory physical vessel inspection has not been completed.');
+      } else {
+        setFeedbackMessage('Approval Blocked: Mandatory statutory requirements remain unverified or expired.');
+      }
       return;
     }
 
@@ -255,17 +274,51 @@ export const ApproverDashboardView: React.FC = () => {
                                     </span>
                                   </td>
                                   <td className="text-end">
-                                    {linkedDoc ? (
-                                      <button
-                                        type="button"
-                                        className="btn btn-sm btn-outline-primary font-mono-code"
-                                        onClick={() => setSelectedDocForReview({ doc: linkedDoc, notes: req.notes })}
-                                      >
-                                        Review
-                                      </button>
-                                    ) : (
-                                      <span className="text-secondary small font-mono-code">No Document</span>
-                                    )}
+                                    <div className="d-flex align-items-center justify-content-end gap-1.5 flex-nowrap">
+                                      {linkedDoc ? (
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-outline-primary font-mono-code"
+                                          onClick={() => setSelectedDocForReview({ doc: linkedDoc, notes: req.notes })}
+                                        >
+                                          Review
+                                        </button>
+                                      ) : (
+                                        <span className="text-secondary small font-mono-code">No Document</span>
+                                      )}
+                                      {!isAlreadyApproved && activePersona === 'Approver' && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-warning text-dark font-mono-code"
+                                            title="Return for Correction"
+                                            onClick={() => {
+                                              const reason = window.prompt(`Enter return reason for "${req.title}":`, approverNotes || 'Approver requested revision and correction.');
+                                              if (reason && reason.trim()) {
+                                                denyRequirementByApprover(selectedSet.id, req.id, 'Correction Requested', reason.trim());
+                                                setFeedbackMessage(`Requirement "${req.title}" returned for correction. Submitter has been pinged.`);
+                                              }
+                                            }}
+                                          >
+                                            Return
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-danger font-mono-code"
+                                            title="Reject Document"
+                                            onClick={() => {
+                                              const reason = window.prompt(`Enter rejection reason for "${req.title}":`, approverNotes || 'Document does not satisfy executive statutory criteria.');
+                                              if (reason && reason.trim()) {
+                                                denyRequirementByApprover(selectedSet.id, req.id, 'Rejected', reason.trim());
+                                                setFeedbackMessage(`Requirement "${req.title}" rejected. Submitter has been pinged.`);
+                                              }
+                                            }}
+                                          >
+                                            Reject
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
                                   </td>
                                 </tr>
                               );
@@ -294,7 +347,15 @@ export const ApproverDashboardView: React.FC = () => {
                   </h6>
                   {isApprovalBlocked ? (
                     <div className="text-danger fw-semibold">
-                      [APPROVAL BLOCKED] {unfulfilledMandatory.length} mandatory requirement(s) pending verification or expired.
+                      {unfulfilledMandatory.length > 0 ? (
+                        <span>[APPROVAL BLOCKED] {unfulfilledMandatory.length} mandatory requirement(s) pending verification or expired.</span>
+                      ) : (
+                        <span>[APPROVAL BLOCKED] Mandatory physical vessel inspection is pending completion.</span>
+                      )}
+                    </div>
+                  ) : selectedSet?.verificationRequired === false ? (
+                    <div className="text-success fw-semibold">
+                      [VERIFICATION OVERRIDDEN BY WORKFLOW] Mandatory verification bypassed by workflow configuration. Ready for final certification sign-off.
                     </div>
                   ) : (
                     <div className="text-success fw-semibold">
@@ -353,7 +414,6 @@ export const ApproverDashboardView: React.FC = () => {
                         type="button"
                         className="btn btn-warning text-dark py-2 fw-semibold"
                         onClick={() => handleDecision('Returned for Correction')}
-                        disabled={isApprovalBlocked}
                       >
                         Return for Correction
                       </button>
@@ -361,7 +421,6 @@ export const ApproverDashboardView: React.FC = () => {
                         type="button"
                         className="btn btn-danger text-white py-2 fw-semibold"
                         onClick={() => handleDecision('Rejected')}
-                        disabled={isApprovalBlocked}
                       >
                         Reject Assurance Set
                       </button>

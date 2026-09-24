@@ -115,7 +115,9 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     setVesselId(targetSet.vesselId);
     if (targetSet.charterWindowStart) setStartDate(targetSet.charterWindowStart);
     if (targetSet.charterWindowEnd) setEndDate(targetSet.charterWindowEnd);
+    setVerificationRequired(targetSet.verificationRequired !== undefined ? targetSet.verificationRequired : Boolean(targetSet.assignedVerifier));
     setInspectionRequired(targetSet.mandatoryInspectionRequired);
+    setApprovalRequired(targetSet.formalApprovalRequired !== undefined ? targetSet.formalApprovalRequired : Boolean(targetSet.assignedApprover));
 
     /* extract charterer from template set */
     const templateCharterer = isClientAdmin
@@ -332,7 +334,9 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
       charterWindowEnd: endDate,
       stage: 'Initiated',
       readinessScore: 10,
+      verificationRequired,
       mandatoryInspectionRequired: inspectionRequired,
+      formalApprovalRequired: approvalRequired,
       inspectionCompleted: false,
       assignedSubmitter: selectedSubmitter
         ? `${selectedSubmitter.name} (${selectedSubmitter.organization})`

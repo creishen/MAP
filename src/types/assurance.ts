@@ -52,7 +52,9 @@ export interface AssuranceSet {
   stage: AssuranceStage;
   readinessScore: number; // 0 - 100%
   requirements: AssuranceRequirement[];
+  verificationRequired?: boolean;
   mandatoryInspectionRequired: boolean;
+  formalApprovalRequired?: boolean;
   inspectionCompleted: boolean;
   assignedSubmitter?: string;
   assignedVerifier?: string;

@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { UserRolePersona, AuditTrailEvent } from '../types/audit';
 import { VesselParticulars } from '../types/vessel';
-import { AssuranceSet, AssuranceStage } from '../types/assurance';
+import { AssuranceSet, AssuranceStage, AssuranceRequirement } from '../types/assurance';
 import { MasterDocument } from '../types/document';
 import { MOCK_VESSELS, MOCK_ASSURANCE_SETS, MOCK_DOCUMENTS, MOCK_AUDIT_TRAIL, MOCK_USERS } from './mockData';
 import { MOCK_CREW } from './crewMockData';
@@ -74,6 +74,12 @@ export interface MapStoreState {
     reqId: string,
     status: 'Verified' | 'Correction Requested' | 'Rejected',
     notes?: string
+  ) => void;
+  denyRequirementByApprover: (
+    setId: string,
+    reqId: string,
+    decision: 'Correction Requested' | 'Rejected',
+    notes: string
   ) => void;
   setApproverDecision: (
     setId: string,
@@ -369,19 +375,38 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     });
   },
   updateRequirementStatus: (setId, reqId, status, notes) => {
-    set((state) => {
-      let linkedDocId: string | undefined = undefined;
+    const affectedDocIds = new Set<string>();
 
+    set((state) => {
       const updatedSets = state.assuranceSets.map((s) => {
         if (s.id !== setId) return s;
-        const updatedReqs = s.requirements.map((r) =>
-          r.id === reqId ? { ...r, verifierStatus: status, notes, isFulfilled: status === 'Verified' } : r
-        );
-        const allVerified = updatedReqs.length > 0 && updatedReqs.every((r) => r.verifierStatus === 'Verified');
+        const updatedReqs = s.requirements.map((r) => {
+          if (r.id === reqId) {
+            if (r.documentId) affectedDocIds.add(r.documentId);
+            if (r.linkedDocumentId) affectedDocIds.add(r.linkedDocumentId);
+            return {
+              ...r,
+              verifierStatus: status,
+              notes: notes || r.notes,
+              isFulfilled: status === 'Verified',
+            };
+          }
+          return r;
+        });
+        const allVerified = updatedReqs.length > 0 && updatedReqs.every((r) => r.verifierStatus === 'Verified' || s.verificationRequired === false);
 
         let nextStage = s.stage;
         if (allVerified) {
-          nextStage = 'Approval';
+          const routesToInspector =
+            updatedReqs.some((r) => r.verificationRoute === 'Inspector') ||
+            (s.mandatoryInspectionRequired && !s.inspectionCompleted);
+          if (routesToInspector) {
+            nextStage = 'Inspection';
+          } else if (s.formalApprovalRequired !== false) {
+            nextStage = 'Approval';
+          } else {
+            nextStage = 'Approved';
+          }
         } else if (status === 'Correction Requested' || status === 'Rejected') {
           nextStage = 'Verification';
         }
@@ -390,7 +415,13 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           ...s,
           requirements: updatedReqs,
           stage: nextStage,
-          approverDecision: allVerified ? 'Pending' : (status === 'Verified' ? s.approverDecision : undefined),
+          approverDecision: allVerified
+            ? (s.formalApprovalRequired !== false ? 'Pending' : 'Approved')
+            : status === 'Verified'
+              ? s.approverDecision
+              : status === 'Correction Requested'
+                ? 'Returned for Correction'
+                : 'Rejected',
         };
 
         return {
@@ -399,11 +430,83 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
         };
       });
 
-      const updatedDocs = linkedDocId
-        ? state.documents.map((d) =>
-          d.id === linkedDocId ? { ...d, verificationStatus: status, verificationNotes: notes } : d
-        )
-        : state.documents;
+      const updatedDocs = state.documents.map((d) => {
+        if (affectedDocIds.has(d.id)) {
+          return { ...d, verificationStatus: status, verificationNotes: notes };
+        }
+        return d;
+      });
+
+      return {
+        assuranceSets: updatedSets,
+        documents: updatedDocs,
+      };
+    });
+
+    const isDenial = status === 'Correction Requested' || status === 'Rejected';
+    const actionTag = isDenial ? ' [PING: SUBMITTER ACTION REQUIRED]' : '';
+    get().logAuditEvent({
+      userId: get().activePersona === 'Approver' ? 'USR-APPROVE-01' : 'USR-VERIFY-01',
+      userRole: get().activePersona,
+      organization: get().activePersona === 'Approver' ? 'Marine Assurance Authority' : 'Compliance Services',
+      action: `Requirement Verification: ${status}${actionTag}`,
+      targetAsset: `${setId} / Requirement ${reqId}`,
+      justificationNotes: notes || `Verifier status set to ${status}${isDenial ? ' — Submitter revision required.' : ''}`,
+    });
+  },
+  denyRequirementByApprover: (setId, reqId, decision, notes) => {
+    const affectedDocIds = new Set<string>();
+    let requirementTitle = reqId;
+
+    set((state) => {
+      const updatedSets = state.assuranceSets.map((s) => {
+        if (s.id !== setId) return s;
+
+        const updatedReqs = s.requirements.map((r) => {
+          if (r.id === reqId) {
+            requirementTitle = r.title;
+            if (r.documentId) affectedDocIds.add(r.documentId);
+            if (r.linkedDocumentId) affectedDocIds.add(r.linkedDocumentId);
+            return {
+              ...r,
+              verifierStatus: decision,
+              isFulfilled: false,
+              notes: notes || `Executive Approver returned document as ${decision}.`,
+            };
+          }
+          return r;
+        });
+
+        const candidateSet: AssuranceSet = {
+          ...s,
+          requirements: updatedReqs,
+          stage: 'Verification',
+          approverDecision: decision === 'Correction Requested' ? 'Returned for Correction' : 'Rejected',
+          approverNotes: notes,
+        };
+
+        return {
+          ...candidateSet,
+          readinessScore: calculateAssuranceSetReadiness(candidateSet),
+        };
+      });
+
+      /* synchronize master documents matching the requirement */
+      const updatedDocs = state.documents.map((d) => {
+        const isMatchedDoc = affectedDocIds.has(d.id) ||
+          d.title.toLowerCase() === requirementTitle.toLowerCase() ||
+          (d.vesselId && state.assuranceSets.find((s) => s.id === setId)?.vesselId === d.vesselId &&
+            d.title.toLowerCase().includes(requirementTitle.toLowerCase()));
+
+        if (isMatchedDoc) {
+          return {
+            ...d,
+            verificationStatus: decision,
+            verificationNotes: notes || `Executive Approver set status to ${decision}. Submitter revision required.`,
+          };
+        }
+        return d;
+      });
 
       return {
         assuranceSets: updatedSets,
@@ -412,21 +515,43 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     });
 
     get().logAuditEvent({
-      userId: 'USR-VERIFY-01',
+      userId: 'USR-APPROVE-01',
       userRole: get().activePersona,
-      organization: 'Compliance Services',
-      action: `Requirement Verification: ${status}`,
-      targetAsset: `${setId} / Requirement ${reqId}`,
-      justificationNotes: notes || `Verifier status set to ${status}`,
+      organization: 'Marine Assurance Authority',
+      action: `Approver Denied Verified Document [PING: SUBMITTER ACTION REQUIRED]`,
+      targetAsset: `${setId} / ${requirementTitle}`,
+      justificationNotes: `Approver denied verified document (${decision}): ${notes || 'Revision requested from submitter.'}`,
     });
   },
   setApproverDecision: (setId, decision, notes) => {
-    set((state) => ({
-      assuranceSets: state.assuranceSets.map((s) => {
+    const isDenial = decision === 'Returned for Correction' || decision === 'Rejected';
+    const mappedStatus: 'Correction Requested' | 'Rejected' =
+      decision === 'Returned for Correction' ? 'Correction Requested' : 'Rejected';
+    const affectedDocIds = new Set<string>();
+
+    set((state) => {
+      const targetSet = state.assuranceSets.find((s) => s.id === setId);
+
+      const updatedSets = state.assuranceSets.map((s) => {
         if (s.id !== setId) return s;
         const newStage = decision === 'Approved' ? 'Approved' : 'Verification';
+
+        const updatedReqs: AssuranceRequirement[] = isDenial
+          ? s.requirements.map((r) => {
+              if (r.documentId) affectedDocIds.add(r.documentId);
+              if (r.linkedDocumentId) affectedDocIds.add(r.linkedDocumentId);
+              return {
+                ...r,
+                verifierStatus: mappedStatus,
+                isFulfilled: false,
+                notes: notes || `Campaign returned to verification stage by Executive Approver.`,
+              };
+            })
+          : s.requirements;
+
         const candidateSet: AssuranceSet = {
           ...s,
+          requirements: updatedReqs,
           stage: newStage,
           approverDecision: decision,
           approverNotes: notes,
@@ -435,16 +560,37 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           ...candidateSet,
           readinessScore: calculateAssuranceSetReadiness(candidateSet),
         };
-      }),
-    }));
+      });
 
+      /* when entire campaign is denied, cascade returned/rejected status to all linked documents */
+      const updatedDocs = isDenial
+        ? state.documents.map((d) => {
+            const isSetLinked = affectedDocIds.has(d.id) || (targetSet && d.vesselId === targetSet.vesselId);
+            if (isSetLinked) {
+              return {
+                ...d,
+                verificationStatus: mappedStatus,
+                verificationNotes: notes || `Approver ${decision}: Revision required for campaign ${setId}.`,
+              };
+            }
+            return d;
+          })
+        : state.documents;
+
+      return {
+        assuranceSets: updatedSets,
+        documents: updatedDocs,
+      };
+    });
+
+    const pingTag = isDenial ? ' [PING: SUBMITTER ACTION REQUIRED]' : '';
     get().logAuditEvent({
       userId: 'USR-APPROVE-01',
       userRole: get().activePersona,
       organization: 'Marine Assurance Authority',
-      action: `Approver Final Decision: ${decision}`,
+      action: `Approver Final Decision: ${decision}${pingTag}`,
       targetAsset: `Assurance Set ${setId}`,
-      justificationNotes: notes || `Executive decision: ${decision}`,
+      justificationNotes: notes || `Executive decision: ${decision}${isDenial ? ' — Submitter revision ping dispatched.' : ''}`,
     });
   },
 
@@ -500,13 +646,31 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
         const hasLinkedDocuments = updatedReqs.some((r) => r.documentId);
         let nextStage = s.stage;
         if (hasLinkedDocuments && (s.stage === 'Initiated' || s.stage === 'Validation')) {
-          nextStage = 'Verification';
+          if (s.verificationRequired !== false) {
+            nextStage = 'Verification';
+          } else {
+            const allUploaded = updatedReqs.every((r) => r.documentId);
+            if (allUploaded) {
+              nextStage = s.mandatoryInspectionRequired && !s.inspectionCompleted
+                ? 'Inspection'
+                : s.formalApprovalRequired !== false
+                  ? 'Approval'
+                  : 'Approved';
+            } else {
+              nextStage = 'Validation';
+            }
+          }
         }
 
-        return {
+        const candidateSet: AssuranceSet = {
           ...s,
           requirements: updatedReqs,
           stage: nextStage,
+        };
+
+        return {
+          ...candidateSet,
+          readinessScore: calculateAssuranceSetReadiness(candidateSet),
         };
       });
 
@@ -630,14 +794,20 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
 
         if (!hasMatchedReq) return s;
 
-        const allVerified = updatedReqs.length > 0 && updatedReqs.every((r) => r.verifierStatus === 'Verified');
+        const allVerified = updatedReqs.length > 0 && updatedReqs.every((r) => r.verifierStatus === 'Verified' || s.verificationRequired === false);
 
         let nextStage = s.stage;
         if (allVerified) {
           const routesToInspector =
             updatedReqs.some((r) => r.verificationRoute === 'Inspector') ||
             (s.mandatoryInspectionRequired && !s.inspectionCompleted);
-          nextStage = routesToInspector ? 'Inspection' : 'Approval';
+          if (routesToInspector) {
+            nextStage = 'Inspection';
+          } else if (s.formalApprovalRequired !== false) {
+            nextStage = 'Approval';
+          } else {
+            nextStage = 'Approved';
+          }
         } else if (status === 'Correction Requested' || status === 'Rejected') {
           nextStage = 'Verification';
         }
@@ -646,7 +816,13 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           ...s,
           requirements: updatedReqs,
           stage: nextStage,
-          approverDecision: allVerified ? 'Pending' : (status === 'Verified' ? s.approverDecision : undefined),
+          approverDecision: allVerified
+            ? (s.formalApprovalRequired !== false ? 'Pending' : 'Approved')
+            : status === 'Verified'
+              ? s.approverDecision
+              : status === 'Correction Requested'
+                ? 'Returned for Correction'
+                : 'Rejected',
         };
 
         return {
@@ -661,14 +837,17 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       };
     });
 
+    const isDenial = status === 'Correction Requested' || status === 'Rejected';
+    const pingTag = isDenial ? ' [PING: SUBMITTER ACTION REQUIRED]' : '';
     const routeNote = routeTarget ? ` | Routed to ${routeTarget}` : '';
+    const activePersona = get().activePersona;
     get().logAuditEvent({
-      userId: 'USR-VERIFY-01',
-      userRole: get().activePersona,
-      organization: 'Verifier Inspectorate',
-      action: `Document Verification Action: ${status}`,
+      userId: activePersona === 'Approver' ? 'USR-APPROVE-01' : 'USR-VERIFY-01',
+      userRole: activePersona,
+      organization: activePersona === 'Approver' ? 'Marine Assurance Authority' : 'Verifier Inspectorate',
+      action: `${activePersona === 'Approver' ? 'Approver' : 'Verifier'} Document Action: ${status}${pingTag}`,
       targetAsset: `Document ${docId}`,
-      justificationNotes: `${notes || `Verification status updated to ${status}`}${routeNote}`,
+      justificationNotes: `${notes || `Verification status updated to ${status}`}${routeNote}${isDenial ? ' — Submitter revision required.' : ''}`,
     });
   },
 

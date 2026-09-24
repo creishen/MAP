@@ -35,10 +35,21 @@ export function getRequirementReadinessPercentage(
   const isParentApproved =
     parentSet?.stage === 'Certified' ||
     parentSet?.stage === 'Approved' ||
-    parentSet?.approverDecision === 'Approved';
+    parentSet?.approverDecision === 'Approved' ||
+    (parentSet?.formalApprovalRequired === false &&
+      (req.verifierStatus === 'Verified' || req.isFulfilled || parentSet?.verificationRequired === false) &&
+      (!parentSet?.mandatoryInspectionRequired || parentSet?.inspectionCompleted));
 
-  if (isParentApproved && (req.verifierStatus === 'Verified' || req.isFulfilled)) {
+  if (isParentApproved && (req.verifierStatus === 'Verified' || req.isFulfilled || parentSet?.verificationRequired === false)) {
     return STAGE_READINESS_WEIGHTS.approved; /* 100% */
+  }
+
+  /* check if verification is bypassed in workflow policy */
+  if (parentSet?.verificationRequired === false) {
+    const hasUploadedDoc = Boolean(req.documentId) || Boolean(req.linkedDocumentId);
+    if (hasUploadedDoc || req.isFulfilled) {
+      return STAGE_READINESS_WEIGHTS.verified; /* 70% */
+    }
   }
 
   /* check if requirement is verified by verifier */
@@ -83,7 +94,7 @@ export function calculateDocumentReadiness(doc: MasterDocument): number {
 }
 
 /**
-  what: calculates the overall readiness score for an assurance set based on the average calculation of all its requirement documents.
+  what: calculates the overall readiness score for an assurance set based on the average calculation of all its requirement documents and workflow policies.
   how: sums requirement stage weights and divides by total requirement count, rounding to nearest whole integer.
   with what file: src/utils/readinessHelpers.ts consumed by store and views.
 */
@@ -101,6 +112,15 @@ export function calculateAssuranceSetReadiness(set: AssuranceSet): number {
     if (set.stage === 'Verification' || set.stage === 'Inspection') return STAGE_READINESS_WEIGHTS.verified;
     if (set.stage === 'Validation') return STAGE_READINESS_WEIGHTS.submitted;
     return STAGE_READINESS_WEIGHTS.initiated;
+  }
+
+  const allReqsReady = set.requirements.every(
+    (r) => r.isFulfilled || r.verifierStatus === 'Verified' || set.verificationRequired === false
+  );
+
+  /* if formal approval is disabled and all requirements and mandatory inspections are fulfilled, return 100% */
+  if (set.formalApprovalRequired === false && allReqsReady && (!set.mandatoryInspectionRequired || set.inspectionCompleted)) {
+    return STAGE_READINESS_WEIGHTS.approved;
   }
 
   const totalScore = set.requirements.reduce(

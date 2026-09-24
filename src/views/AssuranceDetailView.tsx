@@ -227,12 +227,16 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   </div>
                   <div className="border-bottom pb-1.5">
                     <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Verifier:</div>
-                    <div className="fw-bold text-dark">{assuranceSet.assignedVerifier || 'A. Fontaine (DNV Compliance Services)'}</div>
+                    <div className="fw-bold text-dark">
+                      {assuranceSet.verificationRequired === false
+                        ? 'N/A (Verification Bypassed)'
+                        : (assuranceSet.assignedVerifier || 'A. Fontaine (DNV Compliance Services)')}
+                    </div>
                   </div>
                   <div className="border-bottom pb-1.5">
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Inspector:</div>
-                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && (
+                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && assuranceSet.mandatoryInspectionRequired && (
                         <button
                           type="button"
                           className="btn btn-link p-0 text-decoration-none small font-mono-code ms-auto"
@@ -284,7 +288,11 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   </div>
                   <div>
                     <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Approver:</div>
-                    <div className="fw-bold text-dark">{assuranceSet.assignedApprover || 'P. Nardelli (Chevron Australia Pty Ltd)'}</div>
+                    <div className="fw-bold text-dark">
+                      {assuranceSet.formalApprovalRequired === false
+                        ? 'N/A (Direct Sign-Off)'
+                        : (assuranceSet.assignedApprover || 'P. Nardelli (Chevron Australia Pty Ltd)')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -302,6 +310,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
               <PipelineStepper
                 currentStage={assuranceSet.stage}
                 readinessScore={calculateAssuranceSetReadiness(assuranceSet)}
+                assuranceSet={assuranceSet}
                 orientation="vertical"
               />
             </div>

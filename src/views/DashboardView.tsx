@@ -85,7 +85,9 @@ export const DashboardView: React.FC = () => {
     if (activePersona === 'Submitter') {
       const assignedSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, 'Submitter'));
       const pendingUploads = documents.filter((d) => d.verificationStatus === 'Pending').length;
-      const revisionsRequested = documents.filter((d) => d.verificationStatus === 'Correction Requested').length;
+      const revisionsRequested = documents.filter(
+        (d) => d.verificationStatus === 'Correction Requested' || d.verificationStatus === 'Rejected'
+      ).length;
       const verifiedCerts = documents.filter((d) => d.verificationStatus === 'Verified').length;
 
       return (
@@ -231,10 +233,38 @@ export const DashboardView: React.FC = () => {
     );
   };
 
+  const submitterRevisions =
+    activePersona === 'Submitter'
+      ? documents.filter(
+          (d) => d.verificationStatus === 'Correction Requested' || d.verificationStatus === 'Rejected'
+        ).length
+      : 0;
+
   return (
     <div className="d-flex flex-column gap-4">
       {/* top banner kpi summary cards */}
       {renderDashboardCards()}
+
+      {/* submitter action ping notification alert */}
+      {activePersona === 'Submitter' && submitterRevisions > 0 && (
+        <div className="alert alert-warning border-warning shadow-xs py-3 px-4 d-flex align-items-center justify-between gap-3">
+          <div>
+            <div className="fw-bold text-dark mb-0.5 font-mono-code">
+              [ACTION REQUIRED] Submitter Ping: {submitterRevisions} Document Revision(s) Requested
+            </div>
+            <div className="small text-secondary">
+              The Approver or Verifier has returned or rejected statutory evidence. Please review the defect comments and upload replacement revisions.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-warning text-dark fw-semibold font-mono-code text-nowrap"
+            onClick={() => setCurrentHashView('documents')}
+          >
+            View Returned Documents →
+          </button>
+        </div>
+      )}
 
       {/* main content area: c admin displays their own created assurance sets with no audit card; other personas display fleet overview and audit feed */}
       {activePersona === 'C Admin' ? (
