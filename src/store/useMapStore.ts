@@ -33,6 +33,7 @@ import {
   buildEmptyFlagsForCatalog,
 } from '../utils/permissionDefaults';
 import { applyPermissionGuards } from '../utils/permissionHelpers';
+import { calculateAssuranceSetReadiness } from '../utils/readinessHelpers';
 
 export interface MapStoreState {
 
@@ -290,7 +291,11 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   // Assurance Sets
   assuranceSets: MOCK_ASSURANCE_SETS,
   addAssuranceSet: (newSet) => {
-    set((state) => ({ assuranceSets: [...state.assuranceSets, newSet] }));
+    const computedSet: AssuranceSet = {
+      ...newSet,
+      readinessScore: calculateAssuranceSetReadiness(newSet),
+    };
+    set((state) => ({ assuranceSets: [...state.assuranceSets, computedSet] }));
     get().logAuditEvent({
       userId: 'USR-CURRENT',
       userRole: get().activePersona,
@@ -329,8 +334,6 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
         const updatedReqs = s.requirements.map((r) =>
           r.id === reqId ? { ...r, verifierStatus: status, notes, isFulfilled: status === 'Verified' } : r
         );
-        const verifiedCount = updatedReqs.filter((r) => r.verifierStatus === 'Verified').length;
-        const newScore = Math.round((verifiedCount / updatedReqs.length) * 100);
         const allVerified = updatedReqs.length > 0 && updatedReqs.every((r) => r.verifierStatus === 'Verified');
 
         let nextStage = s.stage;
@@ -340,12 +343,16 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           nextStage = 'Verification';
         }
 
-        return {
+        const candidateSet: AssuranceSet = {
           ...s,
           requirements: updatedReqs,
-          readinessScore: newScore,
           stage: nextStage,
           approverDecision: allVerified ? 'Pending' : (status === 'Verified' ? s.approverDecision : undefined),
+        };
+
+        return {
+          ...candidateSet,
+          readinessScore: calculateAssuranceSetReadiness(candidateSet),
         };
       });
 
@@ -375,12 +382,15 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       assuranceSets: state.assuranceSets.map((s) => {
         if (s.id !== setId) return s;
         const newStage = decision === 'Approved' ? 'Approved & Certified' : 'Verification';
-        return {
+        const candidateSet: AssuranceSet = {
           ...s,
           stage: newStage,
           approverDecision: decision,
           approverNotes: notes,
-          readinessScore: decision === 'Approved' ? 100 : s.readinessScore,
+        };
+        return {
+          ...candidateSet,
+          readinessScore: calculateAssuranceSetReadiness(candidateSet),
         };
       }),
     }));
@@ -514,14 +524,15 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
 
         if (!hasMatchedReq) return s;
 
-        const verifiedCount = updatedReqs.filter((r) => r.verifierStatus === 'Verified').length;
-        const newScore = Math.round((verifiedCount / updatedReqs.length) * 100);
-
-        return {
+        const candidateSet: AssuranceSet = {
           ...s,
           requirements: updatedReqs,
-          readinessScore: newScore,
           stage: 'Verification' as const,
+        };
+
+        return {
+          ...candidateSet,
+          readinessScore: calculateAssuranceSetReadiness(candidateSet),
         };
       });
 
@@ -576,8 +587,6 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
 
         if (!hasMatchedReq) return s;
 
-        const verifiedCount = updatedReqs.filter((r) => r.verifierStatus === 'Verified').length;
-        const newScore = Math.round((verifiedCount / updatedReqs.length) * 100);
         const allVerified = updatedReqs.length > 0 && updatedReqs.every((r) => r.verifierStatus === 'Verified');
 
         let nextStage = s.stage;
@@ -590,12 +599,16 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           nextStage = 'Verification';
         }
 
-        return {
+        const candidateSet: AssuranceSet = {
           ...s,
           requirements: updatedReqs,
-          readinessScore: newScore,
           stage: nextStage,
           approverDecision: allVerified ? 'Pending' : (status === 'Verified' ? s.approverDecision : undefined),
+        };
+
+        return {
+          ...candidateSet,
+          readinessScore: calculateAssuranceSetReadiness(candidateSet),
         };
       });
 

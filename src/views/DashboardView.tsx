@@ -14,6 +14,7 @@ import { ApproverDashboardView } from './ApproverDashboardView';
 import { Vessel } from '../types/vessel';
 import { AssuranceStage } from '../types/assurance';
 import { isAssuranceSetAssignedToPersona, filterAuditTrailForPersona, filterVesselsForPersona } from '../utils/rbacHelpers';
+import { calculateAssuranceSetReadiness, calculateVesselReadiness } from '../utils/readinessHelpers';
 
 /**
   what: renders the executive dashboard workspace view in light theme.
@@ -41,7 +42,10 @@ export const DashboardView: React.FC = () => {
 
   const totalVessels = visibleVessels.length;
   const avgReadiness = Math.round(
-    visibleVessels.reduce((acc: number, v: Vessel) => acc + (v.complianceReadinessScore || 0), 0) / (totalVessels || 1)
+    visibleVessels.reduce(
+      (acc: number, v: Vessel) => acc + calculateVesselReadiness(v, assuranceSets, documents),
+      0
+    ) / (totalVessels || 1)
   );
   const activeAssurances = assuranceSets.filter((s) => s.stage !== 'Certified' && s.stage !== 'Approved & Certified').length;
 
@@ -135,7 +139,7 @@ export const DashboardView: React.FC = () => {
       const activeCampaigns = cAdminAssuranceSets.filter((s) => s.stage !== 'Certified' && s.stage !== 'Approved & Certified').length;
       const certifiedCampaigns = cAdminAssuranceSets.filter((s) => s.stage === 'Certified' || s.stage === 'Approved & Certified' || s.approverDecision === 'Approved').length;
       const avgCampaignReadiness = Math.round(
-        cAdminAssuranceSets.reduce((acc: number, s) => acc + (s.readinessScore || 0), 0) / (totalCreated || 1)
+        cAdminAssuranceSets.reduce((acc: number, s) => acc + calculateAssuranceSetReadiness(s), 0) / (totalCreated || 1)
       );
 
       return (
@@ -311,7 +315,7 @@ export const DashboardView: React.FC = () => {
                               </span>
                             </td>
                             <td>
-                              <ReadinessGauge score={s.readinessScore} size="sm" />
+                              <ReadinessGauge score={calculateAssuranceSetReadiness(s)} size="sm" />
                             </td>
                             <td className="text-end" onClick={(e) => e.stopPropagation()}>
                               <button

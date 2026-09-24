@@ -12,6 +12,7 @@ import { formatMaritimeDate } from '../utils/formatters';
 import { isAssuranceSetAssignedToPersona } from '../utils/rbacHelpers';
 import { MasterDocument } from '../types/document';
 import { DocumentReviewDrawer } from '../components/drawers/DocumentReviewDrawer';
+import { calculateAssuranceSetReadiness } from '../utils/readinessHelpers';
 
 /**
   what: renders approval requests table list view or approval detail page.
@@ -299,7 +300,7 @@ export const ApproverDashboardView: React.FC = () => {
               {/* card 1: executive compliance readiness dial */}
               <div className="card map-card-custom p-4 text-center">
                 <h5 className="fw-semibold mb-3 text-slate-900">Executive Compliance Readiness Dial</h5>
-                <ReadinessGauge score={selectedSet.readinessScore} size="lg" />
+                <ReadinessGauge score={calculateAssuranceSetReadiness(selectedSet)} size="lg" />
 
                 <div className="mt-4 p-3 bg-light border border-secondary rounded text-start small">
                   <h6 className="fw-bold text-uppercase text-secondary mb-2">

@@ -13,6 +13,7 @@ import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 
 import { isAssuranceSetAssignedToPersona } from '../../utils/rbacHelpers';
 import { canPerform } from '../../utils/permissionHelpers';
+import { calculateAssuranceSetReadiness } from '../../utils/readinessHelpers';
 
 type AssuranceSortField =
   | 'id'
@@ -90,8 +91,8 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
     let valB: any = b[sortField] ?? '';
 
     if (sortField === 'readinessScore') {
-      valA = Number(valA) || 0;
-      valB = Number(valB) || 0;
+      valA = calculateAssuranceSetReadiness(a);
+      valB = calculateAssuranceSetReadiness(b);
     } else if (typeof valA === 'string') {
       valA = valA.toLowerCase();
       valB = (valB as string).toLowerCase();
@@ -122,7 +123,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
       ImoNumber: s.imoNumber,
       InitiatorOrg: s.initiatorOrg,
       Stage: s.stage,
-      ReadinessScore: `${s.readinessScore}%`,
+      ReadinessScore: `${calculateAssuranceSetReadiness(s)}%`,
       CharterStart: s.charterWindowStart,
       CharterEnd: s.charterWindowEnd,
     }));
@@ -138,7 +139,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
       s.vesselName,
       s.initiatorOrg,
       s.stage,
-      `${s.readinessScore}%`,
+      `${calculateAssuranceSetReadiness(s)}%`,
     ]);
     exportToPdf('Assurance Sets & Vetting Campaigns', headers, rows);
     setIsExportOpen(false);
@@ -258,7 +259,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
                   <span className={`badge ${getStageBadgeClass(s.stage)}`}>{s.stage}</span>
                 </td>
                 <td>
-                  <ReadinessGauge score={s.readinessScore} size="sm" />
+                  <ReadinessGauge score={calculateAssuranceSetReadiness(s)} size="sm" />
                 </td>
                 <td className="text-end">
                   <div className="d-flex align-items-center justify-content-end gap-1">

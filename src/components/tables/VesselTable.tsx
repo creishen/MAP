@@ -13,6 +13,7 @@ import { getDaysUntilExpiry } from '../../utils/formatters';
 
 import { filterVesselsForPersona, isAssuranceSetAssignedToPersona } from '../../utils/rbacHelpers';
 import { canPerform } from '../../utils/permissionHelpers';
+import { calculateVesselReadiness } from '../../utils/readinessHelpers';
 
 type VesselSortField =
   | 'name'
@@ -45,6 +46,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
   const {
     vessels,
     assuranceSets,
+    documents,
     setActiveVesselId,
     activePersona,
     rolePermissionDefaults,
@@ -124,8 +126,8 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
       valA = vesselHasExpiringCert(a) ? 1 : 0;
       valB = vesselHasExpiringCert(b) ? 1 : 0;
     } else if (sortField === 'complianceReadinessScore') {
-      valA = Number(a.complianceReadinessScore) || 0;
-      valB = Number(b.complianceReadinessScore) || 0;
+      valA = calculateVesselReadiness(a, assuranceSets, documents);
+      valB = calculateVesselReadiness(b, assuranceSets, documents);
     } else {
       valA = a[sortField] ?? '';
       valB = b[sortField] ?? '';
@@ -151,7 +153,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
       FlagState: v.flagState,
       ClassificationSociety: v.classificationSociety,
       Status: v.status,
-      ReadinessScore: `${v.complianceReadinessScore}%`,
+      ReadinessScore: `${calculateVesselReadiness(v, assuranceSets, documents)}%`,
     }));
     exportToCsv('Master_Fleet_Registry', exportData);
     setIsExportOpen(false);
@@ -166,7 +168,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
       v.flagState,
       v.classificationSociety,
       v.status,
-      `${v.complianceReadinessScore}%`,
+      `${calculateVesselReadiness(v, assuranceSets, documents)}%`,
     ]);
     exportToPdf('Master Fleet Registry', headers, rows);
     setIsExportOpen(false);
@@ -340,7 +342,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
                     )}
                   </td>
                   <td>
-                    <ReadinessGauge score={v.complianceReadinessScore} size="sm" />
+                    <ReadinessGauge score={calculateVesselReadiness(v, assuranceSets, documents)} size="sm" />
                   </td>
                   <td className="text-end" onClick={(e) => e.stopPropagation()}>
                     <button

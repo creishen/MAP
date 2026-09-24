@@ -11,6 +11,7 @@ import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
 import { filterAuditTrailForPersona, filterVesselsForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
+import { calculateAssuranceSetReadiness, calculateVesselReadiness } from '../utils/readinessHelpers';
 import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
 import { InspectionDrawer } from '../components/drawers/InspectionDrawer';
 import { AddCrewModal } from '../components/drawers/AddCrewModal';
@@ -342,7 +343,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         if (assuranceSortField === 'id') comp = a.id.localeCompare(b.id);
         else if (assuranceSortField === 'title') comp = a.title.localeCompare(b.title);
         else if (assuranceSortField === 'stage') comp = a.stage.localeCompare(b.stage);
-        else if (assuranceSortField === 'readinessScore') comp = a.readinessScore - b.readinessScore;
+        else if (assuranceSortField === 'readinessScore') comp = calculateAssuranceSetReadiness(a) - calculateAssuranceSetReadiness(b);
         return assuranceSortDirection === 'asc' ? comp : -comp;
       });
   }, [linkedSets, assuranceSearch, assuranceStageFilter, assuranceSortField, assuranceSortDirection]);
@@ -758,7 +759,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
           <div>
             <div className="text-secondary small text-uppercase fw-bold">Readiness Score</div>
             <div className="mt-1">
-              <ReadinessGauge score={vessel.complianceReadinessScore} size="md" />
+              <ReadinessGauge score={calculateVesselReadiness(vessel, assuranceSets, documents)} size="md" />
             </div>
           </div>
         </div>
@@ -1479,7 +1480,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                           <span className="badge bg-secondary">{s.stage}</span>
                         </td>
                         <td>
-                          <ReadinessGauge score={s.readinessScore} size="sm" />
+                          <ReadinessGauge score={calculateAssuranceSetReadiness(s)} size="sm" />
                         </td>
                         <td className="text-end">
                           <button

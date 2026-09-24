@@ -10,6 +10,7 @@ import { AssuranceSet, AssuranceRequirement } from '../types/assurance';
 import { UserProfile } from '../types/user';
 import { filterVesselsForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 import { usersWithRole, getAssuranceAssignmentWarnings, hasBlockingAssuranceAssignmentConflict } from '../utils/userRoleHelpers';
+import { calculateAssuranceSetReadiness } from '../utils/readinessHelpers';
 
 interface MasterDocItem {
   id: string;
@@ -305,7 +306,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
       charterWindowStart: startDate,
       charterWindowEnd: endDate,
       stage: 'Initiated',
-      readinessScore: 0,
+      readinessScore: 10,
       mandatoryInspectionRequired: isClientAdmin ? false : inspectionRequired,
       inspectionCompleted: false,
       assignedSubmitter: selectedSubmitter

@@ -18,6 +18,7 @@ import { VersionHistoryDrawer } from '../components/drawers/VersionHistoryDrawer
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { DocumentUploadModal } from '../components/drawers/DocumentUploadModal';
 import { userHasRole } from '../utils/userRoleHelpers';
+import { calculateAssuranceSetReadiness } from '../utils/readinessHelpers';
 
 interface AssuranceDetailViewProps {
   setId: string;
@@ -306,7 +307,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                 Assurance Readiness Index
               </div>
               <div className="d-flex align-items-center justify-content-center p-2 bg-white border rounded-2">
-                <ReadinessGauge score={assuranceSet.readinessScore} size="md" />
+                <ReadinessGauge score={calculateAssuranceSetReadiness(assuranceSet)} size="md" />
               </div>
             </div>
           </div>
