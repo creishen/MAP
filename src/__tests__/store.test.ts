@@ -185,7 +185,7 @@ describe('Map Store State Management', () => {
     expect(isViewAccessibleToPersona('users', undefined, 'Verifier')).toBe(false);
     expect(isViewAccessibleToPersona('users', undefined, 'Inspector')).toBe(false);
     expect(isViewAccessibleToPersona('users', undefined, 'Approver')).toBe(false);
-    expect(isViewAccessibleToPersona('users', undefined, 'C Admin')).toBe(true);
+    expect(isViewAccessibleToPersona('users', undefined, 'C Admin')).toBe(false);
   });
 
   it('should add STCW Layer 1 and Layer 2 certificates to crew members and record audit log', () => {

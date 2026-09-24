@@ -18,6 +18,7 @@ import {
 import {
   countEnabledRights,
   getScopeDefinition,
+  isBrdHardDenied,
   PERMISSION_SCOPE_CATALOG,
 } from '../utils/permissionDefaults';
 import {
@@ -163,6 +164,7 @@ export const RolesAndPermissionsView: React.FC = () => {
     if (action === 'update' && def.lockUpdate) return true;
     if (action === 'delete' && def.lockDelete) return true;
     if (role && def.hardDeny?.[role]?.includes(action)) return true;
+    if (role && isBrdHardDenied(role, scopeKey, action)) return true;
     return false;
   };
 
@@ -328,7 +330,7 @@ export const RolesAndPermissionsView: React.FC = () => {
 
         {!canEdit && (
           <div className="alert alert-info py-2 small mt-3 mb-0">
-            Read-only mode. Only Platform Administrators can save changes.
+            Read-only mode. Only Administrators can save role matrix changes.
           </div>
         )}
         {saveMessage && (
@@ -509,9 +511,14 @@ export const RolesAndPermissionsView: React.FC = () => {
                   customScopes,
                 )
               }
-              isLocked={(scopeKey, action) =>
-                selectedUser.roles.some((role) => isActionLocked(scopeKey, action, role))
-              }
+              isLocked={(scopeKey, action) => {
+                const scopeLocked = isActionLocked(scopeKey, action);
+                if (scopeLocked) return true;
+                if (!selectedUser.roles.length) return true;
+                return selectedUser.roles.every((role) =>
+                  isActionLocked(scopeKey, action, role),
+                );
+              }}
               onToggle={toggleUserDraft}
             />
           ) : (

@@ -4,12 +4,12 @@
   role in system: consumed by audit trail offcanvas drawer, store audit logging actions, and compliance reporting.
 */
 
-export type UserRolePersona = 
-  | 'Administrator' 
-  | 'C Admin' 
-  | 'Submitter' 
-  | 'Verifier' 
-  | 'Inspector' 
+export type UserRolePersona =
+  | 'Administrator'
+  | 'C Admin'
+  | 'Submitter'
+  | 'Verifier'
+  | 'Inspector'
   | 'Approver';
 
 export interface AuditTrailEvent {

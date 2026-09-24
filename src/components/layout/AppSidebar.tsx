@@ -65,27 +65,41 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'vessels',
       label: 'Vessels',
-      allowedRoles: ['Administrator', 'C Admin', 'Submitter'],
+      allowedRoles: ['Administrator', 'C Admin'],
     },
     {
       key: 'assurance-sets',
       label: 'Assurance Sets',
-      allowedRoles: ['Administrator', 'C Admin', 'Submitter'],
+      allowedRoles: [
+        'Administrator',
+        'C Admin',
+        'Submitter',
+        'Verifier',
+        'Approver',
+        'Inspector',
+      ],
     },
     {
       key: 'documents',
       label: 'Document Library',
-      allowedRoles: ['Administrator', 'Submitter'],
+      allowedRoles: [
+        'Administrator',
+        'C Admin',
+        'Submitter',
+        'Verifier',
+        'Approver',
+        'Inspector',
+      ],
     },
     {
       key: 'crew',
       label: 'Crew Directory',
-      allowedRoles: ['Administrator', 'Submitter'],
+      allowedRoles: ['Administrator', 'C Admin'],
     },
     {
       key: 'verifier',
       label: 'Verification Queue',
-      allowedRoles: ['Administrator', 'Verifier'],
+      allowedRoles: ['Administrator', 'Submitter', 'Verifier'],
       badgeText: '2',
     },
     {
@@ -101,7 +115,7 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'capa',
       label: 'CAPA Tracker',
-      allowedRoles: ['Administrator', 'C Admin', 'Submitter', 'Verifier', 'Inspector', 'Approver'],
+      allowedRoles: [],
     },
     {
       key: 'audit',
@@ -111,16 +125,16 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'users',
       label: 'User Management',
-      allowedRoles: ['Administrator', 'C Admin'],
+      allowedRoles: ['Administrator'],
     },
     ...(ENABLE_ROLES_AND_PERMISSIONS
       ? [
-        {
-          key: 'roles-permissions',
-          label: 'Roles & Permissions',
-          allowedRoles: ['Administrator'] as UserRolePersona[],
-        },
-      ]
+          {
+            key: 'roles-permissions',
+            label: 'Roles & Permissions',
+            allowedRoles: ['Administrator'] as UserRolePersona[],
+          },
+        ]
       : []),
   ];
 
@@ -132,6 +146,11 @@ export const AppSidebar: React.FC = () => {
     if (activePersona === 'Inspector' && item.key === 'inspector') return false;
     if (activePersona === 'Approver' && item.key === 'approver') return false;
     if (activePersona === 'Approver' && item.key === 'inspector') return false;
+
+    /* Roles & Permissions is an Administrator settings page (BRD role_rights row stays blank) */
+    if (item.key === 'roles-permissions') {
+      return activePersona === 'Administrator';
+    }
 
     const initialAllowed = item.allowedRoles.includes(activePersona);
 
@@ -150,12 +169,12 @@ export const AppSidebar: React.FC = () => {
       ).read;
     }
 
-    const roleFlags = rolePermissionDefaults[activePersona]?.[scopeKey];
-    if (roleFlags && roleFlags.read !== undefined) {
-      return roleFlags.read;
-    }
-
-    return initialAllowed;
+    return getRoleScopeFlags(
+      rolePermissionDefaults,
+      activePersona,
+      scopeKey,
+      customScopes,
+    ).read;
   });
 
   return (

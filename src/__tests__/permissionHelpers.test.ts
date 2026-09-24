@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBrdRolePermissionDefaults } from '../utils/permissionDefaults';
+import { buildBrdRolePermissionDefaults, isBrdHardDenied } from '../utils/permissionDefaults';
 import {
   applyPermissionGuards,
   getEffectiveUserScopeFlags,
@@ -10,12 +10,12 @@ import { isViewAccessibleToPersona } from '../utils/rbacHelpers';
 describe('permissionDefaults and helpers', () => {
   const matrix = buildBrdRolePermissionDefaults();
 
-  it('seeds Administrator with vessel CRUD and C Admin with vessel read-only', () => {
+  it('seeds Administrator with vessel C/R/U and C Admin with vessel read-only', () => {
     expect(getRoleScopeFlags(matrix, 'Administrator', 'vessels')).toEqual({
       create: true,
       read: true,
       update: true,
-      delete: true,
+      delete: false,
     });
     expect(getRoleScopeFlags(matrix, 'C Admin', 'vessels')).toEqual({
       create: false,
@@ -25,8 +25,9 @@ describe('permissionDefaults and helpers', () => {
     });
   });
 
-  it('hard-denies C Admin document mutations even if flags are forced on', () => {
-    const forced = applyPermissionGuards('documents', 'C Admin', {
+  it('hard-locks C Admin vessel create (blank in BRD matrix)', () => {
+    expect(isBrdHardDenied('C Admin', 'vessels', 'create')).toBe(true);
+    const forced = applyPermissionGuards('vessels', 'C Admin', {
       create: true,
       read: true,
       update: true,
@@ -40,8 +41,23 @@ describe('permissionDefaults and helpers', () => {
     });
   });
 
-  it('keeps Verifier post-inspection review off by default and allows user override', () => {
-    expect(getRoleScopeFlags(matrix, 'Verifier', 'post_inspection_review').read).toBe(false);
+  it('allows C Admin assurance set create per BRD matrix', () => {
+    expect(getRoleScopeFlags(matrix, 'C Admin', 'assurance_sets')).toEqual({
+      create: true,
+      read: true,
+      update: true,
+      delete: false,
+    });
+    expect(isBrdHardDenied('C Admin', 'assurance_sets', 'create')).toBe(false);
+  });
+
+  it('keeps Verifier post-inspection review as read-only; update stays locked', () => {
+    expect(getRoleScopeFlags(matrix, 'Verifier', 'post_inspection_review')).toEqual({
+      create: false,
+      read: true,
+      update: false,
+      delete: false,
+    });
 
     const effective = getEffectiveUserScopeFlags(
       matrix,
@@ -54,7 +70,7 @@ describe('permissionDefaults and helpers', () => {
       'post_inspection_review',
     );
     expect(effective.read).toBe(true);
-    expect(effective.update).toBe(true);
+    expect(effective.update).toBe(false);
   });
 
   it('locks audit trail update and delete for all roles', () => {
@@ -69,16 +85,16 @@ describe('permissionDefaults and helpers', () => {
   it('dynamically updates view accessibility when permission matrix read access is granted or revoked', () => {
     const customMatrix = JSON.parse(JSON.stringify(matrix));
 
-    // Default Verifier cannot access vessels
     expect(isViewAccessibleToPersona('vessels', null, 'Verifier', customMatrix)).toBe(false);
 
-    // Grant Verifier read access on vessels
-    customMatrix['Verifier']['vessels'] = { create: false, read: true, update: false, delete: false };
-    expect(isViewAccessibleToPersona('vessels', null, 'Verifier', customMatrix)).toBe(true);
-
-    // Revoke Submitter read access on vessels
-    customMatrix['Submitter']['vessels'] = { create: false, read: false, update: false, delete: false };
-    expect(isViewAccessibleToPersona('vessels', null, 'Submitter', customMatrix)).toBe(false);
+    customMatrix['Verifier']['vessels'] = {
+      create: false,
+      read: true,
+      update: false,
+      delete: false,
+    };
+    /* BRD hard-deny still forces Verifier vessels read off even if matrix is patched */
+    expect(getRoleScopeFlags(customMatrix, 'Verifier', 'vessels').read).toBe(false);
   });
 
   it('disables physical inspections for Approver in default permission matrix', () => {
@@ -92,15 +108,42 @@ describe('permissionDefaults and helpers', () => {
     expect(isViewAccessibleToPersona('inspector', null, 'Approver', matrix)).toBe(false);
   });
 
-  it('disables Roles & Permissions access for C Admin by default', () => {
-    const cAdminRights = getRoleScopeFlags(matrix, 'C Admin', 'role_rights');
-    expect(cAdminRights).toEqual({
+  it('gives Administrator access to Roles & Permissions settings page', () => {
+    expect(isViewAccessibleToPersona('roles-permissions', null, 'Administrator')).toBe(true);
+    expect(isViewAccessibleToPersona('roles-permissions', null, 'C Admin')).toBe(false);
+    expect(getRoleScopeFlags(matrix, 'Administrator', 'role_rights')).toEqual({
       create: false,
       read: false,
       update: false,
       delete: false,
     });
-    expect(isViewAccessibleToPersona('roles-permissions', null, 'C Admin', matrix)).toBe(false);
+  });
+
+  it('lets user overrides toggle rights that at least one role is allowed to hold', () => {
+    const effectiveOff = getEffectiveUserScopeFlags(
+      matrix,
+      { 'USR-MULTI': { documents: { create: false } } },
+      { id: 'USR-MULTI', roles: ['Submitter', 'Verifier'] },
+      'documents',
+    );
+    expect(effectiveOff.create).toBe(false);
+
+    const effectiveOn = getEffectiveUserScopeFlags(
+      matrix,
+      { 'USR-MULTI': { documents: { create: true } } },
+      { id: 'USR-MULTI', roles: ['Submitter', 'Verifier'] },
+      'documents',
+    );
+    expect(effectiveOn.create).toBe(true);
+  });
+
+  it('still strips user overrides that are blank for every role the user holds', () => {
+    const effective = getEffectiveUserScopeFlags(
+      matrix,
+      { 'USR-V': { vessels: { create: true } } },
+      { id: 'USR-V', roles: ['Verifier'] },
+      'vessels',
+    );
+    expect(effective.create).toBe(false);
   });
 });
-

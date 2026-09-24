@@ -9,13 +9,14 @@ import { UserProfile } from '../types/user';
 import {
   CrudAction,
   CrudFlags,
+  CRUD_ACTIONS,
   PermissionScopeDefinition,
   PermissionScopeKey,
   RolePermissionMatrix,
   UserPermissionOverrides,
   emptyCrud,
 } from '../types/permissions';
-import { getScopeDefinition } from './permissionDefaults';
+import { getScopeDefinition, isBrdHardDenied } from './permissionDefaults';
 
 /**
   what: merges base CRUD flags with a partial override patch.
@@ -31,7 +32,7 @@ export function mergeCrudFlags(base: CrudFlags, patch?: Partial<CrudFlags>): Cru
 }
 
 /**
-  what: applies catalog lock flags and hardDeny rules for a role onto CRUD flags.
+  what: applies catalog lock flags, hardDeny, and BRD blank-cell hard locks for a role onto CRUD flags.
 */
 export function applyPermissionGuards(
   scopeKey: string,
@@ -50,6 +51,12 @@ export function applyPermissionGuards(
   const denied = def?.hardDeny?.[role];
   if (denied) {
     for (const action of denied) {
+      next[action] = false;
+    }
+  }
+
+  for (const action of CRUD_ACTIONS) {
+    if (isBrdHardDenied(role, scopeKey, action)) {
       next[action] = false;
     }
   }
@@ -87,6 +94,9 @@ export function getRoleScopeFlags(
 
 /**
   what: resolves effective CRUD for a user by unioning their roles then applying user overrides.
+  how: role flags are already BRD-guarded before union; after merge, only catalog locks and
+       actions blank for every role the user holds are forced off (so overrides can still
+       toggle rights that at least one role is allowed to hold).
 */
 export function getEffectiveUserScopeFlags(
   matrix: RolePermissionMatrix,
@@ -103,11 +113,23 @@ export function getEffectiveUserScopeFlags(
   const patch = overrides[user.id]?.[scopeKey];
   const merged = mergeCrudFlags(fromRoles, patch);
 
-  let guarded = merged;
-  for (const role of user.roles) {
-    guarded = applyPermissionGuards(scopeKey, role, guarded, extraScopes);
+  const def = getScopeDefinition(scopeKey, extraScopes);
+  const next: CrudFlags = { ...merged };
+  if (def?.lockCreate) next.create = false;
+  if (def?.lockRead) next.read = false;
+  if (def?.lockUpdate) next.update = false;
+  if (def?.lockDelete) next.delete = false;
+
+  for (const action of CRUD_ACTIONS) {
+    const deniedByAllRoles = user.roles.every((role) =>
+      isBrdHardDenied(role, scopeKey, action),
+    );
+    if (deniedByAllRoles) {
+      next[action] = false;
+    }
   }
-  return guarded;
+
+  return next;
 }
 
 /**

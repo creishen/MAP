@@ -85,6 +85,9 @@ export const ALL_ROLE_PERSONAS: UserRolePersona[] = [
   'Approver',
 ];
 
+/** Vessel-owner admin — not assignable as an assurance operational role */
+export const SYSTEM_ROLE_PERSONAS: UserRolePersona[] = ['Administrator'];
+
 /** Built-in module groupings (admin can add more categories at runtime) */
 export const BUILTIN_PERMISSION_CATEGORIES: string[] = [
   'Setup & configuration',

@@ -32,7 +32,6 @@ import './App.css';
 
 import { isViewAccessibleToPersona } from './utils/rbacHelpers';
 import { ENABLE_ROLES_AND_PERMISSIONS } from './config/featureFlags';
-import { VIEW_TO_SCOPE, getEffectiveUserScopeFlags, getRoleScopeFlags } from './utils/permissionHelpers';
 
 /**
   what: renders the root application shell and handles window hash change navigation or login page.
@@ -81,31 +80,17 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    let allowed = isViewAccessibleToPersona(currentHashView, currentEntityId, activePersona);
+    const matchingUser =
+      users.find((u) => u.roles.includes(activePersona)) ?? null;
 
-    if (ENABLE_ROLES_AND_PERMISSIONS && allowed) {
-      const scopeKey = VIEW_TO_SCOPE[currentHashView];
-      if (scopeKey) {
-        const matchingUser =
-          users.find((u) => u.roles.includes(activePersona)) ?? null;
-        if (matchingUser) {
-          allowed = getEffectiveUserScopeFlags(
-            rolePermissionDefaults,
-            userPermissionOverrides,
-            matchingUser,
-            scopeKey,
-            customScopes,
-          ).read;
-        } else {
-          allowed = getRoleScopeFlags(
-            rolePermissionDefaults,
-            activePersona,
-            scopeKey,
-            customScopes,
-          ).read;
-        }
-      }
-    }
+    let allowed = isViewAccessibleToPersona(
+      currentHashView,
+      currentEntityId,
+      activePersona,
+      ENABLE_ROLES_AND_PERMISSIONS ? rolePermissionDefaults : undefined,
+      ENABLE_ROLES_AND_PERMISSIONS ? userPermissionOverrides : undefined,
+      matchingUser,
+    );
 
     if (!allowed) {
       setCurrentHashView('dashboard');

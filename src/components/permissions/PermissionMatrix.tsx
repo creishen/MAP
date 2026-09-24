@@ -11,6 +11,7 @@ import {
   CRUD_ACTIONS,
   PermissionScopeDefinition,
 } from '../../types/permissions';
+import { isBrdHardDenied } from '../../utils/permissionDefaults';
 
 interface PermissionMatrixProps {
   catalog: PermissionScopeDefinition[];
@@ -50,10 +51,10 @@ function lockReason(
     return 'Delete is locked — BRD immutable or N/A for this workflow.';
   }
   if (role && def.hardDeny?.[role]?.includes(action)) {
-    if (role === 'C Admin') {
-      return 'Locked: C Admin cannot mutate Vessel Provider documents (UC-03 / UC-11).';
-    }
     return `Locked by BRD hard deny for ${role}.`;
+  }
+  if (role && isBrdHardDenied(role, scopeKey, action)) {
+    return `Locked: blank in the Roles & CRUD matrix for ${role}.`;
   }
   return null;
 }

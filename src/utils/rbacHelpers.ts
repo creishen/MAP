@@ -9,7 +9,7 @@ import { AuditTrailEvent, UserRolePersona } from "../types/audit";
 import { MasterDocument } from "../types/document";
 import { VesselParticulars } from "../types/vessel";
 import { userMatchesAnyRole } from "./userRoleHelpers";
-import { VIEW_TO_SCOPE, canPerform, isUserOverride, getEffectiveUserScopeFlags } from "./permissionHelpers";
+import { VIEW_TO_SCOPE, canPerform, isUserOverride, getEffectiveUserScopeFlags, getRoleScopeFlags } from "./permissionHelpers";
 import { RolePermissionMatrix, UserPermissionOverrides } from "../types/permissions";
 import { UserProfile } from "../types/user";
 
@@ -346,25 +346,36 @@ export function getBackButtonInfo(
 */
 export function isViewAccessibleToPersona(
   view: string,
-  entityId: string | undefined | null,
+  _entityId: string | undefined | null,
   persona: UserRolePersona,
   matrix?: RolePermissionMatrix,
   overrides?: UserPermissionOverrides,
   user?: Pick<UserProfile, 'id' | 'roles'> | null,
 ): boolean {
-  if (persona === "Administrator") return true;
+  /* Roles & Permissions settings page — Administrator only (BRD role_rights row is blank) */
+  if (view === "roles-permissions") {
+    return persona === "Administrator";
+  }
 
-  /* baseline initial persona route checks */
+  /* baseline initial persona route checks (matrix overrides when supplied) */
   const getInitialAllowed = (): boolean => {
-    if (view === "roles-permissions") {
-      return ["Administrator"].includes(persona);
+    if (view === "users") {
+      return persona === "Administrator";
     }
-    if (view === "users" && !["Administrator", "C Admin"].includes(persona)) return false;
-    if (view === "crew" && !["Administrator", "Submitter"].includes(persona)) return false;
-    if (view === "dashboard" || view === "audit" || view === "capa" || view === "capas") return true;
+    if (view === "crew") {
+      return persona === "Administrator" || persona === "C Admin";
+    }
+    if (view === "capa" || view === "capas") {
+      return false;
+    }
+    if (view === "dashboard" || view === "audit") return true;
+
+    if (persona === "Administrator") {
+      return true;
+    }
 
     if (persona === "C Admin") {
-      if (["documents", "verifier", "approver", "inspector", "inspection"].includes(view)) {
+      if (["verifier", "approver", "inspector", "inspection", "users"].includes(view)) {
         return false;
       }
       return true;
@@ -373,12 +384,13 @@ export function isViewAccessibleToPersona(
     if (persona === "Submitter") {
       if (
         [
-          "verifier",
           "inspector",
           "inspection",
           "create-assurance-set",
           "approver",
-          "roles-permissions",
+          "users",
+          "crew",
+          "vessels",
         ].includes(view)
       ) {
         return false;
@@ -390,18 +402,14 @@ export function isViewAccessibleToPersona(
       if (
         [
           "vessels",
-          "documents",
           "inspector",
           "inspection",
           "create-assurance-set",
           "approver",
           "users",
-          "roles-permissions",
+          "crew",
         ].includes(view)
       ) {
-        return false;
-      }
-      if (view === "assurance-sets" && !entityId) {
         return false;
       }
       return true;
@@ -411,18 +419,13 @@ export function isViewAccessibleToPersona(
       if (
         [
           "vessels",
-          "assurance-sets",
-          "documents",
           "verifier",
           "create-assurance-set",
           "approver",
           "users",
-          "roles-permissions",
+          "crew",
         ].includes(view)
       ) {
-        return false;
-      }
-      if (view === "inspector" && !entityId) {
         return false;
       }
       return true;
@@ -432,18 +435,14 @@ export function isViewAccessibleToPersona(
       if (
         [
           "vessels",
-          "documents",
           "verifier",
           "inspector",
           "inspection",
           "create-assurance-set",
           "users",
-          "roles-permissions",
+          "crew",
         ].includes(view)
       ) {
-        return false;
-      }
-      if (view === "assurance-sets" && !entityId) {
         return false;
       }
       return true;
@@ -461,10 +460,7 @@ export function isViewAccessibleToPersona(
       if (user && isUserOverride(overrides || {}, user.id, scopeKey, "read")) {
         return getEffectiveUserScopeFlags(matrix, overrides || {}, user, scopeKey).read;
       }
-      const roleFlags = matrix[persona]?.[scopeKey];
-      if (roleFlags && roleFlags.read !== undefined) {
-        return roleFlags.read;
-      }
+      return getRoleScopeFlags(matrix, persona, scopeKey).read;
     }
   }
 
