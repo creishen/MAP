@@ -933,7 +933,66 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   // Crew Directory
   crew: MOCK_CREW,
   addCrewMember: (newCrew) => {
-    set((state) => ({ crew: [newCrew, ...state.crew] }));
+    const activePersona = get().activePersona;
+    /* convert all layer 1 and layer 2 certificates attached to new crew into MasterDocument entries */
+    const allCrewDocs = [...newCrew.layer1CoreDocuments, ...newCrew.layer2Endorsements];
+    const newMasterDocs: MasterDocument[] = allCrewDocs.map((doc) => {
+      const isExpired = doc.verificationStatus === 'Expired' || new Date(doc.expiryDate).getTime() < Date.now();
+      return {
+        id: doc.id,
+        title: `${doc.title} — ${newCrew.fullName}`,
+        entityType: 'Crew Certificate',
+        vesselId: newCrew.currentVesselId || '',
+        certificateNo: doc.certificateNo,
+        issuingAuthority: doc.issuingAuthority,
+        expiryDate: doc.expiryDate,
+        ocrConfidence: 98.5,
+        complianceState: isExpired ? 'Expired' : doc.verificationStatus === 'Expiring' ? 'Expiring < 6 Mos' : 'Valid',
+        currentVersion: 'v1.0',
+        versions: [
+          {
+            versionLabel: 'v1.0',
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: activePersona || 'Crewing Administrator',
+            fileSizeBytes: doc.fileSizeBytes || 1500000,
+            fileName: doc.fileName || `${doc.title.toLowerCase().replace(/\s+/g, '_')}.pdf`,
+            changeSummary: `Uploaded ${doc.layer} certificate for STCW compliance tracking.`,
+          },
+        ],
+        crewAttributes: {
+          crewName: newCrew.fullName,
+          passportId: newCrew.passportNo,
+          rank: newCrew.rank,
+          certType: doc.stcwRegulation || doc.title,
+          issuingCenter: doc.issuingAuthority,
+          issueDate: doc.issueDate,
+          expiryDate: doc.expiryDate,
+          assignedVessel: newCrew.currentVesselName || '',
+          nationality: newCrew.nationality,
+          trainingDate: doc.issueDate,
+          ocrConfidence: 98.5,
+        },
+        validationRules: {
+          charterBufferPassed: !isExpired,
+          assetMatch100Percent: true,
+          iacsAuthorityValid: true,
+          overallValid: !isExpired,
+          exceptionDetails: isExpired ? `Certificate expired on ${doc.expiryDate}. Immediate renewal required.` : undefined,
+        },
+        verificationStatus: isExpired ? 'Correction Requested' : 'Verified',
+        verificationNotes: isExpired ? 'Expired certificate. Please upload updated renewal scan.' : undefined,
+      };
+    });
+
+    set((state) => {
+      const existingDocIds = new Set(state.documents.map((d) => d.id));
+      const filteredNewDocs = newMasterDocs.filter((d) => !existingDocIds.has(d.id));
+      return {
+        crew: [newCrew, ...state.crew],
+        documents: [...filteredNewDocs, ...state.documents],
+      };
+    });
+
     get().logAuditEvent({
       userId: 'USR-CURRENT',
       userRole: get().activePersona,
@@ -945,8 +1004,10 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   },
   assignCrewToVessel: (crewId, vesselId) => {
     const vessel = get().vessels.find((v) => v.id === vesselId);
-    set((state) => ({
-      crew: state.crew.map((c) => {
+    set((state) => {
+      const targetCrew = state.crew.find((c) => c.id === crewId);
+      const crewName = targetCrew?.fullName;
+      const updatedCrew = state.crew.map((c) => {
         if (c.id !== crewId) return c;
         if (!vesselId) {
           return {
@@ -973,8 +1034,31 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           currentVesselName: `${vessel!.name} (IMO ${vessel!.imoNumber})`,
           assignments: updatedAssignments,
         };
-      }),
-    }));
+      });
+
+      /* update corresponding documents in document library with new vessel association */
+      const updatedDocuments = state.documents.map((d) => {
+        if (d.entityType === 'Crew Certificate' && d.crewAttributes?.crewName === crewName) {
+          return {
+            ...d,
+            vesselId: vesselId || '',
+            crewAttributes: d.crewAttributes
+              ? {
+                  ...d.crewAttributes,
+                  assignedVessel: vessel ? `${vessel.name} (IMO ${vessel.imoNumber})` : '',
+                }
+              : undefined,
+          };
+        }
+        return d;
+      });
+
+      return {
+        crew: updatedCrew,
+        documents: updatedDocuments,
+      };
+    });
+
     get().logAuditEvent({
       userId: 'USR-ADMIN-01',
       userRole: get().activePersona,
@@ -985,6 +1069,56 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     });
   },
   addCrewDocument: (crewId, doc) => {
+    const targetCrew = get().crew.find((c) => c.id === crewId);
+    const activePersona = get().activePersona;
+    const isExpired = doc.verificationStatus === 'Expired' || new Date(doc.expiryDate).getTime() < Date.now();
+    const newMasterDoc: MasterDocument = {
+      id: doc.id,
+      title: targetCrew ? `${doc.title} — ${targetCrew.fullName}` : doc.title,
+      entityType: 'Crew Certificate',
+      vesselId: targetCrew?.currentVesselId || '',
+      certificateNo: doc.certificateNo,
+      issuingAuthority: doc.issuingAuthority,
+      expiryDate: doc.expiryDate,
+      ocrConfidence: 98.5,
+      complianceState: isExpired ? 'Expired' : doc.verificationStatus === 'Expiring' ? 'Expiring < 6 Mos' : 'Valid',
+      currentVersion: 'v1.0',
+      versions: [
+        {
+          versionLabel: 'v1.0',
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: activePersona || 'Crewing Administrator',
+          fileSizeBytes: doc.fileSizeBytes || 1500000,
+          fileName: doc.fileName || `${doc.title.toLowerCase().replace(/\s+/g, '_')}.pdf`,
+          changeSummary: `Uploaded ${doc.layer} certificate for STCW compliance tracking.`,
+        },
+      ],
+      crewAttributes: targetCrew
+        ? {
+            crewName: targetCrew.fullName,
+            passportId: targetCrew.passportNo,
+            rank: targetCrew.rank,
+            certType: doc.stcwRegulation || doc.title,
+            issuingCenter: doc.issuingAuthority,
+            issueDate: doc.issueDate,
+            expiryDate: doc.expiryDate,
+            assignedVessel: targetCrew.currentVesselName || '',
+            nationality: targetCrew.nationality,
+            trainingDate: doc.issueDate,
+            ocrConfidence: 98.5,
+          }
+        : undefined,
+      validationRules: {
+        charterBufferPassed: !isExpired,
+        assetMatch100Percent: true,
+        iacsAuthorityValid: true,
+        overallValid: !isExpired,
+        exceptionDetails: isExpired ? `Certificate expired on ${doc.expiryDate}. Immediate renewal required.` : undefined,
+      },
+      verificationStatus: isExpired ? 'Correction Requested' : 'Verified',
+      verificationNotes: isExpired ? 'Expired certificate. Please upload updated renewal scan.' : undefined,
+    };
+
     set((state) => ({
       crew: state.crew.map((c) => {
         if (c.id !== crewId) return c;
@@ -998,7 +1132,9 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           lastAuditedDate: new Date().toISOString().split('T')[0],
         };
       }),
+      documents: [newMasterDoc, ...state.documents.filter((d) => d.id !== doc.id)],
     }));
+
     get().logAuditEvent({
       userId: 'USR-CURRENT',
       userRole: get().activePersona,
@@ -1009,8 +1145,12 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     });
   },
   updateCrewDocument: (crewId, doc) => {
-    set((state) => ({
-      crew: state.crew.map((c) => {
+    const targetCrew = get().crew.find((c) => c.id === crewId);
+    const activePersona = get().activePersona;
+    const isExpired = doc.verificationStatus === 'Expired' || new Date(doc.expiryDate).getTime() < Date.now();
+
+    set((state) => {
+      const updatedCrew = state.crew.map((c) => {
         if (c.id !== crewId) return c;
         const filteredL1 = c.layer1CoreDocuments.filter((d) => d.id !== doc.id);
         const filteredL2 = c.layer2Endorsements.filter((d) => d.id !== doc.id);
@@ -1023,8 +1163,87 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           layer2Endorsements: updatedL2,
           lastAuditedDate: new Date().toISOString().split('T')[0],
         };
-      }),
-    }));
+      });
+
+      const existingDoc = state.documents.find((d) => d.id === doc.id);
+      const updatedDocuments = existingDoc
+        ? state.documents.map((d) => {
+            if (d.id !== doc.id) return d;
+            return {
+              ...d,
+              title: targetCrew ? `${doc.title} — ${targetCrew.fullName}` : doc.title,
+              certificateNo: doc.certificateNo,
+              issuingAuthority: doc.issuingAuthority,
+              expiryDate: doc.expiryDate,
+              complianceState: isExpired ? ('Expired' as const) : doc.verificationStatus === 'Expiring' ? ('Expiring < 6 Mos' as const) : ('Valid' as const),
+              verificationStatus: isExpired ? ('Correction Requested' as const) : ('Verified' as const),
+              versions: [
+                {
+                  versionLabel: `v${d.versions.length + 1}.0`,
+                  uploadedAt: new Date().toISOString(),
+                  uploadedBy: activePersona || 'Crewing Administrator',
+                  fileSizeBytes: doc.fileSizeBytes || 1500000,
+                  fileName: doc.fileName || d.versions[0]?.fileName || 'updated_cert.pdf',
+                  changeSummary: `Reuploaded / updated ${doc.layer} certificate.`,
+                },
+                ...d.versions,
+              ],
+            };
+          })
+        : [
+            {
+              id: doc.id,
+              title: targetCrew ? `${doc.title} — ${targetCrew.fullName}` : doc.title,
+              entityType: 'Crew Certificate' as const,
+              vesselId: targetCrew?.currentVesselId || '',
+              certificateNo: doc.certificateNo,
+              issuingAuthority: doc.issuingAuthority,
+              expiryDate: doc.expiryDate,
+              ocrConfidence: 98.5,
+              complianceState: isExpired ? ('Expired' as const) : ('Valid' as const),
+              currentVersion: 'v1.0',
+              versions: [
+                {
+                  versionLabel: 'v1.0',
+                  uploadedAt: new Date().toISOString(),
+                  uploadedBy: activePersona || 'Crewing Administrator',
+                  fileSizeBytes: doc.fileSizeBytes || 1500000,
+                  fileName: doc.fileName || 'cert.pdf',
+                  changeSummary: `Uploaded ${doc.layer} certificate.`,
+                },
+              ],
+              crewAttributes: targetCrew
+                ? {
+                    crewName: targetCrew.fullName,
+                    passportId: targetCrew.passportNo,
+                    rank: targetCrew.rank,
+                    certType: doc.stcwRegulation || doc.title,
+                    issuingCenter: doc.issuingAuthority,
+                    issueDate: doc.issueDate,
+                    expiryDate: doc.expiryDate,
+                    assignedVessel: targetCrew.currentVesselName || '',
+                    nationality: targetCrew.nationality,
+                    trainingDate: doc.issueDate,
+                    ocrConfidence: 98.5,
+                  }
+                : undefined,
+              validationRules: {
+                charterBufferPassed: !isExpired,
+                assetMatch100Percent: true,
+                iacsAuthorityValid: true,
+                overallValid: !isExpired,
+              },
+              verificationStatus: isExpired ? ('Correction Requested' as const) : ('Verified' as const),
+            },
+            ...state.documents,
+          ];
+
+      return {
+        crew: updatedCrew,
+        documents: updatedDocuments,
+      };
+    });
+
     get().logAuditEvent({
       userId: 'USR-CURRENT',
       userRole: get().activePersona,
@@ -1047,6 +1266,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           lastAuditedDate: new Date().toISOString().split('T')[0],
         };
       }),
+      documents: state.documents.filter((d) => d.id !== docId),
     }));
     get().logAuditEvent({
       userId: 'USR-CURRENT',
