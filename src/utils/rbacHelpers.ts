@@ -366,10 +366,22 @@ export function getBackButtonInfo(
     };
   }
 
-  if (previousHashView === "capa") {
+  if (previousHashView === "approver") {
     return {
-      label: "← Back to CAPA Management",
-      targetView: "capa",
+      label: previousEntityId
+        ? "← Back to Approval Detail"
+        : "← Back to Approval Requests",
+      targetView: "approver",
+      targetEntityId: previousEntityId,
+    };
+  }
+
+  if (previousHashView === "inspector" || previousHashView === "inspection") {
+    return {
+      label: previousEntityId
+        ? "← Back to Inspection Checklist"
+        : "← Back to Physical Survey Schedule",
+      targetView: "inspector",
       targetEntityId: previousEntityId,
     };
   }
@@ -394,7 +406,7 @@ export function isViewAccessibleToPersona(
   overrides?: UserPermissionOverrides,
   user?: Pick<UserProfile, 'id' | 'roles'> | null,
 ): boolean {
-  /* Roles & Permissions settings page — Administrator only (BRD role_rights row is blank) */
+  /* roles & permissions settings page — administrator only (brd role_rights row is blank) */
   if (view === "roles-permissions") {
     return persona === "Administrator";
   }
@@ -475,11 +487,22 @@ export function isViewAccessibleToPersona(
     }
 
     if (persona === "Inspector") {
-      return view === "dashboard" || view === "audit" || view === "capa" || view === "capas";
+      return (
+        view === "dashboard" ||
+        view === "audit" ||
+        view === "capa" ||
+        view === "capas" ||
+        view === "inspector" ||
+        view === "inspection"
+      );
     }
 
     if (persona === "Approver") {
-      return view === "dashboard" || view === "audit";
+      return (
+        view === "dashboard" ||
+        view === "audit" ||
+        view === "approver"
+      );
     }
 
     return true;

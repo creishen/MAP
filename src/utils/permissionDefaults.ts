@@ -252,7 +252,7 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
   switch (key) {
     case 'vessels':
       if (role === 'Administrator') return createReadUpdate();
-      if (role === 'C Admin' || role === 'Submitter') return readOnly();
+      if (role === 'C Admin' || role === 'Submitter' || role === 'Inspector') return readOnly();
       return emptyCrud();
 
     case 'vessel_status':
@@ -343,6 +343,7 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
 
     case 'inspection_workspace':
       if (role === 'Administrator') return readOnly();
+      if (role === 'Inspector') return readUpdate();
       return emptyCrud();
 
     case 'inspection_findings':
@@ -359,6 +360,7 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
 
     case 'approval_gate':
       if (role === 'Administrator') return readOnly();
+      if (role === 'Approver') return readUpdate();
       return emptyCrud();
 
     case 'approval_decisions':
