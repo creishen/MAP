@@ -363,10 +363,14 @@ export function isViewAccessibleToPersona(
       return persona === "Administrator";
     }
     if (view === "crew") {
-      return persona === "Administrator" || persona === "C Admin";
+      return persona === "Administrator";
     }
     if (view === "capa" || view === "capas") {
-      return false;
+      return (
+        persona === "Administrator" ||
+        persona === "C Admin" ||
+        persona === "Inspector"
+      );
     }
     if (view === "dashboard" || view === "audit") return true;
 
@@ -375,7 +379,17 @@ export function isViewAccessibleToPersona(
     }
 
     if (persona === "C Admin") {
-      if (["verifier", "approver", "inspector", "inspection", "users"].includes(view)) {
+      if (
+        [
+          "documents",
+          "crew",
+          "verifier",
+          "approver",
+          "inspector",
+          "inspection",
+          "users",
+        ].includes(view)
+      ) {
         return false;
       }
       return true;
@@ -390,7 +404,8 @@ export function isViewAccessibleToPersona(
           "approver",
           "users",
           "crew",
-          "vessels",
+          "capa",
+          "capas",
         ].includes(view)
       ) {
         return false;
@@ -402,12 +417,15 @@ export function isViewAccessibleToPersona(
       if (
         [
           "vessels",
+          "assurance-sets",
+          "create-assurance-set",
           "inspector",
           "inspection",
-          "create-assurance-set",
           "approver",
           "users",
           "crew",
+          "capa",
+          "capas",
         ].includes(view)
       ) {
         return false;
@@ -416,36 +434,11 @@ export function isViewAccessibleToPersona(
     }
 
     if (persona === "Inspector") {
-      if (
-        [
-          "vessels",
-          "verifier",
-          "create-assurance-set",
-          "approver",
-          "users",
-          "crew",
-        ].includes(view)
-      ) {
-        return false;
-      }
-      return true;
+      return view === "dashboard" || view === "audit" || view === "capa" || view === "capas";
     }
 
     if (persona === "Approver") {
-      if (
-        [
-          "vessels",
-          "verifier",
-          "inspector",
-          "inspection",
-          "create-assurance-set",
-          "users",
-          "crew",
-        ].includes(view)
-      ) {
-        return false;
-      }
-      return true;
+      return view === "dashboard" || view === "audit";
     }
 
     return true;

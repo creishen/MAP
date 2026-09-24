@@ -65,36 +65,22 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'vessels',
       label: 'Vessels',
-      allowedRoles: ['Administrator', 'C Admin'],
+      allowedRoles: ['Administrator', 'C Admin', 'Submitter'],
     },
     {
       key: 'assurance-sets',
       label: 'Assurance Sets',
-      allowedRoles: [
-        'Administrator',
-        'C Admin',
-        'Submitter',
-        'Verifier',
-        'Approver',
-        'Inspector',
-      ],
+      allowedRoles: ['Administrator', 'C Admin', 'Submitter'],
     },
     {
       key: 'documents',
       label: 'Document Library',
-      allowedRoles: [
-        'Administrator',
-        'C Admin',
-        'Submitter',
-        'Verifier',
-        'Approver',
-        'Inspector',
-      ],
+      allowedRoles: ['Administrator', 'Submitter', 'Verifier'],
     },
     {
       key: 'crew',
       label: 'Crew Directory',
-      allowedRoles: ['Administrator', 'C Admin'],
+      allowedRoles: ['Administrator'],
     },
     {
       key: 'verifier',
@@ -105,17 +91,17 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'inspector',
       label: 'Physical Inspections',
-      allowedRoles: ['Administrator', 'Inspector'],
+      allowedRoles: ['Administrator'],
     },
     {
       key: 'approver',
       label: 'Approval Gate',
-      allowedRoles: ['Administrator', 'Approver'],
+      allowedRoles: ['Administrator'],
     },
     {
       key: 'capa',
       label: 'CAPA Tracker',
-      allowedRoles: [],
+      allowedRoles: ['Administrator', 'C Admin', 'Inspector'],
     },
     {
       key: 'audit',
@@ -125,7 +111,7 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'users',
       label: 'User Management',
-      allowedRoles: ['Administrator'],
+      allowedRoles: ['Administrator', 'C Admin'],
     },
     ...(ENABLE_ROLES_AND_PERMISSIONS
       ? [
@@ -143,9 +129,6 @@ export const AppSidebar: React.FC = () => {
   const visibleItems = navItems.filter((item) => {
     /* hide dedicated sidepanel button if the page is rendered directly as that role's dashboard */
     if (activePersona === 'Verifier' && item.key === 'verifier') return false;
-    if (activePersona === 'Inspector' && item.key === 'inspector') return false;
-    if (activePersona === 'Approver' && item.key === 'approver') return false;
-    if (activePersona === 'Approver' && item.key === 'inspector') return false;
 
     /* Roles & Permissions is an Administrator settings page (BRD role_rights row stays blank) */
     if (item.key === 'roles-permissions') {

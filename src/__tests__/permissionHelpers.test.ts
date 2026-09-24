@@ -137,6 +137,25 @@ describe('permissionDefaults and helpers', () => {
     expect(effectiveOn.create).toBe(true);
   });
 
+  it('seeds sidebar-facing vessel and CAPA rights for Admin, C Admin, and Submitter', () => {
+    expect(getRoleScopeFlags(matrix, 'Administrator', 'vessels').read).toBe(true);
+    expect(getRoleScopeFlags(matrix, 'Administrator', 'capa').read).toBe(true);
+    expect(getRoleScopeFlags(matrix, 'C Admin', 'capa').read).toBe(true);
+    expect(getRoleScopeFlags(matrix, 'C Admin', 'documents').read).toBe(false);
+    expect(getRoleScopeFlags(matrix, 'C Admin', 'crew').read).toBe(false);
+    expect(getRoleScopeFlags(matrix, 'Submitter', 'vessels').read).toBe(true);
+  });
+
+  it('limits Verifier / Inspector / Approver sidebar-facing reads', () => {
+    expect(getRoleScopeFlags(matrix, 'Verifier', 'assurance_sets').read).toBe(false);
+    expect(getRoleScopeFlags(matrix, 'Inspector', 'assurance_sets').read).toBe(false);
+    expect(getRoleScopeFlags(matrix, 'Inspector', 'documents').read).toBe(false);
+    expect(getRoleScopeFlags(matrix, 'Inspector', 'capa').read).toBe(true);
+    expect(getRoleScopeFlags(matrix, 'Approver', 'approval_gate').read).toBe(false);
+    expect(getRoleScopeFlags(matrix, 'Approver', 'dashboard').read).toBe(true);
+    expect(getRoleScopeFlags(matrix, 'Approver', 'audit_trail').read).toBe(true);
+  });
+
   it('still strips user overrides that are blank for every role the user holds', () => {
     const effective = getEffectiveUserScopeFlags(
       matrix,

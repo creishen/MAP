@@ -252,25 +252,18 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
   switch (key) {
     case 'vessels':
       if (role === 'Administrator') return createReadUpdate();
-      if (role === 'C Admin') return readOnly();
+      if (role === 'C Admin' || role === 'Submitter') return readOnly();
       return emptyCrud();
 
     case 'vessel_status':
       if (role === 'Administrator') return readUpdate();
-      if (role === 'C Admin') return readOnly();
+      if (role === 'C Admin' || role === 'Submitter') return readOnly();
       return emptyCrud();
 
     case 'assurance_sets':
     case 'assurance_requirements':
       if (role === 'Administrator' || role === 'C Admin') return createReadUpdate();
-      if (
-        role === 'Submitter' ||
-        role === 'Verifier' ||
-        role === 'Approver' ||
-        role === 'Inspector'
-      ) {
-        return readOnly();
-      }
+      if (role === 'Submitter') return readOnly();
       return emptyCrud();
 
     case 'workflow_assignment':
@@ -285,13 +278,16 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
 
     case 'role_rights':
     case 'validation_thresholds':
-    case 'capa':
     case 'compliance_export':
+      return emptyCrud();
+
+    case 'capa':
+      if (role === 'Administrator' || role === 'Inspector') return createReadUpdate();
+      if (role === 'C Admin') return readOnly();
       return emptyCrud();
 
     case 'crew':
       if (role === 'Administrator') return createReadUpdate();
-      if (role === 'C Admin') return readOnly();
       return emptyCrud();
 
     case 'crew_certificates':
@@ -302,14 +298,7 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
     case 'documents':
     case 'document_linking':
       if (role === 'Administrator' || role === 'Submitter') return createReadUpdate();
-      if (
-        role === 'C Admin' ||
-        role === 'Verifier' ||
-        role === 'Approver' ||
-        role === 'Inspector'
-      ) {
-        return readOnly();
-      }
+      if (role === 'Verifier') return readOnly();
       return emptyCrud();
 
     case 'document_vault':
@@ -318,12 +307,7 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
 
     case 'document_exceptions':
       if (role === 'Submitter') return createReadUpdate();
-      if (
-        role === 'Administrator' ||
-        role === 'C Admin' ||
-        role === 'Verifier' ||
-        role === 'Approver'
-      ) {
+      if (role === 'Administrator' || role === 'C Admin' || role === 'Verifier') {
         return readOnly();
       }
       return emptyCrud();
@@ -340,10 +324,20 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
       return emptyCrud();
 
     case 'ocr_results':
-      return readOnly();
+      if (
+        role === 'Administrator' ||
+        role === 'C Admin' ||
+        role === 'Submitter' ||
+        role === 'Verifier' ||
+        role === 'Approver' ||
+        role === 'Inspector'
+      ) {
+        return readOnly();
+      }
+      return emptyCrud();
 
     case 'inspection_workspace':
-      if (role === 'Administrator' || role === 'Inspector') return readOnly();
+      if (role === 'Administrator') return readOnly();
       return emptyCrud();
 
     case 'inspection_findings':
@@ -359,7 +353,7 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
       return emptyCrud();
 
     case 'approval_gate':
-      if (role === 'Administrator' || role === 'Approver') return readOnly();
+      if (role === 'Administrator') return readOnly();
       return emptyCrud();
 
     case 'approval_decisions':
