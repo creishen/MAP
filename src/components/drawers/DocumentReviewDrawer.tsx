@@ -83,7 +83,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
     return true;
   };
 
-  const isReuploaded = document.versions.length > 1 || document.currentVersion !== 'v1.0' || (document.ocrConfidence && document.ocrConfidence >= 90) || correctedFieldIds.size > 0;
+  const isReuploaded = document.versions.length > 1 || document.currentVersion !== 'v1.0' || (document.ocrConfidence && document.ocrConfidence >= 90);
   const activeNotes = requirementNotes || document.verificationNotes || (document.versions.length > 0 ? document.versions[0].changeSummary : undefined);
 
   /* mock extracted attributes matching design screenshot */
@@ -108,7 +108,27 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
       { id: '5', label: 'EXPIRY DATE', value: document.expiryDate || '2026-10-29', confidence: isReuploaded ? 98 : 79 },
     ];
 
-  const overallConfidence = correctedFieldIds.size > 0 ? 100 : isReuploaded ? 98 : (document.ocrConfidence || 74);
+  /* dynamic confidence calculation aligned with data entry edits and manual corrections */
+  const totalEffectiveConfidence = extractedAttributes.reduce((sum, attr) => {
+    const isCorrected = correctedFieldIds.has(attr.id) || (editedValues[attr.id] !== undefined && editedValues[attr.id].trim() !== '' && editedValues[attr.id] !== attr.value);
+    return sum + (isCorrected ? 100 : attr.confidence);
+  }, 0);
+  const overallConfidence = document.verificationStatus === 'Verified'
+    ? 100
+    : Math.min(100, Math.round(totalEffectiveConfidence / extractedAttributes.length));
+
+  /* dynamic quality checks aligned with document attributes and manual data entry */
+  const hasUncorrectedMissingMandatory = extractedAttributes.some(
+    (attr) => attr.isMandatoryMissing && !correctedFieldIds.has(attr.id) && !(editedValues[attr.id] && editedValues[attr.id].trim() !== '')
+  );
+  const isFullPagePassed = !hasUncorrectedMissingMandatory && overallConfidence >= 85;
+  const isSignaturePassed = isReuploaded ||
+    correctedFieldIds.has('5') ||
+    correctedFieldIds.has('4') ||
+    (editedValues['5'] && editedValues['5'].trim() !== '') ||
+    (editedValues['4'] && editedValues['4'].trim() !== '') ||
+    overallConfidence >= 90 ||
+    document.verificationStatus === 'Verified';
 
   const handleVerify = () => {
     verifyDocument(
@@ -172,59 +192,70 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
             {/* left column: scanned document page preview box & quality checks */}
             <div className="col-md-4 col-lg-3 d-flex flex-column gap-3">
               <div
-                className="p-4 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-white shadow-2xs"
+                className="p-3 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-white shadow-2xs"
                 style={{
                   borderStyle: 'dashed',
-                  borderColor: '#cbd5e1',
+                  borderColor: overallConfidence >= 90 ? '#86efac' : '#cbd5e1',
                   minHeight: '260px',
+                  background: overallConfidence >= 90 ? 'linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%)' : '#ffffff',
                 }}
               >
                 <div className="font-mono-code text-uppercase text-muted small fw-bold" style={{ fontSize: '0.725rem', letterSpacing: '0.08em' }}>
                   SCANNED PAGE
                 </div>
                 <div className="font-mono-code text-muted small mt-1" style={{ fontSize: '0.725rem' }}>
-                  1 of 1
+                  1 of 1 · 240 DPI
+                </div>
+                <div
+                  className="mt-3 px-2 py-1 rounded border font-mono-code fw-semibold"
+                  style={{
+                    fontSize: '0.7rem',
+                    backgroundColor: overallConfidence >= 90 ? '#dcfce7' : '#ffedd5',
+                    color: overallConfidence >= 90 ? '#15803d' : '#c2410c',
+                  }}
+                >
+                  OCR {overallConfidence}% · {overallConfidence >= 90 ? 'High Fidelity' : 'Human Review'}
                 </div>
               </div>
 
               {/* quality checks list */}
               <div className="d-flex flex-column gap-2">
-                <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
+                <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
                   <span
-                    className="d-flex align-items-center justify-content-center rounded text-white fw-bold"
+                    className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
                     style={{ width: '18px', height: '18px', backgroundColor: '#059669', fontSize: '0.65rem' }}
                   >
                     ✓
                   </span>
-                  <span>Resolution 240 DPI</span>
+                  <span className="ps-0.5">Resolution 240 DPI</span>
                 </div>
-                <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
+                <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
                   <span
-                    className="d-flex align-items-center justify-content-center rounded text-white fw-bold"
+                    className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
                     style={{
                       width: '18px',
                       height: '18px',
-                      backgroundColor: isReuploaded ? '#059669' : '#c2410c',
+                      backgroundColor: isFullPagePassed ? '#059669' : '#c2410c',
                       fontSize: '0.65rem',
                     }}
                   >
-                    {isReuploaded ? '✓' : '!'}
+                    {isFullPagePassed ? '✓' : '!'}
                   </span>
-                  <span>Full page captured</span>
+                  <span className="ps-0.5">Full page captured</span>
                 </div>
-                <div className="d-flex align-items-center gap-2 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
+                <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
                   <span
-                    className="d-flex align-items-center justify-content-center rounded text-white fw-bold"
+                    className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
                     style={{
                       width: '18px',
                       height: '18px',
-                      backgroundColor: isReuploaded ? '#059669' : '#c2410c',
+                      backgroundColor: isSignaturePassed ? '#059669' : '#c2410c',
                       fontSize: '0.65rem',
                     }}
                   >
-                    {isReuploaded ? '✓' : '!'}
+                    {isSignaturePassed ? '✓' : '!'}
                   </span>
-                  <span>Signature / stamp present</span>
+                  <span className="ps-0.5">Signature / stamp present</span>
                 </div>
               </div>
             </div>

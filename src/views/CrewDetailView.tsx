@@ -27,6 +27,7 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
   const { crew, activePersona, setCurrentHashView, previousHashView, previousEntityId, deleteCrewDocument } = useMapStore();
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadLayer, setUploadLayer] = useState<import('../types/crew').STCWLayer | undefined>(undefined);
   const [editingDoc, setEditingDoc] = useState<STCWDocumentItem | null>(null);
 
   const [isViewerModalOpen, setIsViewerModalOpen] = useState(false);
@@ -101,13 +102,15 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
     setIsExportOpen(false);
   };
 
-  const handleOpenUploadNew = () => {
+  const handleOpenUploadNew = (preferredLayer?: import('../types/crew').STCWLayer) => {
     setEditingDoc(null);
+    setUploadLayer(preferredLayer);
     setIsUploadModalOpen(true);
   };
 
   const handleOpenUpdateDoc = (doc: STCWDocumentItem) => {
     setEditingDoc(doc);
+    setUploadLayer(doc.layer);
     setIsUploadModalOpen(true);
   };
 
@@ -314,7 +317,7 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
             <button
               type="button"
               className="btn btn-sm btn-primary ms-auto"
-              onClick={handleOpenUploadNew}
+              onClick={() => handleOpenUploadNew('Layer 1 - Universal Core')}
             >
               + Upload Core Certificate
             </button>
@@ -391,7 +394,7 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
             <button
               type="button"
               className="btn btn-sm btn-primary ms-auto"
-              onClick={handleOpenUploadNew}
+              onClick={() => handleOpenUploadNew('Layer 2 - Vessel Specific & Endorsements')}
             >
               + Add Layer 2 Endorsement
             </button>
@@ -476,9 +479,11 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
         crewId={crewMember.id}
         crewName={crewMember.fullName}
         existingDocument={editingDoc}
+        initialLayer={uploadLayer}
         onClose={() => {
           setIsUploadModalOpen(false);
           setEditingDoc(null);
+          setUploadLayer(undefined);
         }}
       />
     </div>

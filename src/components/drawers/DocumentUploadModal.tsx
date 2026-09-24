@@ -453,156 +453,226 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                             </div>
                           </div>
 
-                          <div className="text-end">
-                            <div className="fw-bold lh-1" style={{ fontSize: '1.65rem', color: correctedFields.size > 0 ? '#059669' : aiOcrConfidence >= 90 ? '#059669' : '#c2410c' }}>
-                              {correctedFields.size > 0 ? '100%' : `${aiOcrConfidence || 74}%`}
-                            </div>
-                            <div className="small lh-sm text-muted" style={{ fontSize: '0.65rem' }}>
-                              overall confidence<br />threshold 90%
-                            </div>
-                          </div>
+                          {(() => {
+                            const certNoScore = correctedFields.has('certNo') ? 100 : (certificateNo && certificateNo.trim() !== '' && !certificateNo.includes('partially legible') ? 98 : 61);
+                            const authorityScore = correctedFields.has('authority') ? 100 : (issuingAuthority && issuingAuthority.trim() !== '' && !issuingAuthority.includes('illegible') ? 97 : 44);
+                            const expiryScore = correctedFields.has('expiry') ? 100 : (expiryDate && expiryDate.trim() !== '' ? 98 : 79);
+                            const titleScore = 91;
+                            const dynamicScore = correctedFields.size >= 3
+                              ? 100
+                              : Math.min(100, Math.round((titleScore + certNoScore + authorityScore + expiryScore) / 4));
+                            const isFullPageCaptured = certNoScore >= 90 && expiryScore >= 90;
+                            const isSignaturePresent = authorityScore >= 90;
+
+                            return (
+                              <div className="text-end">
+                                <div className="fw-bold lh-1" style={{ fontSize: '1.65rem', color: dynamicScore >= 90 ? '#059669' : '#c2410c' }}>
+                                  {dynamicScore}%
+                                </div>
+                                <div className="small lh-sm text-muted" style={{ fontSize: '0.65rem' }}>
+                                  overall confidence<br />threshold 90%
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
 
-                        {/* 2 Sub-Columns inside Left Side: Scanned page preview on left, Extracted attributes on right */}
-                        <div className="row g-3 mb-3">
-                          {/* Thumbnail + Quality Checks */}
-                          <div className="col-md-4 d-flex flex-column gap-2">
-                            <div
-                              className="p-3 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-white shadow-2xs"
-                              style={{ borderStyle: 'dashed', borderColor: '#cbd5e1', minHeight: '180px' }}
-                            >
-                              <div className="font-mono-code text-uppercase text-muted small fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}>
-                                SCANNED PAGE
-                              </div>
-                              <div className="font-mono-code text-muted small mt-1" style={{ fontSize: '0.7rem' }}>
-                                1 of 1
-                              </div>
-                            </div>
+                        {(() => {
+                          const certNoScore = correctedFields.has('certNo') ? 100 : (certificateNo && certificateNo.trim() !== '' && !certificateNo.includes('partially legible') ? 98 : 61);
+                          const authorityScore = correctedFields.has('authority') ? 100 : (issuingAuthority && issuingAuthority.trim() !== '' && !issuingAuthority.includes('illegible') ? 97 : 44);
+                          const expiryScore = correctedFields.has('expiry') ? 100 : (expiryDate && expiryDate.trim() !== '' ? 98 : 79);
+                          const titleScore = 91;
+                          const dynamicScore = correctedFields.size >= 3
+                            ? 100
+                            : Math.min(100, Math.round((titleScore + certNoScore + authorityScore + expiryScore) / 4));
+                          const isFullPageCaptured = certNoScore >= 90 && expiryScore >= 90;
+                          const isSignaturePresent = authorityScore >= 90;
 
-                            <div className="d-flex flex-column gap-1.5">
-                              <div className="d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
-                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success" style={{ width: '16px', height: '16px', fontSize: '0.6rem' }}>✓</span>
-                                <span>Resolution 240 DPI</span>
-                              </div>
-                              <div className="d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
-                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '16px', height: '16px', backgroundColor: '#c2410c', fontSize: '0.6rem' }}>!</span>
-                                <span>Full page captured</span>
-                              </div>
-                              <div className="d-flex align-items-center gap-1.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
-                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold" style={{ width: '16px', height: '16px', backgroundColor: '#c2410c', fontSize: '0.6rem' }}>!</span>
-                                <span>Signature / stamp present</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Extracted Attributes List matching screenshot */}
-                          <div className="col-md-8 d-flex flex-column gap-1">
-                            {/* Certificate Title */}
-                            <div className="map-extraction-field-row py-1">
-                              <div className="d-flex flex-column flex-grow-1 me-2">
-                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
-                                  CERTIFICATE TITLE
-                                </div>
-                                <div className="font-mono-code fw-bold text-dark small">
-                                  {title || 'International Oil Pollution Prevention (IOPP)'}
-                                </div>
-                              </div>
-                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
-                                <div className="font-mono-code small text-success fw-bold" style={{ fontSize: '0.7rem' }}>91%</div>
-                              </div>
-                            </div>
-
-                            {/* Certificate Number / Crew ID */}
-                            <div className="map-extraction-field-row py-1">
-                              <div className="d-flex flex-column flex-grow-1 me-2">
-                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
-                                  CREW ID / PASSPORT NUMBER
-                                </div>
-                                {isManualEditActive ? (
-                                  <input
-                                    type="text"
-                                    className="map-extraction-field-input"
-                                    value={certificateNo}
-                                    onChange={(e) => {
-                                      setCertificateNo(e.target.value);
-                                      setCorrectedFields((prev) => new Set(prev).add('certNo'));
-                                    }}
-                                  />
-                                ) : (
-                                  <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-cert-no') ? ' map-autofill-animate' : ''}`} onClick={() => canUpload && setIsManualEditActive(true)}>
-                                    {certificateNo || 'P9912447 (partially legible)'}
+                          return (
+                            <div className="row g-3 mb-3">
+                              {/* Thumbnail + Quality Checks */}
+                              <div className="col-md-4 d-flex flex-column gap-2">
+                                <div
+                                  className="p-3 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-white shadow-2xs"
+                                  style={{
+                                    borderStyle: 'dashed',
+                                    borderColor: dynamicScore >= 90 ? '#86efac' : '#cbd5e1',
+                                    minHeight: '180px',
+                                    background: dynamicScore >= 90 ? 'linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%)' : '#ffffff',
+                                  }}
+                                >
+                                  <div className="font-mono-code text-uppercase text-muted small fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}>
+                                    SCANNED PAGE
                                   </div>
-                                )}
-                                <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
-                                  Below 90% threshold — human review required
-                                </div>
-                              </div>
-                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
-                                <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: '#c2410c' }}>61%</div>
-                              </div>
-                            </div>
-
-                            {/* Issuing Authority */}
-                            <div className="map-extraction-field-row py-1">
-                              <div className="d-flex flex-column flex-grow-1 me-2">
-                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
-                                  ISSUING AUTHORITY
-                                </div>
-                                {isManualEditActive ? (
-                                  <input
-                                    type="text"
-                                    className="map-extraction-field-input"
-                                    value={issuingAuthority}
-                                    onChange={(e) => {
-                                      setIssuingAuthority(e.target.value);
-                                      setCorrectedFields((prev) => new Set(prev).add('authority'));
-                                    }}
-                                  />
-                                ) : (
-                                  <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-issuing-authority') ? ' map-autofill-animate' : ''}`} onClick={() => canUpload && setIsManualEditActive(true)}>
-                                    {issuingAuthority || 'illegible stamp'}
+                                  <div className="font-mono-code text-muted small mt-1" style={{ fontSize: '0.7rem' }}>
+                                    1 of 1 · 240 DPI
                                   </div>
-                                )}
-                                <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
-                                  Below 90% threshold — human review required
-                                </div>
-                              </div>
-                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
-                                <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: '#c2410c' }}>44%</div>
-                              </div>
-                            </div>
-
-                            {/* Expiry Date */}
-                            <div className="map-extraction-field-row py-1">
-                              <div className="d-flex flex-column flex-grow-1 me-2">
-                                <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
-                                  EXPIRY DATE
-                                </div>
-                                {isManualEditActive ? (
-                                  <input
-                                    type="date"
-                                    className="map-extraction-field-input"
-                                    value={expiryDate}
-                                    onChange={(e) => {
-                                      setExpiryDate(e.target.value);
-                                      setCorrectedFields((prev) => new Set(prev).add('expiry'));
+                                  <div
+                                    className="mt-2.5 px-2 py-0.5 rounded border font-mono-code fw-semibold"
+                                    style={{
+                                      fontSize: '0.65rem',
+                                      backgroundColor: dynamicScore >= 90 ? '#dcfce7' : '#ffedd5',
+                                      color: dynamicScore >= 90 ? '#15803d' : '#c2410c',
                                     }}
-                                  />
-                                ) : (
-                                  <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-expiry-date') ? ' map-autofill-animate' : ''}`} onClick={() => canUpload && setIsManualEditActive(true)}>
-                                    {expiryDate || '2026-10-29'}
+                                  >
+                                    OCR {dynamicScore}%
                                   </div>
-                                )}
-                                <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
-                                  Below 90% threshold — human review required
+                                </div>
+
+                                <div className="d-flex flex-column gap-2">
+                                  <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                    <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success me-1.5 flex-shrink-0" style={{ width: '18px', height: '18px', fontSize: '0.65rem' }}>✓</span>
+                                    <span className="ps-0.5">Resolution 240 DPI</span>
+                                  </div>
+                                  <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                    <span
+                                      className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
+                                      style={{ width: '18px', height: '18px', backgroundColor: isFullPageCaptured ? '#059669' : '#c2410c', fontSize: '0.65rem' }}
+                                    >
+                                      {isFullPageCaptured ? '✓' : '!'}
+                                    </span>
+                                    <span className="ps-0.5">Full page captured</span>
+                                  </div>
+                                  <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                    <span
+                                      className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
+                                      style={{ width: '18px', height: '18px', backgroundColor: isSignaturePresent ? '#059669' : '#c2410c', fontSize: '0.65rem' }}
+                                    >
+                                      {isSignaturePresent ? '✓' : '!'}
+                                    </span>
+                                    <span className="ps-0.5">Signature / stamp present</span>
+                                  </div>
                                 </div>
                               </div>
-                              <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
-                                <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: '#c2410c' }}>79%</div>
+
+                              {/* Extracted Attributes List matching screenshot */}
+                              <div className="col-md-8 d-flex flex-column gap-1">
+                                {/* Certificate Title */}
+                                <div className="map-extraction-field-row py-1">
+                                  <div className="d-flex flex-column flex-grow-1 me-2">
+                                    <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                      CERTIFICATE TITLE
+                                    </div>
+                                    <div className="font-mono-code fw-bold text-dark small">
+                                      {title || 'International Oil Pollution Prevention (IOPP)'}
+                                    </div>
+                                  </div>
+                                  <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                    <div className="font-mono-code small text-success fw-bold" style={{ fontSize: '0.7rem' }}>{titleScore}%</div>
+                                  </div>
+                                </div>
+
+                                {/* Certificate Number / Crew ID */}
+                                <div className="map-extraction-field-row py-1">
+                                  <div className="d-flex flex-column flex-grow-1 me-2">
+                                    <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                      CREW ID / PASSPORT NUMBER
+                                    </div>
+                                    {isManualEditActive ? (
+                                      <input
+                                        type="text"
+                                        className="map-extraction-field-input"
+                                        value={certificateNo}
+                                        onChange={(e) => {
+                                          setCertificateNo(e.target.value);
+                                          setCorrectedFields((prev) => new Set(prev).add('certNo'));
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-cert-no') ? ' map-autofill-animate' : ''}`} onClick={() => canUpload && setIsManualEditActive(true)}>
+                                        {certificateNo || 'P9912447 (partially legible)'}
+                                      </div>
+                                    )}
+                                    {certNoScore < 90 ? (
+                                      <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
+                                        Below 90% threshold — human review required
+                                      </div>
+                                    ) : (
+                                      <div className="small mt-0.5 text-success fw-bold" style={{ fontSize: '0.675rem' }}>
+                                        ✓ Field verified / corrected
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                    <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: certNoScore >= 90 ? '#059669' : '#c2410c' }}>{certNoScore}%</div>
+                                  </div>
+                                </div>
+
+                                {/* Issuing Authority */}
+                                <div className="map-extraction-field-row py-1">
+                                  <div className="d-flex flex-column flex-grow-1 me-2">
+                                    <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                      ISSUING AUTHORITY
+                                    </div>
+                                    {isManualEditActive ? (
+                                      <input
+                                        type="text"
+                                        className="map-extraction-field-input"
+                                        value={issuingAuthority}
+                                        onChange={(e) => {
+                                          setIssuingAuthority(e.target.value);
+                                          setCorrectedFields((prev) => new Set(prev).add('authority'));
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-issuing-authority') ? ' map-autofill-animate' : ''}`} onClick={() => canUpload && setIsManualEditActive(true)}>
+                                        {issuingAuthority || 'illegible stamp'}
+                                      </div>
+                                    )}
+                                    {authorityScore < 90 ? (
+                                      <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
+                                        Below 90% threshold — human review required
+                                      </div>
+                                    ) : (
+                                      <div className="small mt-0.5 text-success fw-bold" style={{ fontSize: '0.675rem' }}>
+                                        ✓ Field verified / corrected
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                    <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: authorityScore >= 90 ? '#059669' : '#c2410c' }}>{authorityScore}%</div>
+                                  </div>
+                                </div>
+
+                                {/* Expiry Date */}
+                                <div className="map-extraction-field-row py-1">
+                                  <div className="d-flex flex-column flex-grow-1 me-2">
+                                    <div className="font-mono-code text-uppercase small fw-bold mb-0.5" style={{ fontSize: '0.6rem', color: '#64748b' }}>
+                                      EXPIRY DATE
+                                    </div>
+                                    {isManualEditActive ? (
+                                      <input
+                                        type="date"
+                                        className="map-extraction-field-input"
+                                        value={expiryDate}
+                                        onChange={(e) => {
+                                          setExpiryDate(e.target.value);
+                                          setCorrectedFields((prev) => new Set(prev).add('expiry'));
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className={`font-mono-code fw-bold text-dark small cursor-pointer${animatingFields.has('doc-expiry-date') ? ' map-autofill-animate' : ''}`} onClick={() => canUpload && setIsManualEditActive(true)}>
+                                        {expiryDate || '2026-10-29'}
+                                      </div>
+                                    )}
+                                    {expiryScore < 90 ? (
+                                      <div className="small mt-0.5" style={{ fontSize: '0.675rem', color: '#b45309' }}>
+                                        Below 90% threshold — human review required
+                                      </div>
+                                    ) : (
+                                      <div className="small mt-0.5 text-success fw-bold" style={{ fontSize: '0.675rem' }}>
+                                        ✓ Field verified / corrected
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="d-flex flex-column align-items-end flex-shrink-0" style={{ width: '80px' }}>
+                                    <div className="font-mono-code small fw-bold" style={{ fontSize: '0.7rem', color: expiryScore >= 90 ? '#059669' : '#c2410c' }}>{expiryScore}%</div>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Exception Action Banner matching screenshot */}

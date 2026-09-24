@@ -53,6 +53,7 @@ export const CrewTable: React.FC<CrewTableProps> = ({
   const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
   const canRegisterCrew =
     activePersona === 'Administrator' ||
+    activePersona === 'Submitter' ||
     canPerform(
       rolePermissionDefaults,
       userPermissionOverrides,
@@ -64,6 +65,7 @@ export const CrewTable: React.FC<CrewTableProps> = ({
     );
   const canManageCrew =
     activePersona === 'Administrator' ||
+    activePersona === 'Submitter' ||
     canPerform(
       rolePermissionDefaults,
       userPermissionOverrides,
