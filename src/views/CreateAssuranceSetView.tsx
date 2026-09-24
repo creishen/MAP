@@ -9,7 +9,7 @@ import { useMapStore } from '../store/useMapStore';
 import { AssuranceSet, AssuranceRequirement } from '../types/assurance';
 import { UserProfile } from '../types/user';
 import { filterVesselsForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
-import { usersWithRole, getAssuranceAssignmentWarnings, hasBlockingAssuranceAssignmentConflict } from '../utils/userRoleHelpers';
+import { usersWithRole, getEligibleVerifiers, getAssuranceAssignmentWarnings, hasBlockingAssuranceAssignmentConflict } from '../utils/userRoleHelpers';
 import { calculateAssuranceSetReadiness } from '../utils/readinessHelpers';
 import { isDuplicateCampaignTitle, generateUniqueAssuranceSetId, generateUniqueRequirementId } from '../utils/validation';
 
@@ -89,9 +89,9 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
   const [inspectionRequired, setInspectionRequired] = useState(true);
   const [approvalRequired, setApprovalRequired] = useState(true);
 
-  /* filter users by role */
+  /* filter users by role with CAdmins listed first for verifiers */
   const submitterUsers = usersWithRole(users, 'Submitter');
-  const verifierUsers = usersWithRole(users, 'Verifier');
+  const verifierUsers = getEligibleVerifiers(users);
   const inspectorUsers = usersWithRole(users, 'Inspector');
   const approverUsers = usersWithRole(users, 'Approver');
 
@@ -562,7 +562,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
             </div>
 
             {/* 5 · stakeholder role assignments (only shown to Administrator, hidden for Client / non-admin personas) */}
-            {(activePersona === 'Administrator' ||  activePersona == 'C Admin') && (
+            {(activePersona === 'Administrator' || activePersona == 'C Admin') && (
               <div className="card border shadow-sm rounded-3 bg-white">
                 <div className="card-header bg-light border-bottom px-4 py-3 d-flex align-items-center justify-content-between">
                   <div>

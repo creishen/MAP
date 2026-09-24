@@ -60,6 +60,17 @@ export function usersWithRole(users: UserProfile[], role: RoleName): UserProfile
   return users.filter((u) => userHasRole(u, role));
 }
 
+/**
+  what: returns the ordered list of eligible verifiers for assurance set creation with CAdmins first.
+  how: extracts users with role 'C Admin' first, then appends remaining users with role 'Verifier'.
+  with what file: src/utils/userRoleHelpers.ts consumed by CreateAssuranceSetView.tsx.
+*/
+export function getEligibleVerifiers(users: UserProfile[]): UserProfile[] {
+  const cAdmins = users.filter((u) => userHasRole(u, 'C Admin'));
+  const otherVerifiers = users.filter((u) => userHasRole(u, 'Verifier') && !userHasRole(u, 'C Admin'));
+  return [...cAdmins, ...otherVerifiers];
+}
+
 export function formatUserRoles(roles: RoleName[]): string {
   return roles.join(', ');
 }

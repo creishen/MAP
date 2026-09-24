@@ -233,14 +233,14 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   </div>
                   <div className="border-bottom pb-1.5">
                     <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Submitter:</div>
-                    <div className="fw-bold text-dark">{assuranceSet.assignedSubmitter || 'M. Chen (Northwind Marine Operations)'}</div>
+                    <div className="fw-bold text-dark">{assuranceSet.assignedSubmitter || 'M. Chen (Northwind Marine Pty Ltd)'}</div>
                   </div>
                   <div className="border-bottom pb-1.5">
                     <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Verifier:</div>
                     <div className="fw-bold text-dark">
                       {assuranceSet.verificationRequired === false
                         ? 'N/A (Verification Bypassed)'
-                        : (assuranceSet.assignedVerifier || 'A. Fontaine (DNV Compliance Services)')}
+                        : (assuranceSet.assignedVerifier || 'A. Fontaine (Bureau Veritas Inspectorate)')}
                     </div>
                   </div>
                   <div className="border-bottom pb-1.5">
@@ -291,7 +291,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                     ) : (
                       <div className="fw-bold text-dark">
                         {assuranceSet.mandatoryInspectionRequired
-                          ? (assuranceSet.assignedInspector || 'N. Technical (AMSA Marine Audit Division)')
+                          ? (assuranceSet.assignedInspector || 'N. Technical (Meridian Marine Surveyors)')
                           : 'N/A (Not Required)'}
                       </div>
                     )}
@@ -301,7 +301,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                     <div className="fw-bold text-dark">
                       {assuranceSet.formalApprovalRequired === false
                         ? 'N/A (Direct Sign-Off)'
-                        : (assuranceSet.assignedApprover || 'P. Nardelli (Chevron Australia Pty Ltd)')}
+                        : (assuranceSet.assignedApprover || 'P. Nardelli (Marine Assurance Authority)')}
                     </div>
                   </div>
                 </div>

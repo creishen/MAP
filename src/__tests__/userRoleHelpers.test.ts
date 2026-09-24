@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildRolesFromForm,
   getAssuranceAssignmentWarnings,
+  getEligibleVerifiers,
   getOperationalRoleOptions,
   getSegregationWarnings,
   hasBlockingAssuranceAssignmentConflict,
@@ -61,5 +62,17 @@ describe('userRoleHelpers', () => {
     const filteredOptions = getOperationalRoleOptions(['Custom Auditor'], ['Submitter']);
     expect(filteredOptions.some((o) => o.role === 'Submitter')).toBe(false);
     expect(filteredOptions.some((o) => o.role === 'Verifier')).toBe(true);
+  });
+
+  it('should list C Admin users first followed by other verifiers for assurance set creation', () => {
+    const eligibleVerifiers = getEligibleVerifiers(MOCK_USERS);
+    expect(eligibleVerifiers.length).toBeGreaterThan(0);
+    /* first users must have C Admin role */
+    const firstCAdminIndex = eligibleVerifiers.findIndex((u) => u.roles.includes('C Admin'));
+    expect(firstCAdminIndex).toBe(0);
+
+    /* subsequent users must be verifiers without C Admin role */
+    const otherVerifiers = eligibleVerifiers.slice(1);
+    expect(otherVerifiers.every((u) => u.roles.includes('Verifier'))).toBe(true);
   });
 });

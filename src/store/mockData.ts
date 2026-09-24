@@ -607,9 +607,9 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     mandatoryInspectionRequired: true,
     inspectionCompleted: true,
     assignedSubmitter: 'M. Chen (Northwind Marine Pty Ltd)',
-    assignedVerifier: 'A. Fontaine (DNV Compliance Services)',
-    assignedInspector: 'N. Technical (AMSA Marine Audit Division)',
-    assignedApprover: 'P. Nardelli (Chevron Australia Pty Ltd)',
+    assignedVerifier: 'A. Fontaine (Bureau Veritas Inspectorate)',
+    assignedInspector: 'N. Technical (Meridian Marine Surveyors)',
+    assignedApprover: 'P. Nardelli (Marine Assurance Authority)',
     requirements: [
       {
         id: 'REQ-101',
@@ -679,9 +679,9 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     readinessScore: 40,
     mandatoryInspectionRequired: false,
     inspectionCompleted: false,
-    assignedSubmitter: 'S. Taylor (Northwind Marine Pty Ltd)',
-    assignedVerifier: "R. Thorne (Lloyd's Register Marine)",
-    assignedApprover: 'K. Osei (Shell Australia Operations)',
+    assignedSubmitter: 'J. Vance (Northwind Marine Pty Ltd)',
+    assignedVerifier: 'D. Harrison (Chevron Australia Vetting)',
+    assignedApprover: 'Elena Gomez (Southern Basin Energy)',
     requirements: [
       {
         id: 'REQ-201',
@@ -714,10 +714,10 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     readinessScore: 40,
     mandatoryInspectionRequired: true,
     inspectionCompleted: false,
-    assignedSubmitter: 'M. Vance (Northwind Marine Pty Ltd)',
-    assignedVerifier: 'L. Vance (ABS Maritime Inspectorate)',
-    assignedInspector: 'G. Harrison (Marine Inspection Bureau)',
-    assignedApprover: 'H. Miller (Inpex Operations Australia)',
+    assignedSubmitter: 'J. Vance (Northwind Marine Pty Ltd)',
+    assignedVerifier: 'S. Basin (Southern Basin Energy)',
+    assignedInspector: 'Capt. Robert Shaw (Meridian Marine Surveyors)',
+    assignedApprover: 'P. Nardelli (Marine Assurance Authority)',
     requirements: [
       {
         id: 'REQ-301',
@@ -749,10 +749,10 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     readinessScore: 100,
     mandatoryInspectionRequired: true,
     inspectionCompleted: true,
-    assignedSubmitter: 'R. Davis (Northwind Marine Pty Ltd)',
-    assignedVerifier: 'A. Fontaine (DNV Compliance Services)',
-    assignedInspector: 'N. Technical (AMSA Marine Audit Division)',
-    assignedApprover: 'H. Miller (Woodside Energy Ltd)',
+    assignedSubmitter: 'E. Rostova (Northwind Marine Pty Ltd)',
+    assignedVerifier: 'A. Fontaine (Bureau Veritas Inspectorate)',
+    assignedInspector: 'N. Technical (Meridian Marine Surveyors)',
+    assignedApprover: 'Elena Gomez (Southern Basin Energy)',
     requirements: [
       {
         id: 'REQ-401',
@@ -795,10 +795,10 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     readinessScore: 70,
     mandatoryInspectionRequired: true,
     inspectionCompleted: true,
-    assignedSubmitter: 'E. Ramirez (Northwind Marine Pty Ltd)',
-    assignedVerifier: 'A. Fontaine (DNV Compliance Services)',
-    assignedInspector: 'N. Technical (AMSA Marine Audit Division)',
-    assignedApprover: 'S. Basin (Southern Basin Energy Pty Ltd)',
+    assignedSubmitter: 'M. Chen (Northwind Marine Pty Ltd)',
+    assignedVerifier: 'L. Sterling (Global Maritime Audits)',
+    assignedInspector: 'N. Technical (Meridian Marine Surveyors)',
+    assignedApprover: 'Elena Gomez (Southern Basin Energy)',
     requirements: [
       {
         id: 'REQ-501',
@@ -841,10 +841,10 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     readinessScore: 40,
     mandatoryInspectionRequired: true,
     inspectionCompleted: false,
-    assignedSubmitter: 'K. Hughes (Northwind Marine Pty Ltd)',
-    assignedVerifier: 'P. Dawson (BV Compliance)',
-    assignedInspector: 'G. Harrison (Marine Inspection Bureau)',
-    assignedApprover: 'J. Vance (Santos Australia)',
+    assignedSubmitter: 'J. Vance (Northwind Marine Pty Ltd)',
+    assignedVerifier: 'S. Basin (Southern Basin Energy)',
+    assignedInspector: 'Capt. Robert Shaw (Meridian Marine Surveyors)',
+    assignedApprover: 'P. Nardelli (Marine Assurance Authority)',
     requirements: [
       {
         id: 'REQ-601',
@@ -875,10 +875,10 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
     readinessScore: 40,
     mandatoryInspectionRequired: true,
     inspectionCompleted: false,
-    assignedSubmitter: 'T. Wright (Northwind Marine Pty Ltd)',
-    assignedVerifier: 'R. Thorne (Lloyds Register)',
-    assignedInspector: 'G. Harrison (Marine Inspection Bureau)',
-    assignedApprover: 'B. Cooper (Beach Energy)',
+    assignedSubmitter: 'M. Chen (Northwind Marine Pty Ltd)',
+    assignedVerifier: 'D. Harrison (Chevron Australia Vetting)',
+    assignedInspector: 'Capt. Robert Shaw (Meridian Marine Surveyors)',
+    assignedApprover: 'Elena Gomez (Southern Basin Energy)',
     requirements: [
       {
         id: 'REQ-701',
