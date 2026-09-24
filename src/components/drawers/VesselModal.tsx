@@ -602,6 +602,20 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
   });
 
   /*
+    what: retrieves available unassigned certificates for a specific registration stage.
+    how: excludes certificates that are already selected in any other stage of this registration session.
+    with what file: src/components/drawers/VesselModal.tsx.
+  */
+  const getAvailableDocsForStep = (stepNumber: number) => {
+    return unassignedDocuments.filter((doc) => {
+      const isSelectedInOtherStep = Object.entries(selectedDocIds).some(
+        ([step, id]) => Number(step) !== stepNumber && id === doc.id
+      );
+      return !isSelectedInOtherStep;
+    });
+  };
+
+  /*
     what: renders the reusable AI Document Intake & Library Auto-Fill card for each section of vessel registration.
     how: combines auto-fill select from unassigned master docs and drag-and-drop / clickable file upload with verification gate.
     with what file: src/components/drawers/VesselModal.tsx.
@@ -609,6 +623,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
   const renderAiDocumentIntakeCard = (sectionTitle: string, stepNumber: number) => {
     const activeDoc = activeVerifiedDocs[stepNumber];
     const stepSelectedDocId = selectedDocIds[stepNumber] || '';
+    const availableDocs = getAvailableDocsForStep(stepNumber);
 
     return (
       <div className="p-3 bg-light border rounded shadow-2xs mb-3 overflow-hidden">
@@ -674,13 +689,13 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                 disabled={isExtractingAi}
               >
                 <option value="">
-                  {unassignedDocuments.length > 0
-                    ? `Select from the Document Library `
-                    : 'No available documents in library'}
+                  {availableDocs.length > 0
+                    ? `-- Select from ${availableDocs.length} Unassigned Document${availableDocs.length > 1 ? 's' : ''} --`
+                    : '-- No available unassigned certificates --'}
                 </option>
-                {unassignedDocuments.map((doc) => (
+                {availableDocs.map((doc) => (
                   <option key={doc.id} value={doc.id}>
-                    {doc.title} ({doc.certificateNo || doc.id}) — Unassigned Master Document
+                    {doc.title} ({doc.certificateNo || doc.id}) — Unassigned
                   </option>
                 ))}
               </select>
