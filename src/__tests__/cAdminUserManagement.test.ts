@@ -89,8 +89,11 @@ describe('C Admin User Management & RBAC Isolation', () => {
     const visibleIds = visibleToCAdmin.map((u) => u.id);
 
     expect(visibleIds).not.toContain('USR-ADMIN');
+    /* USR-CLIENT is a C Admin account not created by this C Admin — must not appear */
+    expect(visibleIds).not.toContain('USR-CLIENT');
+    /* USR-UNRELATED is a Submitter not created by C Admin — must not appear */
     expect(visibleIds).not.toContain('USR-UNRELATED');
-    expect(visibleIds).toContain('USR-CLIENT');
+    /* USR-VERIFIER was created/invited by C Admin with an operational role — must appear */
     expect(visibleIds).toContain('USR-VERIFIER');
   });
 
@@ -122,7 +125,7 @@ describe('C Admin User Management & RBAC Isolation', () => {
     expect(visibleUsers.some((u) => u.id === 'USR-TEST-INVITE')).toBe(true);
   });
 
-  it('should guarantee C Admin sees only C Admin users and users created/invited by C Admin', () => {
+  it('should guarantee C Admin sees only own-created users with permitted operational roles', () => {
     const mockUsers: UserProfile[] = [
       {
         id: 'USR-CADMIN-SELF',
@@ -162,7 +165,14 @@ describe('C Admin User Management & RBAC Isolation', () => {
     ];
 
     const visibleUsers = filterUsersForPersona(mockUsers, 'C Admin');
-    expect(visibleUsers.map((u) => u.id)).toEqual(['USR-CADMIN-SELF', 'USR-ADDED-BY-CADMIN']);
+    const visibleIds = visibleUsers.map((u) => u.id);
+
+    /* USR-CADMIN-SELF is a C Admin account — not in the permitted operational roles, not own-created */
+    expect(visibleIds).not.toContain('USR-CADMIN-SELF');
+    /* USR-OTHER-SYSTEM-USER was not created by C Admin */
+    expect(visibleIds).not.toContain('USR-OTHER-SYSTEM-USER');
+    /* USR-ADDED-BY-CADMIN was created by C Admin and has an operational role */
+    expect(visibleIds).toContain('USR-ADDED-BY-CADMIN');
   });
 
   it('should guarantee that building roles for C Admin excludes Platform Administrator', () => {
