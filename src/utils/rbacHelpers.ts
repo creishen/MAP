@@ -180,23 +180,28 @@ export function filterVesselsForPersona(
 
 /**
   what: filters list of users based on active user persona rbac rules.
-  how: returns all users for administrator, and for c admin returns only themselves and users they added or invited.
+  how: administrator sees all users; c admin sees only users they created (createdBy === 'C Admin') whose assigned role is one of the permitted operational roles (verifier, approver, inspector); all other personas see none.
   with what file: src/utils/rbacHelpers.ts consumed by UserManagementView.tsx and UserTable.tsx.
 */
 export function filterUsersForPersona(
   users: import("../types/user").UserProfile[],
   persona: UserRolePersona,
 ): import("../types/user").UserProfile[] {
+  const CADMIN_PERMITTED_ROLES: string[] = ["Verifier", "Approver", "Inspector"];
+
   if (persona === "Administrator") return users;
+
   if (persona === "C Admin") {
+    /* c admin can only view users they personally created, restricted to the permitted operational roles */
     return users.filter(
       (u) =>
-        userMatchesAnyRole(u, ["C Admin"]) ||
-        u.createdBy === "C Admin" ||
-        u.invitedBy === "C Admin"
+        (u.createdBy === "C Admin" || u.invitedBy === "C Admin") &&
+        u.roles.some((r) => CADMIN_PERMITTED_ROLES.includes(r)),
     );
   }
-  return users;
+
+  /* verifier, submitter, inspector, approver — no access to user list */
+  return [];
 }
 
 /**
@@ -424,7 +429,6 @@ export function isViewAccessibleToPersona(
           "approver",
           "inspector",
           "inspection",
-          "users",
         ].includes(view)
       ) {
         return false;

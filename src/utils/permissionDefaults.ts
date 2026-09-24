@@ -271,9 +271,14 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
       return emptyCrud();
 
     case 'third_party_delegation':
-    case 'users':
       /* D* kept as Delete in matrix; product behaviour is archive/revoke */
       if (role === 'Administrator') return fullCrud();
+      return emptyCrud();
+
+    case 'users':
+      /* administrator has full crud; c admin can create and read own-created users (restricted to verifier, approver, inspector roles only) */
+      if (role === 'Administrator') return fullCrud();
+      if (role === 'C Admin') return { create: true, read: true, update: false, delete: false };
       return emptyCrud();
 
     case 'role_rights':
