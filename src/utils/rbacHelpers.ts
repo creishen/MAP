@@ -103,7 +103,7 @@ export function filterDocumentsForVerifierQueue(
 
 /**
   what: filters a list of vessels based on active stakeholder assignments and ownership.
-  how: for submitter / vessel admin, matches vessels owned/managed by their company; for c admin and administrator, allows full access to all vessels under the platform; for other non-admin personas, matches assigned assurance sets.
+  how: for administrator, restricts to vessels owned/managed by northwind marine pty ltd; for submitter / vessel admin, matches vessels owned/managed by their company; for c admin, allows full access to all vessels under the platform; for other non-admin personas, matches assigned assurance sets.
   with what file: src/utils/rbacHelpers.ts used by FleetRegistryView.tsx, VesselTable.tsx, DashboardView.tsx, and InspectorWorkspaceView.tsx.
 */
 export function filterVesselsForPersona(
@@ -111,7 +111,22 @@ export function filterVesselsForPersona(
   assuranceSets: AssuranceSet[],
   persona: UserRolePersona,
 ): VesselParticulars[] {
-  if (persona === "Administrator" || persona === "C Admin") return vessels;
+  if (persona === "C Admin") return vessels;
+
+  if (persona === "Administrator") {
+    /* administrator only sees vessels owned/managed by their organization (northwind marine pty ltd) */
+    return vessels.filter((v) => {
+      const ownerLower = (v.registeredOwner || "").toLowerCase();
+      const techManagerLower = (v.technicalManager || "").toLowerCase();
+      const ismLower = (v.ismCompany || "").toLowerCase();
+
+      return (
+        ownerLower.includes("northwind") ||
+        techManagerLower.includes("northwind") ||
+        ismLower.includes("northwind")
+      );
+    });
+  }
 
   if (persona === "Submitter") {
     /* vessel admin / submitter can only see their own vessels (owned/managed by their organization) */

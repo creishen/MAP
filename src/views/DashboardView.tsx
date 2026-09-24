@@ -35,10 +35,7 @@ export const DashboardView: React.FC = () => {
   }
 
   const visibleAuditEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
-  const visibleVessels: Vessel[] =
-    activePersona === 'Administrator'
-      ? vessels
-      : filterVesselsForPersona(vessels, assuranceSets, activePersona);
+  const visibleVessels: Vessel[] = filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
   const totalVessels = visibleVessels.length;
   const avgReadiness = Math.round(
