@@ -25,6 +25,7 @@ interface EditUserModalProps {
 export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user }) => {
   const { users, updateUser, activePersona } = useMapStore();
   const isCAdmin = activePersona === 'C Admin';
+  const defaultOrgName = isCAdmin ? 'Southern Basin Energy' : 'Northwind Marine Pty Ltd';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -46,8 +47,17 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       setUserType(user.userType);
       const { isPlatformAdmin: admin, operationalRoles: ops } = splitRolesForForm(user.roles);
       setIsPlatformAdmin(isCAdmin ? false : admin);
-      setOperationalRoles(isCAdmin ? ops.filter((r) => r !== 'C Admin' && r !== 'Submitter') : ops);
-      setOrganization(user.organization);
+      /* C Admin is not assignable via checklist (one per org); keep other operational roles only */
+      setOperationalRoles(
+        ops.filter((r) => {
+          if (r === 'C Admin') return false;
+          if (isCAdmin && r === 'Submitter') return false;
+          return true;
+        }),
+      );
+      setOrganization(
+        user.userType === 'Organization' ? user.organization || defaultOrgName : user.organization,
+      );
       setDepartmentOrScope(user.departmentOrScope);
       setStatus(user.status);
       setErrorMessage('');
@@ -55,24 +65,37 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       const timer = setTimeout(() => setIsJustLoaded(false), 750);
       return () => clearTimeout(timer);
     }
-  }, [user, isOpen, isCAdmin]);
+  }, [user, isOpen, isCAdmin, defaultOrgName]);
 
   if (!isOpen || !user) return null;
+
+  const isOrgMember = userType === 'Organization';
+
+  const handleUserTypeChange = (nextType: UserType) => {
+    setUserType(nextType);
+    if (nextType === 'Organization') {
+      setOrganization(defaultOrgName);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (!name.trim() || !email.trim() || !organization.trim()) {
+    const resolvedOrg = isOrgMember ? defaultOrgName : organization.trim();
+
+    if (!name.trim() || !email.trim() || !resolvedOrg) {
       setErrorMessage('Please fill out all required fields (Name, Email, and Organization).');
       return;
     }
 
-    /* sanitize roles for c admin to guarantee no platform admin, c admin, or submitter role leakage */
+    /* sanitize roles for c admin to guarantee no platform admin or submitter role leakage */
     const effectivePlatformAdmin = isCAdmin ? false : isPlatformAdmin;
-    const effectiveOperationalRoles = isCAdmin
-      ? operationalRoles.filter((r) => r !== 'C Admin' && r !== 'Submitter')
-      : operationalRoles;
+    const effectiveOperationalRoles = operationalRoles.filter((r) => {
+      if (r === 'C Admin') return false;
+      if (isCAdmin && r === 'Submitter') return false;
+      return true;
+    });
 
     const roles = isCAdmin && user.roles.includes('C Admin')
       ? ['C Admin']
@@ -97,7 +120,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
       email: email.trim(),
       roles,
       userType,
-      organization: organization.trim(),
+      organization: resolvedOrg,
       departmentOrScope: departmentOrScope.trim() || (userType === 'Organization' ? 'Internal Operations' : 'External Stakeholder Scope'),
       status,
     };
@@ -142,10 +165,10 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                     name="editUserType"
                     id="editUserTypeOrg"
                     checked={userType === 'Organization'}
-                    onChange={() => setUserType('Organization')}
+                    onChange={() => handleUserTypeChange('Organization')}
                   />
                   <label className="form-check-input-label small text-dark fw-semibold cursor-pointer" htmlFor="editUserTypeOrg">
-                    Organization Member
+                    Organization Member ({defaultOrgName})
                   </label>
                 </div>
                 <div className="form-check">
@@ -155,7 +178,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                     name="editUserType"
                     id="editUserTypeThird"
                     checked={userType === 'Third-Party'}
-                    onChange={() => setUserType('Third-Party')}
+                    onChange={() => handleUserTypeChange('Third-Party')}
                   />
                   <label className="form-check-input-label small text-dark fw-semibold cursor-pointer" htmlFor="editUserTypeThird">
                     Third-Party Stakeholder
@@ -202,7 +225,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                   onPlatformAdminChange={setIsPlatformAdmin}
                   onOperationalRolesChange={setOperationalRoles}
                   hidePlatformAdmin={isCAdmin}
-                  hideCAdminRole={isCAdmin}
+                  hideCAdminRole
                   hideSubmitterRole={isCAdmin}
                 />
               </div>
@@ -212,12 +235,15 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, u
                 <input
                   id="edit-user-org"
                   type="text"
-                  className={`form-control form-control-sm bg-white text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''}`}
-                  placeholder="e.g. Chevron Australia / DNV"
-                  value={organization}
+                  className={`form-control form-control-sm text-dark border-secondary${isJustLoaded ? ' map-autofill-animate' : ''} ${isOrgMember ? 'bg-light text-secondary' : 'bg-white'
+                    }`}
+                  placeholder={isOrgMember ? defaultOrgName : 'e.g. DNV / Bureau Veritas'}
+                  value={isOrgMember ? defaultOrgName : organization}
                   onChange={(e) => setOrganization(e.target.value)}
+                  disabled={isOrgMember}
                   required
                 />
+
               </div>
             </div>
 

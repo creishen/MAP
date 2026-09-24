@@ -79,18 +79,14 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
   const [docToggles, setDocToggles] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     INITIAL_MASTER_DOCS.forEach((d) => {
-      if (activePersona === 'C Admin' && d.type === 'Inspection') {
-        initial[d.id] = false;
-      } else {
-        initial[d.id] = d.defaultEnabled;
-      }
+      initial[d.id] = d.defaultEnabled;
     });
     return initial;
   });
 
   /* workflow requirements state */
   const [verificationRequired, setVerificationRequired] = useState(true);
-  const [inspectionRequired, setInspectionRequired] = useState(activePersona !== 'C Admin');
+  const [inspectionRequired, setInspectionRequired] = useState(true);
   const [approvalRequired, setApprovalRequired] = useState(true);
 
   /* filter users by role */
@@ -119,7 +115,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     setVesselId(targetSet.vesselId);
     if (targetSet.charterWindowStart) setStartDate(targetSet.charterWindowStart);
     if (targetSet.charterWindowEnd) setEndDate(targetSet.charterWindowEnd);
-    setInspectionRequired(isClientAdmin ? false : targetSet.mandatoryInspectionRequired);
+    setInspectionRequired(targetSet.mandatoryInspectionRequired);
 
     /* extract charterer from template set */
     const templateCharterer = isClientAdmin
@@ -146,10 +142,6 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     /* map master document toggles based on existing template requirements */
     const updatedToggles: Record<string, boolean> = {};
     INITIAL_MASTER_DOCS.forEach((d) => {
-      if (isClientAdmin && d.type === 'Inspection') {
-        updatedToggles[d.id] = false;
-        return;
-      }
       const isMatched = targetSet.requirements.some(
         (r) =>
           r.title.toLowerCase().includes(d.title.toLowerCase()) ||
@@ -312,7 +304,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
 
     /* construct enabled requirements list with guaranteed unique transactional requirement ids */
     const selectedRequirements: AssuranceRequirement[] = INITIAL_MASTER_DOCS
-      .filter((doc) => docToggles[doc.id] && (!isClientAdmin || doc.type !== 'Inspection'))
+      .filter((doc) => docToggles[doc.id])
       .map((doc, idx) => ({
         id: generateUniqueRequirementId(uniqueSetId, idx),
         category: doc.category,
@@ -340,7 +332,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
       charterWindowEnd: endDate,
       stage: 'Initiated',
       readinessScore: 10,
-      mandatoryInspectionRequired: isClientAdmin ? false : inspectionRequired,
+      mandatoryInspectionRequired: inspectionRequired,
       inspectionCompleted: false,
       assignedSubmitter: selectedSubmitter
         ? `${selectedSubmitter.name} (${selectedSubmitter.organization})`
@@ -350,7 +342,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
           ? `${selectedVerifier.name} (${selectedVerifier.organization})`
           : 'Pending Admin Assignment'
         : undefined,
-      assignedInspector: (isClientAdmin || !inspectionRequired)
+      assignedInspector: !inspectionRequired
         ? undefined
         : selectedInspector
           ? `${selectedInspector.name} (${selectedInspector.organization})`
@@ -566,7 +558,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
             </div>
 
             {/* 5 · stakeholder role assignments (only shown to Administrator, hidden for Client / non-admin personas) */}
-            {activePersona === 'Administrator' && (
+            {(activePersona === 'Administrator' ||  activePersona == 'C Admin') && (
               <div className="card border shadow-sm rounded-3 bg-white">
                 <div className="card-header bg-light border-bottom px-4 py-3 d-flex align-items-center justify-content-between">
                   <div>
@@ -741,13 +733,11 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
               <div className="card-body p-4">
                 <div className="border-top">
                   {INITIAL_MASTER_DOCS.map((doc) => {
-                    const isInspectionDoc = doc.type === 'Inspection';
-                    const isRestrictedForPersona = isClientAdmin && isInspectionDoc;
-                    const isEnabled = !isRestrictedForPersona && !!docToggles[doc.id];
+                    const isEnabled = !!docToggles[doc.id];
                     return (
                       <div
                         key={doc.id}
-                        className={`py-2 border-bottom d-flex align-items-center justify-content-between gap-3 ${isRestrictedForPersona ? 'bg-light-subtle px-2 rounded opacity-75' : ''}`}
+                        className="py-2 border-bottom d-flex align-items-center justify-content-between gap-3"
                       >
                         <div className="d-flex align-items-center gap-3">
                           <div className="form-check form-switch m-0 fs-5">
@@ -755,35 +745,27 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                               className="form-check-input style-toggle-switch cursor-pointer"
                               type="checkbox"
                               checked={isEnabled}
-                              disabled={isRestrictedForPersona}
-                              onChange={() => !isRestrictedForPersona && handleToggleDoc(doc.id)}
+                              onChange={() => handleToggleDoc(doc.id)}
                               id={`grid-toggle-${doc.id}`}
-                              style={{ width: '2.5rem', height: '1.35rem', cursor: isRestrictedForPersona ? 'not-allowed' : 'pointer' }}
+                              style={{ width: '2.5rem', height: '1.35rem', cursor: 'pointer' }}
                             />
                           </div>
                           <div>
                             <label
                               htmlFor={`grid-toggle-${doc.id}`}
                               className="fw-semibold text-slate-900 mb-0 d-block small"
-                              style={{ cursor: isRestrictedForPersona ? 'not-allowed' : 'pointer' }}
+                              style={{ cursor: 'pointer' }}
                             >
                               {doc.title}
                             </label>
                             <span className="text-muted" style={{ fontSize: '0.75rem' }}>
-                              {doc.type} · {isRestrictedForPersona ? 'Restricted: Inspector checklists configured exclusively by Maritime Inspector' : isEnabled ? `Required in ${tempSetId}` : 'Excluded from set'}
+                              {doc.type} · {isEnabled ? `Required in ${tempSetId}` : 'Excluded from set'}
                             </span>
                           </div>
                         </div>
 
                         <div>
-                          {isRestrictedForPersona ? (
-                            <span
-                              className="badge rounded-pill fw-semibold px-2 py-1 text-secondary"
-                              style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', fontSize: '0.7rem' }}
-                            >
-                              Inspector Only
-                            </span>
-                          ) : isEnabled ? (
+                          {isEnabled ? (
                             <span
                               className="badge rounded-pill fw-semibold px-3 py-1"
                               style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', fontSize: '0.75rem' }}
@@ -834,30 +816,26 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                   </div>
 
                   {/* card 2 */}
-                  <div className={`p-3 border rounded-3 d-flex align-items-center gap-3 ${isClientAdmin ? 'bg-light-subtle opacity-75' : 'bg-white shadow-sm'}`}>
+                  <div className="p-3 border rounded-3 d-flex align-items-center gap-3 bg-white shadow-sm">
                     <div className="form-check form-switch m-0 fs-5">
                       <input
-                        className="form-check-input"
+                        className="form-check-input cursor-pointer"
                         type="checkbox"
-                        checked={!isClientAdmin && inspectionRequired}
-                        disabled={isClientAdmin}
-                        onChange={(e) => !isClientAdmin && setInspectionRequired(e.target.checked)}
+                        checked={inspectionRequired}
+                        onChange={(e) => setInspectionRequired(e.target.checked)}
                         id="grid-wf-inspection"
-                        style={{ width: '2.5rem', height: '1.35rem', cursor: isClientAdmin ? 'not-allowed' : 'pointer' }}
+                        style={{ width: '2.5rem', height: '1.35rem', cursor: 'pointer' }}
                       />
                     </div>
                     <div>
                       <label
                         htmlFor="grid-wf-inspection"
-                        className="fw-bold text-slate-900 mb-0 d-block small"
-                        style={{ cursor: isClientAdmin ? 'not-allowed' : 'pointer' }}
+                        className="fw-bold text-slate-900 mb-0 d-block small cursor-pointer"
                       >
                         Visual / vessel inspection required
                       </label>
                       <span className="text-muted" style={{ fontSize: '0.78rem' }}>
-                        {isClientAdmin
-                          ? 'Inspection checklists and surveyor assignments are managed exclusively by Maritime Inspectors and Platform Administrators'
-                          : 'Adds an Inspector step before approval'}
+                        Adds an Inspector step before approval
                       </span>
                     </div>
                   </div>

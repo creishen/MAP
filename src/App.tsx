@@ -83,14 +83,18 @@ export const App: React.FC = () => {
     const matchingUser =
       users.find((u) => u.roles.includes(activePersona)) ?? null;
 
-    let allowed = isViewAccessibleToPersona(
-      currentHashView,
-      currentEntityId,
-      activePersona,
-      ENABLE_ROLES_AND_PERMISSIONS ? rolePermissionDefaults : undefined,
-      ENABLE_ROLES_AND_PERMISSIONS ? userPermissionOverrides : undefined,
-      matchingUser,
-    );
+    /* roles-permissions is persona-gated (Administrator settings); skip matrix revoke on blank role_rights */
+    const allowed =
+      currentHashView === 'roles-permissions'
+        ? isViewAccessibleToPersona(currentHashView, currentEntityId, activePersona)
+        : isViewAccessibleToPersona(
+            currentHashView,
+            currentEntityId,
+            activePersona,
+            ENABLE_ROLES_AND_PERMISSIONS ? rolePermissionDefaults : undefined,
+            ENABLE_ROLES_AND_PERMISSIONS ? userPermissionOverrides : undefined,
+            matchingUser,
+          );
 
     if (!allowed) {
       setCurrentHashView('dashboard');

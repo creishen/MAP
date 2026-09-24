@@ -261,7 +261,8 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
       return emptyCrud();
 
     case 'assurance_sets':
-      if (role === 'Administrator' || role === 'C Admin') return createReadUpdate();
+      if (role === 'Administrator') return createReadUpdate();
+      if (role === 'C Admin') return createReadUpdate();
       if (role === 'Submitter') return readOnly();
       return emptyCrud();
 
@@ -322,7 +323,7 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
       return emptyCrud();
 
     case 'verification_queue':
-      if (role === 'Administrator' || role === 'Verifier') {
+      if (role === 'Submitter' || role === 'Verifier') {
         return readOnly();
       }
       return emptyCrud();
@@ -363,7 +364,7 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
       return emptyCrud();
 
     case 'approval_gate':
-      if (role === 'Administrator') return readOnly();
+      // if (role === 'Administrator') re turn readOnly();
       if (role === 'Approver') return readUpdate();
       return emptyCrud();
 
@@ -405,9 +406,19 @@ export const BRD_ROLE_PERMISSION_BASELINE = buildBrdRolePermissionDefaults();
 /**
   what: true when this role × scope × action is blank in the BRD matrix (button must stay disabled).
   how: only applies to built-in BRD personas; custom roles and custom scopes are not locked by BRD.
+       C Admin verification scopes stay unlockable so Administrator can grant Verifier access (BRD dual-role note).
 */
 export function isBrdHardDenied(role: string, scopeKey: string, action: CrudAction): boolean {
   if (!(ALL_ROLE_PERSONAS as string[]).includes(role)) return false;
+
+  /* BRD: C Admin may hold Verifier access when explicitly designated under the assurance agreement */
+  if (
+    role === 'C Admin' &&
+    (scopeKey === 'verification_queue' || scopeKey === 'verification_decisions')
+  ) {
+    return false;
+  }
+
   const baseline = BRD_ROLE_PERMISSION_BASELINE[role]?.[scopeKey];
   if (!baseline) return false;
   return !baseline[action];

@@ -161,6 +161,20 @@ describe('permissionDefaults and helpers', () => {
     expect(getRoleScopeFlags(matrix, 'Approver', 'audit_trail').read).toBe(true);
   });
 
+  it('C Admin verification scopes stay unlockable so Administrator can grant Verifier access', () => {
+    expect(isBrdHardDenied('C Admin', 'verification_queue', 'read')).toBe(false);
+    expect(isBrdHardDenied('C Admin', 'verification_decisions', 'update')).toBe(false);
+    expect(getRoleScopeFlags(matrix, 'C Admin', 'verification_queue').read).toBe(false);
+
+    const granted = applyPermissionGuards('verification_queue', 'C Admin', {
+      create: false,
+      read: true,
+      update: false,
+      delete: false,
+    });
+    expect(granted.read).toBe(true);
+  });
+
   it('still strips user overrides that are blank for every role the user holds', () => {
     const effective = getEffectiveUserScopeFlags(
       matrix,

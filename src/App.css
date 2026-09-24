@@ -11,8 +11,8 @@
    that the value was injected programmatically, not by user.
 
    two variants:
-     map-autofill-shimmer        — for input and select form elements
-     map-autofill-shimmer-text   — for inline text/strong display cells
+     map-autofill-shimmer        â€” for input and select form elements
+     map-autofill-shimmer-text   â€” for inline text/strong display cells
    ============================================================ */
 
 @keyframes map-autofill-shimmer {
@@ -554,7 +554,7 @@ div.map-autofill-animate {
   color: #ffffff !important;
 }
 
-/* Vessels tab — registration wizard & fleet table */
+/* Vessels tab â€” registration wizard & fleet table */
 .map-vessel-upload-zone {
   border-color: #e2e8f0 !important;
 }
@@ -589,7 +589,7 @@ div.map-autofill-animate {
   font-weight: 600;
 }
 
-/* Roles & Permissions — flat CRED table (one role/user at a time) */
+/* Roles & Permissions â€” flat CRED table (one role/user at a time) */
 .map-perm-role-picker {
   display: flex;
   flex-wrap: wrap;
@@ -831,7 +831,7 @@ div.map-autofill-animate {
   z-index: 30;
 }
 
-/* Parent card clips absolute dropdowns via overflow:hidden — allow overlay */
+/* Parent card clips absolute dropdowns via overflow:hidden â€” allow overlay */
 .map-card-custom.map-user-picker-card {
   overflow: visible;
 }

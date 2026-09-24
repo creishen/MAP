@@ -14,7 +14,7 @@ import { useMapStore } from '../store/useMapStore';
 */
 export const LoginView: React.FC = () => {
   const { login } = useMapStore();
-  const [username, setUsername] = useState('j.harding@northwindmarine.com');
+  const [username, setUsername] = useState('k.osei@northwindmarine.com');
   const [password, setPassword] = useState('••••••••••••');
   const [rememberMe, setRememberMe] = useState(false);
 

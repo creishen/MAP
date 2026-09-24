@@ -24,7 +24,7 @@ interface AddUserModalProps {
 export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) => {
   const { users, addUser, activePersona } = useMapStore();
   const isCAdmin = activePersona === 'C Admin';
-  const defaultOrgName = isCAdmin ? 'Southern Basin Energy Pty Ltd' : 'Northwind Marine Pty Ltd';
+  const defaultOrgName = isCAdmin ? 'Northwind Marine Pty Ltd' : 'Northwind Marine Pty Ltd';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -37,20 +37,35 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
 
   if (!isOpen) return null;
 
+  const isOrgMember = userType === 'Organization';
+
+  const handleUserTypeChange = (nextType: UserType) => {
+    setUserType(nextType);
+    if (nextType === 'Organization') {
+      setOrganization(defaultOrgName);
+    } else {
+      setOrganization('');
+    }
+  };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (!name.trim() || !email.trim() || !organization.trim()) {
+    const resolvedOrg = isOrgMember ? defaultOrgName : organization.trim();
+
+    if (!name.trim() || !email.trim() || !resolvedOrg) {
       setErrorMessage('Please fill out all required fields (Name, Email, and Organization).');
       return;
     }
 
-    /* sanitize roles for c admin to guarantee no platform admin, c admin, or submitter role leakage */
+    /* sanitize roles: never provision a second C Admin; C Admin creator also cannot assign Submitter */
     const effectivePlatformAdmin = isCAdmin ? false : isPlatformAdmin;
-    const effectiveOperationalRoles = isCAdmin
-      ? operationalRoles.filter((r) => r !== 'C Admin' && r !== 'Submitter')
-      : operationalRoles;
+    const effectiveOperationalRoles = operationalRoles.filter((r) => {
+      if (r === 'C Admin') return false;
+      if (isCAdmin && r === 'Submitter') return false;
+      return true;
+    });
 
     const roles = buildRolesFromForm(effectivePlatformAdmin, effectiveOperationalRoles);
     if (roles.length === 0) {
@@ -71,8 +86,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       email: email.trim(),
       roles,
       userType,
-      organization: organization.trim(),
-      departmentOrScope: departmentOrScope.trim() || (userType === 'Organization' ? (isCAdmin ? 'Client Operations' : 'Internal Operations') : 'External Stakeholder Scope'),
+      organization: resolvedOrg,
+      departmentOrScope:
+        departmentOrScope.trim() ||
+        (userType === 'Organization'
+          ? isCAdmin
+            ? 'Client Operations'
+            : 'Internal Operations'
+          : 'External Stakeholder Scope'),
       status: userType === 'Third-Party' ? 'Pending Invitation' : 'Active',
       lastActive: userType === 'Third-Party' ? 'Invitation Sent' : 'Just Now',
       createdBy: activePersona,
@@ -129,13 +150,10 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
                     name="userType"
                     id="userTypeOrg"
                     checked={userType === 'Organization'}
-                    onChange={() => {
-                      setUserType('Organization');
-                      setOrganization(defaultOrgName);
-                    }}
+                    onChange={() => handleUserTypeChange('Organization')}
                   />
                   <label className="form-check-input-label small text-dark fw-semibold cursor-pointer" htmlFor="userTypeOrg">
-                    Organization Member ({isCAdmin ? 'Southern Basin Energy' : 'Northwind Marine'})
+                    Organization Member 
                   </label>
                 </div>
                 <div className="form-check">
@@ -145,10 +163,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
                     name="userType"
                     id="userTypeThird"
                     checked={userType === 'Third-Party'}
-                    onChange={() => {
-                      setUserType('Third-Party');
-                      setOrganization('');
-                    }}
+                    onChange={() => handleUserTypeChange('Third-Party')}
                   />
                   <label className="form-check-input-label small text-dark fw-semibold cursor-pointer" htmlFor="userTypeThird">
                     Third-Party Stakeholder
@@ -195,22 +210,28 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
                   onPlatformAdminChange={setIsPlatformAdmin}
                   onOperationalRolesChange={setOperationalRoles}
                   hidePlatformAdmin={isCAdmin}
-                  hideCAdminRole={isCAdmin}
+                  hideCAdminRole
                   hideSubmitterRole={isCAdmin}
                 />
               </div>
 
               <div className="col-md-6">
-                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="user-org">Organization Name *</label>
+                <label className="form-label small fw-semibold text-secondary mb-1" htmlFor="user-org">
+                  Organization Name *
+                </label>
                 <input
                   id="user-org"
                   type="text"
-                  className="form-control form-control-sm bg-white text-dark border-secondary"
-                  placeholder="e.g. Chevron Australia / DNV"
-                  value={organization}
+                  className={`form-control form-control-sm text-dark border-secondary ${
+                    isOrgMember ? 'bg-light text-secondary' : 'bg-white'
+                  }`}
+                  placeholder={isOrgMember ? defaultOrgName : 'e.g. DNV / Bureau Veritas'}
+                  value={isOrgMember ? defaultOrgName : organization}
                   onChange={(e) => setOrganization(e.target.value)}
+                  disabled={isOrgMember}
                   required
                 />
+                
               </div>
             </div>
 

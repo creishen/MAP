@@ -19,6 +19,7 @@ import { CapaItem, CapaStatus, CapaEvidenceItem } from '../types/capa';
 import { MOCK_CAPA_ITEMS } from './capaMockData';
 import {
   CrudAction,
+  PermissionCategory,
   PermissionScopeDefinition,
   RolePermissionMatrix,
   UserPermissionOverrides,

@@ -13,7 +13,7 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  /* brd personas and any admin-created custom roles */
+  /** BRD personas and any admin-created custom roles */
   roles: RoleName[];
   userType: UserType;
   organization: string;

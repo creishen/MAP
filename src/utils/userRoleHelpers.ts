@@ -13,7 +13,14 @@ export const OPERATIONAL_ROLE_OPTIONS: { role: UserRolePersona; label: string }[
   { role: 'Verifier', label: 'Verifier' },
   { role: 'Inspector', label: 'Inspector' },
   { role: 'Approver', label: 'Approver' },
-  { role: 'C Admin', label: 'C Admin (Client Admin)' },
+];
+
+/** Roles that may be assigned when provisioning Organization or Third-Party stakeholders (BRD 4.3). */
+export const STAKEHOLDER_OPERATIONAL_ROLES: UserRolePersona[] = [
+  'Submitter',
+  'Verifier',
+  'Inspector',
+  'Approver',
 ];
 
 /**

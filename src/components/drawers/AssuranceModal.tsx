@@ -61,18 +61,14 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
   const [docToggles, setDocToggles] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     INITIAL_MASTER_DOCS.forEach((d) => {
-      if (activePersona === 'C Admin' && d.type === 'Inspection') {
-        initial[d.id] = false;
-      } else {
-        initial[d.id] = d.defaultEnabled;
-      }
+      initial[d.id] = d.defaultEnabled;
     });
     return initial;
   });
 
   /* workflow requirements state */
   const [verificationRequired, setVerificationRequired] = useState(true);
-  const [inspectionRequired, setInspectionRequired] = useState(activePersona !== 'C Admin');
+  const [inspectionRequired, setInspectionRequired] = useState(true);
   const [approvalRequired, setApprovalRequired] = useState(true);
 
   if (!isOpen) return null;
@@ -100,7 +96,7 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
 
     /* construct enabled requirements list with guaranteed unique transactional requirement ids */
     const selectedRequirements: AssuranceRequirement[] = INITIAL_MASTER_DOCS
-      .filter((doc) => docToggles[doc.id] && (!isClient || doc.type !== 'Inspection'))
+      .filter((doc) => docToggles[doc.id])
       .map((doc, idx) => ({
         id: generateUniqueRequirementId(uniqueSetId, idx),
         category: doc.category,
@@ -127,7 +123,7 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
       charterWindowEnd: endDate,
       stage: 'Initiated',
       readinessScore: 10,
-      mandatoryInspectionRequired: isClient ? false : inspectionRequired,
+      mandatoryInspectionRequired: inspectionRequired,
       inspectionCompleted: false,
       requirements: selectedRequirements,
       stakeholders: undefined,
@@ -334,30 +330,26 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
                   </div>
 
                   {/* card 2 */}
-                  <div className={`p-3 border rounded-3 d-flex align-items-center gap-3 ${isClient ? 'bg-light-subtle opacity-75' : 'bg-white shadow-sm'}`}>
+                  <div className="p-3 border rounded-3 d-flex align-items-center gap-3 bg-white shadow-sm">
                     <div className="form-check form-switch m-0 fs-5">
                       <input
-                        className="form-check-input"
+                        className="form-check-input cursor-pointer"
                         type="checkbox"
-                        checked={!isClient && inspectionRequired}
-                        disabled={isClient}
-                        onChange={(e) => !isClient && setInspectionRequired(e.target.checked)}
+                        checked={inspectionRequired}
+                        onChange={(e) => setInspectionRequired(e.target.checked)}
                         id="wf-inspection"
-                        style={{ width: '2.5rem', height: '1.35rem', cursor: isClient ? 'not-allowed' : 'pointer' }}
+                        style={{ width: '2.5rem', height: '1.35rem', cursor: 'pointer' }}
                       />
                     </div>
                     <div>
                       <label
                         htmlFor="wf-inspection"
-                        className="fw-bold text-slate-900 mb-0 d-block"
-                        style={{ cursor: isClient ? 'not-allowed' : 'pointer' }}
+                        className="fw-bold text-slate-900 mb-0 d-block cursor-pointer"
                       >
                         Visual / vessel inspection required
                       </label>
                       <span className="text-muted small">
-                        {isClient
-                          ? 'Inspection checklists and surveyor assignments are managed exclusively by Maritime Inspectors and Platform Administrators'
-                          : 'Adds an Inspector step before approval'}
+                        Adds an Inspector step before approval
                       </span>
                     </div>
                   </div>

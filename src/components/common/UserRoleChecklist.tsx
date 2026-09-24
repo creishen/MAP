@@ -83,7 +83,7 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
               onChange={(e) => onPlatformAdminChange(e.target.checked)}
             />
             <label className="form-check-label small text-dark fw-semibold" htmlFor="role-platform-admin">
-              Platform Full Access Control (Governance Administrator)
+              Platform Full Access Control
             </label>
           </div>
         </div>
@@ -91,7 +91,7 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
 
       <div>
         <label className="form-label small fw-semibold text-secondary mb-2">
-          Operational Roles *
+          Operational Roles
         </label>
         <div className="row g-2">
           {roleOptions.map(({ role, label, isCustom }) => (
@@ -109,7 +109,9 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
                   htmlFor={`role-${String(role).replace(/\s+/g, '-').toLowerCase()}`}
                 >
                   {label}
-
+                  {/* {isCustom && (
+                    <span className="badge text-bg-light border ms-1 fw-normal">Custom</span>
+                  )} */}
                 </label>
               </div>
             </div>

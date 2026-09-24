@@ -1,6 +1,6 @@
 /* 
-  file summary: unit tests for c admin restrictions on inspector checklists and physical survey workflows.
-  responsibilities: asserts that c admin cannot access inspector views, cannot trigger new live inspection checklists, and cannot add inspection checklists to assurance sets.
+  file summary: unit tests for c admin restrictions on inspector checklist routes and ability to mandate inspection on assurance sets.
+  responsibilities: asserts that c admin cannot access inspector views, but may require visual inspection when creating an assurance set.
   role in system: validates rbac boundary enforcement for client administrators regarding inspector checklists.
 */
 
@@ -30,7 +30,7 @@ describe('C Admin Inspector Checklist Isolation', () => {
     expect(isViewAccessibleToPersona('inspector', 'vessel-1', 'Inspector')).toBe(true);
   });
 
-  it('should ensure assurance set added with C Admin persona has mandatoryInspectionRequired false and no inspector checklist requirements', () => {
+  it('should allow C Admin to create an assurance set with mandatory inspection when requested', () => {
     const store = useMapStore.getState();
     const newCAdminSet: AssuranceSet = {
       id: 'AS-CADMIN-TEST-1',
@@ -45,8 +45,9 @@ describe('C Admin Inspector Checklist Isolation', () => {
       charterWindowEnd: '2027-11-01',
       stage: 'Initiated',
       readinessScore: 0,
-      mandatoryInspectionRequired: false,
+      mandatoryInspectionRequired: true,
       inspectionCompleted: false,
+      assignedInspector: 'Pending Admin Assignment',
       requirements: [
         {
           id: 'REQ-1',
@@ -67,9 +68,8 @@ describe('C Admin Inspector Checklist Isolation', () => {
 
     const created = useMapStore.getState().assuranceSets.find((s) => s.id === 'AS-CADMIN-TEST-1');
     expect(created).toBeDefined();
-    expect(created?.mandatoryInspectionRequired).toBe(false);
-    expect(created?.assignedInspector).toBeUndefined();
-    expect(created?.requirements.every((r) => r.category !== 'Inspection Report')).toBe(true);
+    expect(created?.mandatoryInspectionRequired).toBe(true);
+    expect(created?.assignedInspector).toBe('Pending Admin Assignment');
   });
 
   /**
