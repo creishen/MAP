@@ -43,7 +43,7 @@ export const ApproverDashboardView: React.FC = () => {
     if (activePersona === 'Approver') {
       const isVerifiedAndReady =
         s.stage === 'Approval' ||
-        s.stage === 'Approved & Certified' ||
+        s.stage === 'Approved' ||
         s.approverDecision !== 'Pending' ||
         (s.requirements.length > 0 &&
           s.requirements.every((r) => !r.isMandatory || r.verifierStatus === 'Verified' || r.isFulfilled));
@@ -93,12 +93,13 @@ export const ApproverDashboardView: React.FC = () => {
   /* calculation of top summary stats */
   const totalCampaigns = assignedSets.length;
   const pendingApprovals = assignedSets.filter((s) => s.approverDecision === 'Pending' || s.stage === 'Approval').length;
-  const approvedCount = assignedSets.filter((s) => s.approverDecision === 'Approved' || s.stage === 'Approved & Certified').length;
+  const approvedCount = assignedSets.filter((s) => s.approverDecision === 'Approved' || s.stage === 'Approved').length;
   const returnedCount = assignedSets.filter((s) => s.approverDecision === 'Returned for Correction' || s.approverDecision === 'Rejected').length;
 
   /* render detail page if currentEntityId is present */
   if (selectedSet) {
     const vessel = vessels.find((v) => v.id === selectedSet.vesselId || v.name === selectedSet.vesselName);
+    const isAlreadyApproved = selectedSet.stage === 'Approved' || selectedSet.approverDecision === 'Approved';
 
     return (
       <div className="d-flex flex-column gap-4">
@@ -249,14 +250,9 @@ export const ApproverDashboardView: React.FC = () => {
                                     <ConfidenceBadge score={req.ocrConfidence} />
                                   </td>
                                   <td>
-                                    {(() => {
-                                      const isSetApproved = selectedSet.stage === 'Approved & Certified' || selectedSet.approverDecision === 'Approved';
-                                      return (
-                                        <span className={`badge font-mono-code ${isSetApproved ? 'bg-success text-white' : 'bg-info text-dark'}`}>
-                                          {isSetApproved ? 'Approved' : 'Verified'}
-                                        </span>
-                                      );
-                                    })()}
+                                    <span className={`badge font-mono-code ${isAlreadyApproved ? 'bg-success text-white' : 'bg-info text-dark'}`}>
+                                      {isAlreadyApproved ? 'Approved' : 'Verified'}
+                                    </span>
                                   </td>
                                   <td className="text-end">
                                     {linkedDoc ? (
@@ -326,42 +322,51 @@ export const ApproverDashboardView: React.FC = () => {
                     rows={3}
                     placeholder={
                       activePersona === 'Approver'
-                        ? 'Enter justification notes or return feedback...'
+                        ? isAlreadyApproved
+                          ? 'Assurance set approved. Decision notes locked.'
+                          : 'Enter justification notes or return feedback...'
                         : 'Read-only view for non-approver personas...'
                     }
                     value={approverNotes}
                     onChange={(e) => setApproverNotes(e.target.value)}
-                    disabled={activePersona !== 'Approver'}
+                    disabled={activePersona !== 'Approver' || isAlreadyApproved}
                   />
                 </div>
 
                 {activePersona === 'Approver' && (
-                  <div className="d-flex flex-column gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-success text-white py-2 fw-semibold"
-                      onClick={() => handleDecision('Approved')}
-                      disabled={isApprovalBlocked}
-                    >
-                      Approve & Certify Charter Readiness
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-warning text-dark py-2 fw-semibold"
-                      onClick={() => handleDecision('Returned for Correction')}
-                      disabled={isApprovalBlocked}
-                    >
-                      Return for Correction
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-danger text-white py-2 fw-semibold"
-                      onClick={() => handleDecision('Rejected')}
-                      disabled={isApprovalBlocked}
-                    >
-                      Reject Assurance Set
-                    </button>
-                  </div>
+                  isAlreadyApproved ? (
+                    <div className="alert alert-success py-2.5 px-3 small font-mono-code fw-semibold mb-0 d-flex align-items-center gap-2">
+                      <span className="badge bg-success text-white font-mono-code">Approved</span>
+                      <span>Assurance set and verified documents have already been approved and certified.</span>
+                    </div>
+                  ) : (
+                    <div className="d-flex flex-column gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-success text-white py-2 fw-semibold"
+                        onClick={() => handleDecision('Approved')}
+                        disabled={isApprovalBlocked}
+                      >
+                        Approve Charter Readiness
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-warning text-dark py-2 fw-semibold"
+                        onClick={() => handleDecision('Returned for Correction')}
+                        disabled={isApprovalBlocked}
+                      >
+                        Return for Correction
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-danger text-white py-2 fw-semibold"
+                        onClick={() => handleDecision('Rejected')}
+                        disabled={isApprovalBlocked}
+                      >
+                        Reject Assurance Set
+                      </button>
+                    </div>
+                  )
                 )}
               </div>
             </div>
@@ -506,7 +511,7 @@ export const ApproverDashboardView: React.FC = () => {
               <option value="Validation">Validation</option>
               <option value="Verification">Verification</option>
               <option value="Approval">Approval</option>
-              <option value="Approved & Certified">Approved & Certified</option>
+              <option value="Approved">Approved</option>
             </select>
           </div>
         </div>

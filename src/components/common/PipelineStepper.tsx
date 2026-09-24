@@ -24,11 +24,11 @@ export const PipelineStepper: React.FC<PipelineStepperProps> = ({
   orientation = 'horizontal',
 }) => {
   const stages: { stage: AssuranceStage; label: string; num: number }[] = [
-    { stage: 'Initiated', label: '1. Initiated', num: 1 },
-    { stage: 'Validation', label: '2. Validation', num: 2 },
-    { stage: 'Verification', label: '3. Verification', num: 3 },
-    { stage: 'Inspection', label: '4. Inspection', num: 4 },
-    { stage: 'Certified', label: '5. Approval', num: 5 },
+    { stage: 'Initiated', label: 'Initiated', num: 1 },
+    { stage: 'Validation', label: 'Validation', num: 2 },
+    { stage: 'Verification', label: 'Verification', num: 3 },
+    { stage: 'Inspection', label: 'Inspection', num: 4 },
+    { stage: 'Certified', label: 'Approval', num: 5 },
   ];
 
   const getStageIndex = (stage: AssuranceStage): number => {
@@ -43,7 +43,7 @@ export const PipelineStepper: React.FC<PipelineStepperProps> = ({
         return 3;
       case 'Approval':
       case 'Certified':
-      case 'Approved & Certified':
+      case 'Approved':
         return 4;
       default:
         return 0;

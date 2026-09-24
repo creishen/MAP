@@ -47,7 +47,7 @@ export const DashboardView: React.FC = () => {
       0
     ) / (totalVessels || 1)
   );
-  const activeAssurances = assuranceSets.filter((s) => s.stage !== 'Certified' && s.stage !== 'Approved & Certified').length;
+  const activeAssurances = assuranceSets.filter((s) => s.stage !== 'Certified' && s.stage !== 'Approved').length;
 
   /* c admin specific assurance sets */
   const cAdminAssuranceSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, 'C Admin'));
@@ -65,7 +65,7 @@ export const DashboardView: React.FC = () => {
 
   const getStageBadgeClass = (stage: AssuranceStage) => {
     switch (stage) {
-      case 'Approved & Certified':
+      case 'Approved':
       case 'Certified':
         return 'bg-success text-white';
       case 'Approval':
@@ -136,8 +136,8 @@ export const DashboardView: React.FC = () => {
 
     if (activePersona === 'C Admin') {
       const totalCreated = cAdminAssuranceSets.length;
-      const activeCampaigns = cAdminAssuranceSets.filter((s) => s.stage !== 'Certified' && s.stage !== 'Approved & Certified').length;
-      const certifiedCampaigns = cAdminAssuranceSets.filter((s) => s.stage === 'Certified' || s.stage === 'Approved & Certified' || s.approverDecision === 'Approved').length;
+      const activeCampaigns = cAdminAssuranceSets.filter((s) => s.stage !== 'Certified' && s.stage !== 'Approved').length;
+      const certifiedCampaigns = cAdminAssuranceSets.filter((s) => s.stage === 'Certified' || s.stage === 'Approved' || s.approverDecision === 'Approved').length;
       const avgCampaignReadiness = Math.round(
         cAdminAssuranceSets.reduce((acc: number, s) => acc + calculateAssuranceSetReadiness(s), 0) / (totalCreated || 1)
       );
@@ -177,7 +177,7 @@ export const DashboardView: React.FC = () => {
           <div className="col-md-3">
             <div className="card map-card-custom p-3">
               <div className="text-secondary small text-uppercase fw-bold" style={{ letterSpacing: '0.05em' }}>
-                Approved & Certified
+                Approved
               </div>
               <div className="display-6 fw-bold text-primary font-mono-code mt-1">{certifiedCampaigns}</div>
               <div className="text-muted small mt-1">Completed Client Sign-offs</div>

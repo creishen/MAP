@@ -389,7 +389,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                       className={`badge font-mono-code px-3 py-2 ${isSetApproved ? 'bg-success text-white' : 'bg-info text-dark'}`}
                       style={{ fontSize: '0.8rem' }}
                     >
-                      {isSetApproved ? 'Approved & Certified' : 'Verified'}
+                      {isSetApproved ? 'Approved' : 'Verified'}
                     </span>
                   </div>
                   {document.verificationNotes && (

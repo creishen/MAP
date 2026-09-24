@@ -4,9 +4,21 @@
   role in system: consumed by assurance set command center, tables, state management, and approver readiness dial.
 */
 
-export type AssuranceStage = 'Initiated' | 'Validation' | 'Verification' | 'Inspection' | 'Approval' | 'Certified' | 'Approved & Certified';
+export type AssuranceStage =
+  | 'Initiated'
+  | 'Validation'
+  | 'Verification'
+  | 'Inspection'
+  | 'Approval'
+  | 'Certified'
+  | 'Approved'
+  | 'Approved';
 
-export type InitiatingRoleType = 'Vessel Provider Admin' | 'C Admin · Client Created';
+export type InitiatingRoleType =
+  | 'Vessel Provider'
+  | 'Client Admin'
+  | 'C Admin · Client Created'
+  | 'Vessel Provider Admin';
 
 export interface AssuranceRequirement {
   id: string;

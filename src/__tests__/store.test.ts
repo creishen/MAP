@@ -267,7 +267,7 @@ describe('Map Store State Management', () => {
     useMapStore.getState().setApproverDecision(targetSet.id, 'Approved', 'Demo charter sign-off');
 
     const updated = useMapStore.getState().assuranceSets.find((s) => s.id === targetSet.id);
-    expect(updated?.stage).toBe('Approved & Certified');
+    expect(updated?.stage).toBe('Approved');
     expect(updated?.approverDecision).toBe('Approved');
     expect(updated?.readinessScore).toBe(100);
   });

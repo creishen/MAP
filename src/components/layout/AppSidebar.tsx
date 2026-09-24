@@ -129,6 +129,8 @@ export const AppSidebar: React.FC = () => {
   const visibleItems = navItems.filter((item) => {
     /* hide dedicated sidepanel button if the page is rendered directly as that role's dashboard */
     if (activePersona === 'Verifier' && item.key === 'verifier') return false;
+    if (activePersona === 'Inspector' && item.key === 'inspector') return false;
+    if (activePersona === 'Approver' && item.key === 'approver') return false;
 
     /* Roles & Permissions is an Administrator settings page (BRD role_rights row stays blank) */
     if (item.key === 'roles-permissions') {

@@ -76,7 +76,7 @@ describe('dynamic readiness index calculation suite', () => {
     expect(getRequirementReadinessPercentage(verifiedReq)).toBe(70);
 
     const approvedSet: Partial<AssuranceSet> = {
-      stage: 'Approved & Certified',
+      stage: 'Approved',
       approverDecision: 'Approved',
     };
     expect(getRequirementReadinessPercentage(verifiedReq, approvedSet)).toBe(100);
@@ -277,6 +277,6 @@ describe('dynamic readiness index calculation suite', () => {
     store.setApproverDecision(targetSet.id, 'Approved', 'Executive sign-off in unit test');
     const certifiedSet = useMapStore.getState().assuranceSets.find((s) => s.id === targetSet.id);
     expect(certifiedSet?.readinessScore).toBe(100);
-    expect(certifiedSet?.stage).toBe('Approved & Certified');
+    expect(certifiedSet?.stage).toBe('Approved');
   });
 });

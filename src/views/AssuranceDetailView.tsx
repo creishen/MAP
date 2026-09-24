@@ -57,7 +57,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
         </span>
       );
     }
-    const isSetApproved = assuranceSet.stage === 'Approved & Certified' || assuranceSet.approverDecision === 'Approved';
+    const isSetApproved = assuranceSet.stage === 'Approved' || assuranceSet.approverDecision === 'Approved';
 
     if (req.verifierStatus === 'Verified' || req.isFulfilled) {
       if (isSetApproved) {

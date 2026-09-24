@@ -65,7 +65,7 @@ export function isAssuranceSetAssignedToPersona(
     /* approver persona can only see assurance sets that are already verified and awaiting approval or certified */
     const isVerifiedAndAwaitingApproval =
       set.stage === "Approval" ||
-      set.stage === "Approved & Certified" ||
+      set.stage === "Approved" ||
       set.approverDecision !== "Pending" ||
       (set.requirements.length > 0 &&
         set.requirements.every(
@@ -379,15 +379,15 @@ export function getBackButtonInfo(
   if (previousHashView === "inspector" || previousHashView === "inspection") {
     return {
       label: previousEntityId
-        ? "← Back to Inspection Checklist"
-        : "← Back to Physical Survey Schedule",
+        ? "Back to Inspection Checklist"
+        : "Back to Physical Survey Schedule",
       targetView: "inspector",
       targetEntityId: previousEntityId,
     };
   }
 
   return {
-    label: `← Back to ${parentLabel}`,
+    label: `Back to ${parentLabel}`,
     targetView: parentView,
     targetEntityId: undefined,
   };

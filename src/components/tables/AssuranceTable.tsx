@@ -105,7 +105,7 @@ export const AssuranceTable: React.FC<AssuranceTableProps> = ({ onSelectSet, onI
 
   const getStageBadgeClass = (stage: AssuranceStage) => {
     switch (stage) {
-      case 'Approved & Certified':
+      case 'Approved':
       case 'Certified': return 'bg-success text-white';
       case 'Approval': return 'bg-info text-dark';
       case 'Inspection': return 'bg-primary text-white';

@@ -259,7 +259,7 @@ export const VerifierWorkspaceView: React.FC = () => {
               {sortedDocs.map((doc) => {
                 const info = getAssuranceSetInfo(doc.id);
                 const linkedSet = info ? assuranceSets.find((s) => s.id === info.setId) : undefined;
-                const isSetApproved = linkedSet?.stage === 'Approved & Certified' || linkedSet?.approverDecision === 'Approved';
+                const isSetApproved = linkedSet?.stage === 'Approved' || linkedSet?.approverDecision === 'Approved';
 
                 return (
                   <tr key={doc.id} onClick={() => setSelectedDoc(doc)} style={{ cursor: 'pointer' }}>

@@ -393,7 +393,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     set((state) => ({
       assuranceSets: state.assuranceSets.map((s) => {
         if (s.id !== setId) return s;
-        const newStage = decision === 'Approved' ? 'Approved & Certified' : 'Verification';
+        const newStage = decision === 'Approved' ? 'Approved' : 'Verification';
         const candidateSet: AssuranceSet = {
           ...s,
           stage: newStage,

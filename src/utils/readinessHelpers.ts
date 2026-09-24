@@ -34,7 +34,7 @@ export function getRequirementReadinessPercentage(
   /* check if requirement is fully approved via campaign sign-off or certified stage */
   const isParentApproved =
     parentSet?.stage === 'Certified' ||
-    parentSet?.stage === 'Approved & Certified' ||
+    parentSet?.stage === 'Approved' ||
     parentSet?.approverDecision === 'Approved';
 
   if (isParentApproved && (req.verifierStatus === 'Verified' || req.isFulfilled)) {
@@ -90,7 +90,7 @@ export function calculateDocumentReadiness(doc: MasterDocument): number {
 export function calculateAssuranceSetReadiness(set: AssuranceSet): number {
   if (
     set.stage === 'Certified' ||
-    set.stage === 'Approved & Certified' ||
+    set.stage === 'Approved' ||
     set.approverDecision === 'Approved'
   ) {
     return STAGE_READINESS_WEIGHTS.approved; /* 100% */
