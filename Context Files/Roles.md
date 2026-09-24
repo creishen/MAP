@@ -1,178 +1,248 @@
-Based on the Marine Assurance Platform (MAP) Business Requirements Document (BRD), here is the detailed breakdown of core responsibilities, permitted actions ("What they CAN do"), restrictions ("What they CANNOT do"), and the specific UI/screen permissions for each user role.
+# Marine Assurance Platform (MAP) — Role Architecture, Workflows, and Permission Matrix
+
+/* 
+  file summary: comprehensive role-based access control (rbac) documentation, role workflows, screen visibility matrices, and permission engine interactions for map.
+  responsibilities: details permissions, allowed/restricted actions, operational workflows, and screen visibility for all 6 personas under static defaults and dynamic matrix overrides.
+  role in system: system specification and architectural blueprint for authorization boundaries across all client views, routes, components, and zustand store handlers.
+*/
+
+## 1. System Role Personas Overview
+
+The Marine Assurance Platform enforces strict Segregation of Duties (SoD) across 6 distinct user personas:
+
+1. **Administrator (Vessel Provider / Owner Admin)**: Full administrative authority over vessel registration, fleet metadata, user provisioning, global RBAC settings, and provider-initiated assurance campaigns.
+2. **C Admin (Client / Charterer Admin)**: Administrative authority for charterers and clients; initiates charter assurance sets, defines mandatory vetting requirements, reviews compliance readiness, and flags items for re-inspection. Prohibited from mutating provider-owned documents.
+3. **Submitter (Vessel Provider Document Controller)**: Responsible for uploading, versioning, and managing statutory vessel certificates and STCW crew credentials. Resolves verification exceptions and re-submits rectified evidence.
+4. **Verifier (Marine Surveyor / Technical Auditor)**: Validates OCR extraction results, cross-checks certificate attributes against master registries, evaluates 6-month charter validity buffers, and renders verification decisions (Verify, Request Correction, Reject).
+5. **Inspector (On-Site Marine Inspector / Surveyor)**: Conducts physical surveys, executes inspection checklists, records visual survey findings, uploads photographic evidence, logs CAPA non-conformances, and re-inspects remediated items.
+6. **Approver (Assurance Manager / Marine Superintendent)**: Evaluates complete assurance dossiers (verified certificates, inspection reports, CAPA closures, and readiness scores) to issue final authorization or formal rejection of the Assurance Set.
 
 ---
 
-### 1. Administrator (Vessel Provider / Vessel Owner Admin)
+## 2. End-to-End Operational Workflow by Role
 
-* **Primary Stakeholder:** Vessel Provider / Vessel Owner.
-* **Core Responsibilities:** Manages Vessel Provider administrative activities, including vessel registration, user administration, operational role assignments, and Assurance Set creation when initiated by the Vessel Provider.
+```mermaid
+flowchart TD
+    subgraph Admin_Workflow["Administrator Workflow"]
+        A1["Register Vessel (UC-02)"] --> A2["Provision Users & Assign Roles (UC-04)"]
+        A2 --> A3["Configure RBAC Matrix (Roles & Permissions)"]
+        A3 --> A4["Initiate Provider Assurance Set (UC-03)"]
+    end
 
-#### What They CAN Do:
+    subgraph CAdmin_Workflow["C Admin (Client Admin) Workflow"]
+        CA1["Access Charterer Dashboard"] --> CA2["Create Client Assurance Set (UC-11)"]
+        CA2 --> CA3["Define Mandatory Charter Criteria"]
+        CA3 --> CA4["Monitor Real-time Readiness Index"]
+        CA4 --> CA5["Review CAPA & Flag for Re-inspection"]
+    end
 
-* **User Authentication & Dashboard:** Log in via credentials or Single Sign-On (SSO) and access the Admin Dashboard.
-* **Vessel Registration (UC-02):** Register unique vessel records and enter extensive particulars across all 11 categories (identification, classification, construction, ownership, management, statutory certificates, insurance, crew/safety, environmental, and document attachments).
-* **Create Assurance Sets (UC-03):** Initiate an Assurance Set for a vessel, identify participating organizations, and define mandatory/optional assurance requirements.
-* **Assign Workflow Roles (UC-04):** Assign Submitter, Verifier, Approver, and Inspector roles to eligible internal users or authorized third parties.
-* **Third-Party Access Delegation:** Define delegated scope, organization, vessel, Assurance Set, and access duration for third-party participants.
-* **Access Screen Modules:** The Administrator has full access across all operational screens:
-* Document Upload Screen
-* Verifier UI Screen
-* Approver UI Screen
-* Inspector UI Screen
+    subgraph Submitter_Workflow["Submitter Workflow"]
+        S1["Open Document Vault / Crew Directory"] --> S2["Upload Vessel / Crew Certificate (UC-05)"]
+        S2 --> S3["Automated OCR Extraction & Validation (UC-06)"]
+        S3 --> S4["Receive Defect Alert / Exception (UC-07)"]
+        S4 --> S5["Upload Corrected Version (v1.1+)"]
+    end
 
+    subgraph Verifier_Workflow["Verifier Workflow"]
+        V1["Access Verifier Workspace (UC-08)"] --> V2["Inspect Side-by-Side OCR vs Master Data"]
+        V2 --> V3{"Verification Decision"}
+        V3 -->|Verified & Inspection Required| V4["Route to Inspector"]
+        V3 -->|Verified & Doc-Only| V5["Route to Approver"]
+        V3 -->|Correction Required| V6["Return to Submitter with Notes"]
+        V3 -->|Rejected| V7["Log Rejection & Lock Requirement"]
+    end
 
-* **Audit Trail Visibility:** View and search the tamper-evident audit logs across the compliance lifecycle.
+    subgraph Inspector_Workflow["Inspector Workflow"]
+        I1["Access Inspector Workspace (UC-09)"] --> I2["Execute Physical Inspection Checklist"]
+        I2 --> I3["Upload Photo / Report Evidence"]
+        I3 --> I4["Log CAPA Non-Conformances"]
+        I4 --> I5["Submit Inspection Dossier to Approver"]
+    end
 
-#### What They CANNOT Do:
+    subgraph Approver_Workflow["Approver Workflow"]
+        AP1["Access Approver Dashboard (UC-10)"] --> AP2["Evaluate Readiness Dial (100% Target)"]
+        AP2 --> AP3["Review Verified Docs, Surveys & CAPA"]
+        AP3 --> AP4{"Executive Gate Decision"}
+        AP4 -->|Approve| AP5["Assurance Set Marked Certified / Approved"]
+        AP4 -->|Return| AP6["Return to Verifier / Submitter"]
+        AP4 -->|Reject| AP7["Mark Assurance Set Rejected"]
+    end
 
-* **Register Duplicate Vessels:** Cannot register duplicate vessels if matching unique vessel identifiers (e.g., IMO, Official Registration Number) already exist in the platform.
-* **Tamper with Audit Logs:** Cannot edit, overwrite, or delete audit trail records through standard application functions.
-* **Violate Segregation of Duties:** Cannot assign conflicting roles to a single participant if restricted by specific assurance rules or segregation-of-duty guidelines.
-
----
-
-### 2. C Admin (Client Admin / Charterer Admin)
-
-* **Primary Stakeholder:** Client / Charterer.
-* **Core Responsibilities:** Represents the Client/Charterer administrative function; initiates client-driven Assurance Sets, defines client compliance requirements, and reviews assurance readiness.
-
-#### What They CAN Do:
-
-* **User Authentication & Dashboard:** Log in and access the Client/Charterer administrative interface.
-* **Create Assurance Sets (UC-03, UC-11):** Initiate an Assurance Set for a registered vessel and specify charterer compliance requirements (statutory certificates, vessel information, crew clearances, and inspection mandates).
-* **Review Assurance Data:** View information, uploaded documents, extraction validation results, and overall verification/inspection status made available by the Vessel Provider.
-* **Hold Dual Roles When Permitted:** Can be granted Verifier access if the assurance agreement designates the Client as the reviewing party.
-
-#### What They CANNOT Do:
-
-* **Edit/Delete Provider Documents:** **Strictly prohibited** from editing, replacing, deleting, or managing any documents owned or submitted by the Vessel Provider.
-* **General Administrative Control:** Does not have administrative rights over the Vessel Provider’s organization, users, or vessel master registries.
-* **Access Restricted Screens:** Cannot access the Document Upload, Approver, or Inspector UI screens unless explicitly granted those operational roles.
-
----
-
-### 3. Submitter
-
-* **Primary Stakeholder:** Vessel Provider / Vessel Owner (or delegated Third-Party Provider).
-* **Core Responsibilities:** Uploads, maintains, updates, and resubmits all required vessel, crew, and supporting assurance evidence.
-
-#### What They CAN Do:
-
-* **Upload Documents (UC-05):** Upload required statutory certificates and crew qualifications via the Document Upload Screen.
-* **Pre-Assurance Document Management (BR-5, Scenario 4):** Upload and maintain reusable vessel and crew documents in MAP independently, even before an Assurance Set exists.
-* **Associate Existing Documents:** Link previously uploaded, valid master documents to newly created Assurance Sets.
-* **Resolve Document Exceptions (UC-07):** Receive automated system notifications for missing information, expired certificates, metadata mismatches, or low-confidence values, and resubmit corrected files.
-* **Document Versioning:** Maintain version history when re-uploading or updating certificates.
-
-#### What They CANNOT Do:
-
-* **Verify Documents:** **No access** to the Verifier UI Screen; cannot evaluate or verify their own submissions.
-* **Approve Assurance Items:** **No access** to the Approver UI Screen; cannot approve certificates or close an Assurance Set.
-* **Conduct Visual Inspections:** **No access** to the Inspector UI Screen; cannot record visual or on-site survey findings.
+    A4 --> S1
+    CA2 --> S1
+    S3 --> V1
+    V4 --> I1
+    V5 --> AP1
+    I5 --> AP1
+```
 
 ---
 
-### 4. Verifier
+## 3. Detailed Role Specifications
 
-* **Primary Stakeholder:** Independent Marine Surveyor, Client/Charterer representative, or designated internal compliance reviewer.
-* **Core Responsibilities:** Reviews submitted documents, automated OCR extraction results, and validation checks to confirm whether compliance requirements are met.
+### 3.1. Administrator (Vessel Provider Admin)
+- **Primary Stakeholder**: Vessel Provider / Fleet Management Executive.
+- **Permitted Actions**:
+  - Register new vessels across all 11 particulars categories with duplicate IMO/Official Number validation checks.
+  - Create and configure Assurance Sets and link participating organizations.
+  - Manage user accounts, invite external stakeholders, and assign operational roles.
+  - Configure global Permission Matrix defaults and per-user overrides.
+  - Access all operational workspaces (Document Upload, Verifier, Inspector, Approver, Audit Trail).
+- **Prohibited Actions**:
+  - Cannot register duplicate vessels with conflicting IMO or official registration numbers.
+  - Cannot alter, overwrite, or delete immutable audit trail records.
+  - Cannot violate segregation of duties where hard BRD policy locks apply.
 
-#### What They CAN Do:
+### 3.2. C Admin (Client Admin / Charterer)
+- **Primary Stakeholder**: Charterer, Energy Major, or Cargo Owner Assurance Lead.
+- **Permitted Actions**:
+  - View fleet readiness overview and track assurance pipeline stages.
+  - Initiate client-specific Assurance Sets with customized compliance requirements.
+  - Monitor live validation scores, verification stages, and inspection progress.
+  - Review CAPA items and flag resolved findings for physical re-inspection.
+  - Access read-only views of vessel particulars, crew lists, and approved dossiers.
+- **Prohibited Actions**:
+  - **Strict Prohibition**: Cannot upload, edit, replace, or delete provider-owned certificates or documents.
+  - Cannot register vessels or modify master vessel particulars.
+  - Cannot perform user administration or role allocation for the vessel provider.
+  - Cannot directly approve assurance sets unless granted delegated approver authority.
 
-* **Access Verifier Screen (UC-08):** Access the dedicated Verifier UI Screen to review pending documents.
-* **Inspect Metadata & Validation:** Compare original uploaded certificates against extracted metadata (13 vessel attributes, 11 crew attributes), validation rules, and vessel master data.
-* **Make Verification Decisions:**
-* **Verify:** Confirm the document satisfies the requirement.
-* **Request Correction:** Return the item to the Submitter with mandatory comments detailing defects.
-* **Reject:** Reject the document with formal rationale.
+### 3.3. Submitter
+- **Primary Stakeholder**: Vessel Provider Document Controller / Compliance Officer.
+- **Permitted Actions**:
+  - Upload statutory vessel certificates and STCW crew credentials to the central document vault.
+  - Link vault documents to specific requirements in active Assurance Sets.
+  - Maintain document versioning (v1.0, v1.1, etc.) with change summaries.
+  - Receive automated exception alerts (OCR low confidence, expiry, metadata mismatch) and submit corrected files.
+- **Prohibited Actions**:
+  - Cannot verify, request correction on, or reject submitted documents.
+  - Cannot access the Verifier Workspace or Approver Gate.
+  - Cannot conduct physical surveys or complete inspector checklists.
 
+### 3.4. Verifier
+- **Primary Stakeholder**: Technical Marine Auditor / Marine Assurance Surveyor.
+- **Permitted Actions**:
+  - Access the Verifier Workspace and review documents in the pending verification queue.
+  - Inspect OCR-extracted metadata side-by-side with original uploaded documents.
+  - Validate against master vessel data (13 vessel attributes) and crew registers (11 crew attributes).
+  - Execute verification decisions: Verify, Request Correction (with mandatory notes), or Reject.
+  - Route verified requirements forward to the Inspector (if visual survey required) or Approver Gate.
+- **Prohibited Actions**:
+  - Cannot upload or modify certificates directly on behalf of submitters.
+  - Cannot grant final Assurance Set sign-off or executive approval.
+  - Cannot replace the Inspector for physical on-site survey execution.
 
-* **Route Workflow Items:** Forward verified items to the Inspector (if visual inspection is mandated) or directly to the Approver (if no inspection is needed).
+### 3.5. Inspector
+- **Primary Stakeholder**: On-Site Marine Surveyor / Field Inspector.
+- **Permitted Actions**:
+  - Access Inspector Workspace and assigned physical survey protocols.
+  - Execute structured inspection checklists across hull, machinery, LSA/FFA, bridge, and environmental systems.
+  - Upload survey reports, photographic evidence, and test certificates.
+  - Create and manage Corrective and Preventive Action (CAPA) items with target due dates.
+  - Re-inspect flagged deficiencies and close out rectified CAPA items.
+- **Prohibited Actions**:
+  - Cannot perform desktop certificate verification in place of the Verifier.
+  - Cannot upload statutory vessel master certificates.
+  - Cannot issue final charter approval for the Assurance Set.
 
-#### What They CANNOT Do:
-
-* **Upload Documents:** **No access** to the Document Upload Screen; cannot upload or alter submitted certificates directly.
-* **Approve Assurance Sets:** **No access** to the Approver UI Screen; cannot grant final regulatory/charter approval.
-* **Perform Physical Inspections:** **No access** to the Inspector UI Screen; cannot conduct visual inspections in place of an Inspector.
-
----
-
-### 5. Inspector
-
-* **Primary Stakeholder:** Marine Surveyor / On-site Inspector (often an authorized Third-Party Service Provider).
-* **Core Responsibilities:** Conducts physical on-site or visual vessel inspections and records condition findings and defect evidence.
-
-#### What They CAN Do:
-
-* **Access Inspector Screen (UC-09):** Access the dedicated Inspector UI Screen to manage assigned inspection activities.
-* **Review Technical Vessel Information:** View relevant vessel particulars and assurance data prior to conducting on-site surveys.
-* **Record Survey Findings:** Document visual findings, inspector comments, checklist outcomes, and condition results.
-* **Attach Field Evidence:** Upload and attach supporting evidence (photographs, survey reports, CAPA items).
-* **Submit Inspection Outcomes:** Formally submit inspection results to advance the requirement to the approval phase or return it for corrective action.
-
-#### What They CANNOT Do:
-
-* **Perform Routine Document Verification:** **Business Rule:** The Inspector role **shall not replace the Verifier role** for routine certificate and document verification.
-* **Upload Vessel/Crew Certificates:** **No access** to the Document Upload Screen.
-* **Approve Assurance Sets:** **No access** to the Approver UI Screen; cannot issue final assurance sign-off.
-* **Access Verifier Queue:** **No access** to the routine Verifier UI Screen.
-
----
-
-### 6. Approver
-
-* **Primary Stakeholder:** Vessel Owner Executive, Chartering Authority, or designated Marine Assurance Manager.
-* **Core Responsibilities:** Applies formal approval criteria, evaluates compliance readiness scores, and approves verified documents and the overall Assurance Set.
-
-#### What They CAN Do:
-
-* **Access Approver Screen (UC-10):** Access the dedicated Approver UI Screen to evaluate verified dossiers.
-* **Evaluate Complete Evidence:** Review original certificates, extracted data, Verifier comments, and Inspector findings/evidence.
-* **Assess Compliance Readiness:** Evaluate calculated readiness scores and compliance criteria.
-* **Make Approval Decisions:**
-* **Approve:** Formally approve individual requirements.
-* **Return for Correction:** Send items back into the workflow with mandatory comments.
-* **Reject:** Issue a final rejection on requirements or the Assurance Set.
-
-
-* **Complete Assurance Set:** Officially authorize and complete the Assurance Set once all mandatory statutory certificates and requirements are approved.
-
-#### What They CANNOT Do:
-
-* **Upload Documents:** **No access** to the Document Upload Screen.
-* **Perform Initial Document Verification:** **No access** to the Verifier UI Screen.
-* **Conduct Field Inspections:** **No access** to the Inspector UI Screen.
-* **Approve Unverified Documents:** Cannot approve documents that have not successfully completed the automated validation and Verifier review stages.
-
----
-
-### 7. Non-Operational External Stakeholders
-
-#### A. Third-Party Service Provider
-
-* **Nature:** Independent entities (surveyors, technical experts, brokers, insurance providers) appointed on an as-needed basis.
-* **Assigned Roles:** Can be assigned any operational role (**Submitter, Verifier, Approver, or Inspector**) under delegated authority.
-* **Restrictions:** Access is strictly time-bound and limited only to the specific organization, vessel, Assurance Set, and role assigned; they cannot access broader Client or Vessel Provider data.
-
-#### B. Shipping Regulator / External Authority
-
-* **Nature:** External governing bodies (e.g., AMSA, Flag State administrations) requiring compliance records.
-* **What They CAN Do:** Receive controlled reports, audit trail exports, compliance records, and statistics generated by authorized MAP users.
-* **What They CANNOT Do:** Do not hold standard user roles and **do not directly participate** in the everyday MAP assurance workflow.
+### 3.6. Approver
+- **Primary Stakeholder**: Marine Assurance Superintendent / Executive Approver.
+- **Permitted Actions**:
+  - Access the Approver Dashboard and review verified dossiers.
+  - Evaluate compliance readiness scores, statutory certificate validity, and closed CAPA items.
+  - Authorize formal approval of individual requirements and complete the Assurance Set.
+  - Return dossiers for correction or issue formal rejections with executive commentary.
+- **Prohibited Actions**:
+  - Cannot upload certificates or modify technical metadata.
+  - Cannot perform initial document verification or physical survey execution.
+  - Cannot approve an Assurance Set if mandatory statutory certificates remain unverified or expired.
 
 ---
 
-### Summary Table: Screen-Level Access Control (RBAC)
+## 4. UI Screen Visibility and Role Access Matrix
 
-| Module / UI Screen                       | Administrator | C Admin      | Submitter   | Verifier    | Inspector   | Approver    |
-| ---------------------------------------- | ------------- | ------------ | ----------- | ----------- | ----------- | ----------- |
-| **Login Screen (UC-01)**                 | ✅ Access      | ✅ Access     | ✅ Access    | ✅ Access    | ✅ Access    | ✅ Access    |
-| **Vessel Registration Screen (UC-02)**   | ✅ Access      | ❌ No Access  | ❌ No Access | ❌ No Access | ❌ No Access | ❌ No Access |
-| **Create Assurance Set (UC-03 / UC-11)** | ✅ Access      | ✅ Access     | ❌ No Access | ❌ No Access | ❌ No Access | ❌ No Access |
-| **Role Assignment Screen (UC-04)**       | ✅ Access      | ❌ No Access  | ❌ No Access | ❌ No Access | ❌ No Access | ❌ No Access |
-| **Document Upload Screen (UC-05)**       | ✅ Access      | ❌ No Access  | ✅ Access    | ❌ No Access | ❌ No Access | ❌ No Access |
-| **Verifier UI Screen (UC-08)**           | ✅ Access      | ❌ No Access* | ❌ No Access | ✅ Access    | ❌ No Access | ❌ No Access |
-| **Inspector UI Screen (UC-09)**          | ✅ Access      | ❌ No Access  | ❌ No Access | ❌ No Access | ✅ Access    | ❌ No Access |
-| **Approver UI Screen (UC-10)**           | ✅ Access      | ❌ No Access  | ❌ No Access | ❌ No Access | ❌ No Access | ✅ Access    |
+| UI Screen / View | Route | Admin | C Admin | Submitter | Verifier | Inspector | Approver |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Login View** | `#/login` | Read/Write | Read/Write | Read/Write | Read/Write | Read/Write | Read/Write |
+| **Fleet Overview / Dashboard** | `#/` or `#/dashboard` | Read/Write | Read | Read | Read | Read | Read |
+| **Fleet Registry** | `#/vessels` | Read/Write | Read | Read | Read | Read | Read |
+| **Vessel Detail View** | `#/vessels/:id` | Read/Write | Read | Read/Update | Read | Read | Read |
+| **Vessel Registration Form** | `#/vessels/register` | Read/Write | Hidden | Hidden | Hidden | Hidden | Hidden |
+| **Assurance Sets View** | `#/assurance-sets` | Read/Write | Read/Write | Read | Read | Read | Read/Write |
+| **Assurance Detail View** | `#/assurance-sets/:id` | Read/Write | Read | Read | Read/Update | Read/Update | Read/Update |
+| **Create Assurance Set View** | `#/assurance-sets/create` | Read/Write | Read/Write | Hidden | Hidden | Hidden | Hidden |
+| **Document Library View** | `#/documents` | Read/Write | Read | Read/Write | Read | Read | Read |
+| **Document Detail View** | `#/documents/:id` | Read/Write | Read | Read/Write | Read/Update | Read | Read |
+| **Crew Directory View** | `#/crew` | Read/Write | Read | Read/Write | Read | Read | Read |
+| **Crew Detail View** | `#/crew/:id` | Read/Write | Read | Read/Write | Read | Read | Read |
+| **Verifier Workspace** | `#/verifier` | Read/Write | Hidden* | Hidden | Read/Write | Hidden | Hidden |
+| **Inspector Workspace** | `#/inspector` | Read/Write | Hidden | Hidden | Hidden | Read/Write | Hidden |
+| **Inspection Checklist View** | `#/inspections/:id` | Read/Write | Read | Hidden | Hidden | Read/Write | Read |
+| **CAPA Management View** | `#/capa` | Read/Write | Read/Update* | Read | Read | Read/Write | Read |
+| **Approver Dashboard View** | `#/approver` | Read/Write | Hidden | Hidden | Hidden | Hidden | Read/Write |
+| **Roles & Permissions View** | `#/roles-permissions` | Read/Write | Hidden | Hidden | Hidden | Hidden | Hidden |
+| **User Management View** | `#/users` | Read/Write | Hidden | Hidden | Hidden | Hidden | Hidden |
+| **Audit Trail View** | `#/audit` | Read | Read | Read | Read | Read | Read |
 
-**Note: A C Admin may only access the Verifier screen if explicitly assigned a dual Verifier role under the assurance agreement.*
+*Note: C Admin has read-only access to CAPA with the specific privilege to flag resolved findings for re-inspection (`cadminFlagReason`). C Admin may access Verifier screens only when assigned delegated Verifier rights in the project agreement.*
+
+---
+
+## 5. Permission Matrix Engine and Scopes
+
+The platform authorization layer computes effective permissions through three hierarchical tiers:
+
+```
+Effective Permission = (BRD Hard Deny Override) 
+                     -> (Per-User Permission Override) 
+                     -> (Role Default Matrix) 
+                     -> (Default Empty Deny)
+```
+
+### 5.1. Permission Categories and Scopes (28 Scopes)
+
+1. **Setup & Configuration**:
+   - `vessels`: Vessel registration and core asset particulars.
+   - `vessel_status`: Operational status toggles (In Operations, In Transit, Dry Docking, Lay-up, Port Stay, Under Charter).
+   - `assurance_sets`: Creation and configuration of assurance projects.
+   - `assurance_requirements`: Scope requirement matrix toggles.
+   - `workflow_assignment`: Assigning users to assurance roles.
+   - `third_party_delegation`: Setting time-bound third-party access scopes.
+   - `users`: User provisioning and status management.
+   - `role_rights`: Permission matrix configuration.
+   - `validation_thresholds`: OCR confidence and validity buffer thresholds.
+2. **Crew**:
+   - `crew`: Crew profile creation, sea service assignments, and contact records.
+   - `crew_certificates`: STCW Layer 1 core certificates and Layer 2 endorsements.
+3. **Documents & Submission**:
+   - `documents`: Document upload and metadata entry.
+   - `document_vault`: Pre-assurance master vault storage.
+   - `document_linking`: Associating vault documents with active assurance sets.
+   - `document_exceptions`: Reviewing and resolving exception notifications.
+4. **Verification**:
+   - `verification_queue`: Accessing pending verification work queues.
+   - `verification_decisions`: Executing Verify, Request Correction, and Reject actions.
+   - `ocr_results`: Side-by-side review of extracted data against master records.
+5. **Physical Inspection & CAPA**:
+   - `inspection_workspace`: Accessing survey protocols and checklists.
+   - `inspection_findings`: Recording condition observations and deficiency notes.
+   - `inspection_evidence`: Uploading photo packs and survey reports.
+   - `post_inspection_review`: Reviewing survey outcomes and inspector recommendations.
+   - `capa`: Logging, managing, and closing corrective action plans.
+6. **Approval**:
+   - `approval_gate`: Accessing executive authorization queues.
+   - `approval_decisions`: Approving or rejecting requirements and sets.
+   - `assurance_completion`: Issuing final assurance certification.
+7. **Visibility & Compliance**:
+   - `dashboard`: Fleet-wide readiness dashboards and metrics.
+   - `audit_trail`: Tamper-evident immutable audit log viewer.
+   - `compliance_export`: Generating compliance dossiers and regulatory exports.
+
+### 5.2. Hard Business Rule Locks (Hard Deny)
+
+The Permission Matrix UI enforces un-checkable locks on actions that violate fundamental BRD segregation of duties:
+- **C Admin**: Create/Update/Delete on `documents`, `document_vault`, `crew_certificates` locked to `false`.
+- **Submitter**: Create/Update/Delete on `verification_decisions`, `approval_decisions`, `inspection_findings` locked to `false`.
+- **Verifier**: Create/Update/Delete on `documents`, `approval_decisions`, `inspection_findings` locked to `false`.
+- **Inspector**: Create/Update/Delete on `verification_decisions`, `approval_decisions`, `documents` locked to `false`.
+- **Approver**: Create/Update/Delete on `documents`, `verification_decisions`, `inspection_findings` locked to `false`.
