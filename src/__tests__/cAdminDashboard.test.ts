@@ -41,16 +41,17 @@ describe('c admin dashboard and sidepanel rbac suite', () => {
   });
 
   /**
-    what: tests that c admin default permissions deny read on assurance_sets scope to hide the sidepanel page button.
+    what: tests that c admin retains assurance set privileges (create, read, update) in role permission defaults.
     how: queries role matrix flags for c admin and assurance_sets.
     with what file: src/__tests__/cAdminDashboard.test.ts testing src/utils/permissionDefaults.ts.
   */
-  it('hides assurance sets from sidepanel via role permission defaults for c admin', () => {
+  it('retains assurance set permissions (create, read, update) for c admin', () => {
     const matrix = buildBrdRolePermissionDefaults();
     const cAdminFlags = getRoleScopeFlags(matrix, 'C Admin', 'assurance_sets');
 
-    expect(cAdminFlags.read).toBe(false);
-    expect(cAdminFlags.create).toBe(false);
+    expect(cAdminFlags.read).toBe(true);
+    expect(cAdminFlags.create).toBe(true);
+    expect(cAdminFlags.update).toBe(true);
   });
 
   /**

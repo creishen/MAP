@@ -91,7 +91,7 @@ export const UserRoleChecklist: React.FC<UserRoleChecklistProps> = ({
 
       <div>
         <label className="form-label small fw-semibold text-secondary mb-2">
-          Operational Roles (UC-04) *
+          Operational Roles *
         </label>
         <div className="row g-2">
           {roleOptions.map(({ role, label, isCustom }) => (

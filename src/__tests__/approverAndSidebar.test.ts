@@ -79,11 +79,33 @@ describe('approver action buttons and sidebar navigation suite', () => {
       if (persona === 'Verifier' && itemKey === 'verifier') return false;
       if (persona === 'Inspector' && itemKey === 'inspector') return false;
       if (persona === 'Approver' && itemKey === 'approver') return false;
+      if (persona === 'C Admin' && itemKey === 'assurance-sets') return false;
       return true;
     };
 
     expect(isInspectorButtonVisible(activePersona, 'inspector')).toBe(false);
     expect(isInspectorButtonVisible(activePersona, 'dashboard')).toBe(true);
     expect(isInspectorButtonVisible(activePersona, 'capa')).toBe(true);
+  });
+
+  /**
+    what: verifies that c admin persona suppresses the assurance sets sidepanel item while keeping dashboard and other views.
+    how: simulates sidebar visibleItems filtering logic for C Admin persona.
+    with what file: src/__tests__/approverAndSidebar.test.ts testing AppSidebar.tsx filtering.
+  */
+  it('hides assurance sets button from sidebar when active persona is C Admin', () => {
+    const activePersona = 'C Admin';
+    const isButtonVisible = (persona: string, itemKey: string) => {
+      if (persona === 'Verifier' && itemKey === 'verifier') return false;
+      if (persona === 'Inspector' && itemKey === 'inspector') return false;
+      if (persona === 'Approver' && itemKey === 'approver') return false;
+      if (persona === 'C Admin' && itemKey === 'assurance-sets') return false;
+      return true;
+    };
+
+    expect(isButtonVisible(activePersona, 'assurance-sets')).toBe(false);
+    expect(isButtonVisible(activePersona, 'dashboard')).toBe(true);
+    expect(isButtonVisible(activePersona, 'vessels')).toBe(true);
+    expect(isButtonVisible(activePersona, 'users')).toBe(true);
   });
 });

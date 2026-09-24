@@ -41,11 +41,11 @@ describe('permissionDefaults and helpers', () => {
     });
   });
 
-  it('hides assurance_sets sidepanel for C Admin while allowing requirement management', () => {
+  it('retains assurance_sets privileges (create, read, update) for C Admin alongside requirements management', () => {
     expect(getRoleScopeFlags(matrix, 'C Admin', 'assurance_sets')).toEqual({
-      create: false,
-      read: false,
-      update: false,
+      create: true,
+      read: true,
+      update: true,
       delete: false,
     });
     expect(getRoleScopeFlags(matrix, 'C Admin', 'assurance_requirements')).toEqual({

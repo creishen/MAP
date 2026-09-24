@@ -122,7 +122,9 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     setInspectionRequired(isClientAdmin ? false : targetSet.mandatoryInspectionRequired);
 
     /* extract charterer from template set */
-    const templateCharterer = targetSet.charterer || targetSet.initiatorOrg || (isClientAdmin ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd');
+    const templateCharterer = isClientAdmin
+      ? 'Chevron Australia Pty Ltd'
+      : (targetSet.charterer || targetSet.initiatorOrg || 'Northwind Marine Pty Ltd');
     setCharterer(templateCharterer);
 
     /* automatic naming: always Charterer org + whatever */
@@ -159,9 +161,8 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     setDocToggles(updatedToggles);
 
     /* trigger autofill shimmer on all programmatically populated fields */
-    triggerAutofillAnimation([
+    const fieldsToAnimate = [
       'grid-campaign-title',
-      'grid-charterer-org',
       'grid-target-vessel',
       'grid-charter-start',
       'grid-charter-end',
@@ -169,7 +170,11 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
       'grid-assign-verifier',
       'grid-assign-inspector',
       'grid-assign-approver',
-    ]);
+    ];
+    if (!isClientAdmin) {
+      fieldsToAnimate.push('grid-charterer-org');
+    }
+    triggerAutofillAnimation(fieldsToAnimate);
 
     /* pre-populate stakeholder selections matching user profiles */
     if (targetSet.assignedSubmitter) {
@@ -424,7 +429,9 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                             Auto-filled from Template: {assuranceSets.find((s) => s.id === selectedTemplateId)?.title}
                           </div>
                           <div className="text-secondary small">
-                            Vessel, Charterer ({charterer}), Charter Window, Master Document Toggles, and Role Assignments loaded from template.
+                            {isClientAdmin
+                              ? 'Vessel, Charter Window, Master Document Toggles, and Role Assignments loaded from template.'
+                              : `Vessel, Charterer (${charterer}), Charter Window, Master Document Toggles, and Role Assignments loaded from template.`}
                           </div>
                         </div>
                         <button
@@ -458,20 +465,22 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     )}
                   </div>
 
-                  <div className="col-12">
-                    <label className="form-label text-secondary small fw-semibold" htmlFor="grid-charterer-org">
-                      Charterer Organization *
-                    </label>
-                    <input
-                      id="grid-charterer-org"
-                      type="text"
-                      className={`form-control bg-white text-dark border-secondary-subtle${animatingFields.has('grid-charterer-org') ? ' map-autofill-animate' : ''}`}
-                      placeholder="e.g. Chevron Australia Pty Ltd"
-                      value={charterer}
-                      onChange={(e) => setCharterer(e.target.value)}
-                      required
-                    />
-                  </div>
+                  {!isClientAdmin && (
+                    <div className="col-12">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="grid-charterer-org">
+                        Charterer Organization *
+                      </label>
+                      <input
+                        id="grid-charterer-org"
+                        type="text"
+                        className={`form-control bg-white text-dark border-secondary-subtle${animatingFields.has('grid-charterer-org') ? ' map-autofill-animate' : ''}`}
+                        placeholder="e.g. Chevron Australia Pty Ltd"
+                        value={charterer}
+                        onChange={(e) => setCharterer(e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
 
                   <div className="col-12">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="grid-target-vessel">
@@ -510,7 +519,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     <input
                       type="text"
                       className="form-control bg-light text-secondary border-secondary-subtle"
-                      value={activePersona === 'C Admin' ? 'C Admin · Client Created' : 'Vessel Provider Admin'}
+                      value={activePersona === 'C Admin' ? 'Client Admin' : 'Vessel Provider Admin'}
                       disabled
                     />
                   </div>
@@ -881,7 +890,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
               <button
                 type="button"
                 className="btn btn-outline-secondary px-4 py-2"
-                onClick={() => setCurrentHashView('assurance-sets')}
+                onClick={() => setCurrentHashView(isClientAdmin || previousHashView === 'dashboard' ? 'dashboard' : 'assurance-sets')}
               >
                 Cancel
               </button>
