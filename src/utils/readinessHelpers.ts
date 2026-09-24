@@ -31,6 +31,13 @@ export function getRequirementReadinessPercentage(
   req: AssuranceRequirement,
   parentSet?: Partial<AssuranceSet>,
 ): number {
+  const hasUploadedDoc = Boolean(req.documentId) || Boolean(req.linkedDocumentId);
+
+  /* if no document is uploaded/attached and requirement is not fulfilled, it remains in initiated state (10%) and can never be 100% */
+  if (!hasUploadedDoc && !req.isFulfilled) {
+    return STAGE_READINESS_WEIGHTS.initiated; /* 10% */
+  }
+
   /* check if requirement is fully approved via campaign sign-off or certified stage */
   const isParentApproved =
     parentSet?.stage === 'Certified' ||
@@ -40,16 +47,13 @@ export function getRequirementReadinessPercentage(
       (req.verifierStatus === 'Verified' || req.isFulfilled || parentSet?.verificationRequired === false) &&
       (!parentSet?.mandatoryInspectionRequired || parentSet?.inspectionCompleted));
 
-  if (isParentApproved && (req.verifierStatus === 'Verified' || req.isFulfilled || parentSet?.verificationRequired === false)) {
+  if (isParentApproved && (hasUploadedDoc || req.isFulfilled)) {
     return STAGE_READINESS_WEIGHTS.approved; /* 100% */
   }
 
-  /* check if verification is bypassed in workflow policy */
-  if (parentSet?.verificationRequired === false) {
-    const hasUploadedDoc = Boolean(req.documentId) || Boolean(req.linkedDocumentId);
-    if (hasUploadedDoc || req.isFulfilled) {
-      return STAGE_READINESS_WEIGHTS.verified; /* 70% */
-    }
+  /* check if verification is bypassed in workflow policy and document is present */
+  if (parentSet?.verificationRequired === false && hasUploadedDoc) {
+    return STAGE_READINESS_WEIGHTS.verified; /* 70% */
   }
 
   /* check if requirement is verified by verifier */
@@ -58,7 +62,6 @@ export function getRequirementReadinessPercentage(
   }
 
   /* check if requirement document is uploaded / submitted for verification */
-  const hasUploadedDoc = Boolean(req.documentId) || Boolean(req.linkedDocumentId);
   const isCampaignSubmitted = parentSet?.stage && parentSet.stage !== 'Initiated';
 
   if (
@@ -99,26 +102,33 @@ export function calculateDocumentReadiness(doc: MasterDocument): number {
   with what file: src/utils/readinessHelpers.ts consumed by store and views.
 */
 export function calculateAssuranceSetReadiness(set: AssuranceSet): number {
-  if (
-    set.stage === 'Certified' ||
-    set.stage === 'Approved' ||
-    set.approverDecision === 'Approved'
-  ) {
-    return STAGE_READINESS_WEIGHTS.approved; /* 100% */
-  }
-
   if (!set.requirements || set.requirements.length === 0) {
-    if (set.stage === 'Approval') return STAGE_READINESS_WEIGHTS.approved;
+    if (set.stage === 'Certified' || set.stage === 'Approved' || set.stage === 'Approval') return STAGE_READINESS_WEIGHTS.approved;
     if (set.stage === 'Verification' || set.stage === 'Inspection') return STAGE_READINESS_WEIGHTS.verified;
     if (set.stage === 'Validation') return STAGE_READINESS_WEIGHTS.submitted;
     return STAGE_READINESS_WEIGHTS.initiated;
   }
 
+  const uploadedCount = set.requirements.filter((r) => Boolean(r.documentId || r.linkedDocumentId || r.isFulfilled)).length;
+
+  /* if there are no uploaded documents for any requirement, readiness will never be 100% and stays at initiated 10% */
+  if (uploadedCount === 0) {
+    return STAGE_READINESS_WEIGHTS.initiated; /* 10% */
+  }
+
+  if (
+    (set.stage === 'Certified' || set.stage === 'Approved' || set.approverDecision === 'Approved') &&
+    uploadedCount === set.requirements.length
+  ) {
+    return STAGE_READINESS_WEIGHTS.approved; /* 100% */
+  }
+
   const allReqsReady = set.requirements.every(
-    (r) => r.isFulfilled || r.verifierStatus === 'Verified' || set.verificationRequired === false
+    (r) => (Boolean(r.documentId || r.linkedDocumentId) || r.isFulfilled) &&
+           (r.isFulfilled || r.verifierStatus === 'Verified' || set.verificationRequired === false)
   );
 
-  /* if formal approval is disabled and all requirements and mandatory inspections are fulfilled, return 100% */
+  /* if formal approval is disabled and all requirements and mandatory inspections are fulfilled with uploaded docs, return 100% */
   if (set.formalApprovalRequired === false && allReqsReady && (!set.mandatoryInspectionRequired || set.inspectionCompleted)) {
     return STAGE_READINESS_WEIGHTS.approved;
   }
@@ -128,7 +138,14 @@ export function calculateAssuranceSetReadiness(set: AssuranceSet): number {
     0
   );
 
-  return Math.round(totalScore / set.requirements.length);
+  const calculatedAvg = Math.round(totalScore / set.requirements.length);
+
+  /* if any requirement lacks an uploaded document, ensure readiness never reaches 100% */
+  if (uploadedCount < set.requirements.length && calculatedAvg >= 100) {
+    return 95;
+  }
+
+  return calculatedAvg;
 }
 
 /**

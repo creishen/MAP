@@ -37,10 +37,16 @@ export const PipelineStepper: React.FC<PipelineStepperProps> = ({
   assuranceSet,
   workflowConfig,
 }) => {
+  const hasUploadedDocs =
+    assuranceSet?.requirements && assuranceSet.requirements.length > 0
+      ? assuranceSet.requirements.some((r) => Boolean(r.documentId || r.linkedDocumentId || r.isFulfilled))
+      : true;
+
   const isFullyApproved =
-    (readinessScore !== undefined && readinessScore >= 100) ||
-    currentStage === 'Approved' ||
-    currentStage === 'Certified';
+    hasUploadedDocs &&
+    ((readinessScore !== undefined && readinessScore >= 100) ||
+      currentStage === 'Approved' ||
+      currentStage === 'Certified');
 
   /* resolve workflow requirements based on passed props and assurance set properties */
   const isVerificationRequired =

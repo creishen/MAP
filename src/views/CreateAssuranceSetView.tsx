@@ -304,7 +304,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     const isClientAdmin = activePersona === 'C Admin';
     const uniqueSetId = generateUniqueAssuranceSetId(assuranceSets);
 
-    /* construct enabled requirements list with guaranteed unique transactional requirement ids */
+    /* construct enabled requirements list with guaranteed unique transactional requirement ids and 0% OCR for initial state */
     const selectedRequirements: AssuranceRequirement[] = INITIAL_MASTER_DOCS
       .filter((doc) => docToggles[doc.id])
       .map((doc, idx) => ({
@@ -313,7 +313,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
         title: doc.title,
         isMandatory: true,
         isFulfilled: false,
-        ocrConfidence: Math.floor(90 + Math.random() * 9),
+        ocrConfidence: 0,
         verifierStatus: 'Pending',
       }));
 

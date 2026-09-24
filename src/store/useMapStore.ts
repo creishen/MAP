@@ -332,10 +332,21 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       ? generateUniqueAssuranceSetId(existingSets)
       : newSet.id || generateUniqueAssuranceSetId(existingSets);
 
+    const sanitizedRequirements = newSet.requirements?.map((r) => ({
+      ...r,
+      ocrConfidence: (r.documentId || r.linkedDocumentId) ? (r.ocrConfidence || 0) : 0,
+    })) || [];
+
     const computedSet: AssuranceSet = {
       ...newSet,
       id: uniqueId,
-      readinessScore: calculateAssuranceSetReadiness(newSet),
+      stage: newSet.stage || 'Initiated',
+      requirements: sanitizedRequirements,
+      readinessScore: calculateAssuranceSetReadiness({
+        ...newSet,
+        id: uniqueId,
+        requirements: sanitizedRequirements,
+      }),
     };
     set((state) => ({ assuranceSets: [...state.assuranceSets, computedSet] }));
     get().logAuditEvent({
@@ -393,7 +404,13 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
           }
           return r;
         });
-        const allVerified = updatedReqs.length > 0 && updatedReqs.every((r) => r.verifierStatus === 'Verified' || s.verificationRequired === false);
+        const allVerified =
+          updatedReqs.length > 0 &&
+          updatedReqs.every(
+            (r) =>
+              Boolean(r.documentId || r.linkedDocumentId || r.isFulfilled) &&
+              (r.verifierStatus === 'Verified' || s.verificationRequired === false || r.isFulfilled)
+          );
 
         let nextStage = s.stage;
         if (allVerified) {

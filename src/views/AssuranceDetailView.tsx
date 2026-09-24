@@ -101,26 +101,36 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
   };
 
   const handleExportCsv = () => {
-    const exportData = assuranceSet.requirements.map((req) => ({
-      Category: req.category,
-      RequirementTitle: req.title,
-      OcrConfidence: `${req.ocrConfidence}%`,
-      VerifierStatus: req.verifierStatus || (req.isFulfilled ? 'Approved' : 'Pending'),
-      Notes: req.notes || '',
-    }));
+    const exportData = assuranceSet.requirements.map((req) => {
+      const linkedDoc = documents.find((d) => d.id === req.documentId || (req.linkedDocumentId && d.id === req.linkedDocumentId));
+      const hasAttachedDoc = Boolean(linkedDoc || req.documentId || req.linkedDocumentId);
+      const effectiveOcr = hasAttachedDoc ? (req.ocrConfidence || linkedDoc?.ocrConfidence || 0) : 0;
+      return {
+        Category: req.category,
+        RequirementTitle: req.title,
+        OcrConfidence: `${effectiveOcr}%`,
+        VerifierStatus: req.verifierStatus || (req.isFulfilled ? 'Approved' : 'Pending'),
+        Notes: req.notes || '',
+      };
+    });
     exportToCsv(`${assuranceSet.id}_Requirements_Register`, exportData);
     setIsExportOpen(false);
   };
 
   const handleExportPdf = () => {
     const headers = ['Category', 'Requirement Title', 'OCR Conf', 'Status', 'Notes'];
-    const rows = assuranceSet.requirements.map((req) => [
-      req.category,
-      req.title,
-      `${req.ocrConfidence}%`,
-      req.verifierStatus || (req.isFulfilled ? 'Approved' : 'Pending'),
-      req.notes || '-',
-    ]);
+    const rows = assuranceSet.requirements.map((req) => {
+      const linkedDoc = documents.find((d) => d.id === req.documentId || (req.linkedDocumentId && d.id === req.linkedDocumentId));
+      const hasAttachedDoc = Boolean(linkedDoc || req.documentId || req.linkedDocumentId);
+      const effectiveOcr = hasAttachedDoc ? (req.ocrConfidence || linkedDoc?.ocrConfidence || 0) : 0;
+      return [
+        req.category,
+        req.title,
+        `${effectiveOcr}%`,
+        req.verifierStatus || (req.isFulfilled ? 'Approved' : 'Pending'),
+        req.notes || '-',
+      ];
+    });
     exportToPdf(`${assuranceSet.id} Statutory Requirements Register`, headers, rows);
     setIsExportOpen(false);
   };
@@ -370,7 +380,9 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
             </thead>
             <tbody>
               {assuranceSet.requirements.map((req) => {
-                const linkedDoc = documents.find((d) => d.id === req.documentId);
+                const linkedDoc = documents.find((d) => d.id === req.documentId || (req.linkedDocumentId && d.id === req.linkedDocumentId));
+                const hasAttachedDoc = Boolean(linkedDoc || req.documentId || req.linkedDocumentId);
+                const effectiveOcr = hasAttachedDoc ? (req.ocrConfidence || linkedDoc?.ocrConfidence || 0) : 0;
 
                 return (
                   <tr key={req.id}>
@@ -388,7 +400,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                       )}
                     </td>
                     <td>
-                      <ConfidenceBadge score={req.ocrConfidence} />
+                      <ConfidenceBadge score={effectiveOcr} />
                     </td>
                     <td>
                       {renderRequirementStatus(req)}

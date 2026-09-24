@@ -244,5 +244,63 @@ describe('Workflow Requirements & Approver Document Denial Synchronization', () 
     });
     expect(unfulfilledWithReq.length).toBe(0);
   });
+
+  /**
+    what: tests that newly initiated assurance sets without attached documents have 0% OCR and readiness never reaches 100%.
+    how: adds a newly initiated set without attached documents, checking that OCR is 0 and readiness remains at 10%.
+    with what file: src/__tests__/workflowRequirementsAndDenialSync.test.ts testing useMapStore and readinessHelpers.
+  */
+  it('should ensure newly initiated sets have 0% OCR and never 100% readiness when no documents are uploaded', () => {
+    const store = useMapStore.getState();
+    const newCampaign: AssuranceSet = {
+      id: 'AS-NEW-INIT-01',
+      title: 'Newly Initiated Campaign',
+      vesselId: 'VESSEL-001',
+      vesselName: 'MV Torrens Supporter',
+      imoNumber: '9840123',
+      initiatorOrg: 'Northwind Marine',
+      initiatorRole: 'Vessel Provider Admin',
+      charterWindowStart: '2026-11-01',
+      charterWindowEnd: '2027-11-01',
+      stage: 'Initiated',
+      readinessScore: 10,
+      verificationRequired: false, /* even if verification is false */
+      mandatoryInspectionRequired: false,
+      formalApprovalRequired: false, /* even if formal approval is false */
+      inspectionCompleted: false,
+      requirements: [
+        {
+          id: 'REQ-NEW-1',
+          category: 'Statutory Certificate',
+          title: 'Certificate of Class',
+          isMandatory: true,
+          isFulfilled: false,
+          ocrConfidence: 0,
+          verifierStatus: 'Pending',
+        },
+        {
+          id: 'REQ-NEW-2',
+          category: 'Statutory Certificate',
+          title: 'Flag State Certificate',
+          isMandatory: true,
+          isFulfilled: false,
+          ocrConfidence: 0,
+          verifierStatus: 'Pending',
+        },
+      ],
+      stakeholders: undefined,
+      assignedStakeholders: undefined,
+      createdByPersona: 'Administrator',
+    };
+
+    store.addAssuranceSet(newCampaign);
+
+    const createdSet = useMapStore.getState().assuranceSets.find((s) => s.id === 'AS-NEW-INIT-01');
+    expect(createdSet).toBeDefined();
+    expect(createdSet?.requirements.every((r) => r.ocrConfidence === 0)).toBe(true);
+    expect(createdSet?.stage).toBe('Initiated');
+    expect(createdSet?.readinessScore).toBe(10);
+    expect(createdSet?.readinessScore).not.toBe(100);
+  });
 });
 

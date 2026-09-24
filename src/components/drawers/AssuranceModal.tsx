@@ -94,7 +94,7 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
 
     const uniqueSetId = generateUniqueAssuranceSetId(assuranceSets);
 
-    /* construct enabled requirements list with guaranteed unique transactional requirement ids */
+    /* construct enabled requirements list with guaranteed unique transactional requirement ids and 0% OCR */
     const selectedRequirements: AssuranceRequirement[] = INITIAL_MASTER_DOCS
       .filter((doc) => docToggles[doc.id])
       .map((doc, idx) => ({
@@ -103,7 +103,7 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
         title: doc.title,
         isMandatory: true,
         isFulfilled: false,
-        ocrConfidence: Math.floor(90 + Math.random() * 9),
+        ocrConfidence: 0,
         verifierStatus: 'Pending',
       }));
 

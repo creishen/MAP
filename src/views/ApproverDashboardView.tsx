@@ -66,13 +66,13 @@ export const ApproverDashboardView: React.FC = () => {
 
   const unfulfilledMandatory = selectedSet
     ? selectedSet.requirements.filter((r) => {
-        if (!r.isMandatory) return false;
-        if (!isVerificationRequired) {
-          /* verification overridden by workflow requirements */
-          return false;
-        }
-        return !r.isFulfilled && r.verifierStatus !== 'Verified';
-      })
+      if (!r.isMandatory) return false;
+      if (!isVerificationRequired) {
+        /* verification overridden by workflow requirements */
+        return false;
+      }
+      return !r.isFulfilled && r.verifierStatus !== 'Verified';
+    })
     : [];
 
   const isInspectionBlocked = Boolean(isInspectionRequired && selectedSet && !selectedSet.inspectionCompleted);
@@ -255,7 +255,9 @@ export const ApproverDashboardView: React.FC = () => {
                             </tr>
                           ) : (
                             verifiedRequirements.map((req) => {
-                              const linkedDoc = documents.find((d) => d.id === req.documentId);
+                              const linkedDoc = documents.find((d) => d.id === req.documentId || (req.linkedDocumentId && d.id === req.linkedDocumentId));
+                              const hasAttachedDoc = Boolean(linkedDoc || req.documentId || req.linkedDocumentId);
+                              const effectiveOcr = hasAttachedDoc ? (req.ocrConfidence || linkedDoc?.ocrConfidence || 0) : 0;
                               return (
                                 <tr key={req.id}>
                                   <td>
@@ -266,7 +268,7 @@ export const ApproverDashboardView: React.FC = () => {
                                     {req.isMandatory && <span className="text-danger ms-1">*</span>}
                                   </td>
                                   <td>
-                                    <ConfidenceBadge score={req.ocrConfidence} />
+                                    <ConfidenceBadge score={effectiveOcr} />
                                   </td>
                                   <td>
                                     <span className={`badge font-mono-code ${isAlreadyApproved ? 'bg-success text-white' : 'bg-info text-dark'}`}>
@@ -348,18 +350,18 @@ export const ApproverDashboardView: React.FC = () => {
                   {isApprovalBlocked ? (
                     <div className="text-danger fw-semibold">
                       {unfulfilledMandatory.length > 0 ? (
-                        <span>[APPROVAL BLOCKED] {unfulfilledMandatory.length} mandatory requirement(s) pending verification or expired.</span>
+                        <span>{unfulfilledMandatory.length} mandatory requirement(s) pending verification or expired.</span>
                       ) : (
-                        <span>[APPROVAL BLOCKED] Mandatory physical vessel inspection is pending completion.</span>
+                        <span>Mandatory physical vessel inspection is pending completion.</span>
                       )}
                     </div>
                   ) : selectedSet?.verificationRequired === false ? (
                     <div className="text-success fw-semibold">
-                      [VERIFICATION OVERRIDDEN BY WORKFLOW] Mandatory verification bypassed by workflow configuration. Ready for final certification sign-off.
+                      Mandatory verification bypassed by workflow configuration. Ready for final certification sign-off.
                     </div>
                   ) : (
                     <div className="text-success fw-semibold">
-                      [ALL MANDATORY REQUIREMENTS FULFILLED] Ready for final certification sign-off.
+                      Ready for final certification sign-off.
                     </div>
                   )}
                 </div>
@@ -375,7 +377,7 @@ export const ApproverDashboardView: React.FC = () => {
 
                 <div className="mb-3">
                   <label className="form-label text-secondary small fw-semibold" htmlFor="approver-notes">
-                    Executive Approver Decision Notes:
+                    Notes:
                   </label>
                   <textarea
                     id="approver-notes"

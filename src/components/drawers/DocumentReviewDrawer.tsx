@@ -50,9 +50,6 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
     )
     : undefined;
 
-  const defaultRouteTarget = linkedSet?.mandatoryInspectionRequired ? 'Inspector' : 'Approver';
-  const [routeTarget, setRouteTarget] = useState<'Inspector' | 'Approver'>(defaultRouteTarget);
-
   useEffect(() => {
     if (!document) return;
     setComment('');
@@ -60,7 +57,6 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
     setIsManualEditActive(false);
     setEditedValues({});
     setCorrectedFieldIds(new Set());
-    setRouteTarget(linkedSet?.mandatoryInspectionRequired ? 'Inspector' : 'Approver');
   }, [document?.id, linkedSet?.id, linkedSet?.mandatoryInspectionRequired]);
 
   /* triggers one-shot shimmer on all ocr-extracted value cells when drawer opens or document changes */
@@ -119,7 +115,6 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
       document.id,
       'Verified',
       comment.trim() || 'Verified extracted document attributes.',
-      routeTarget,
     );
     onClose();
   };
@@ -453,26 +448,6 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                 )}
               </div>
 
-              <div className="mb-3.5">
-                <label className="form-label text-dark small fw-semibold mb-1.5" style={{ fontSize: '0.8rem' }}>
-                  Next Stage Routing
-                </label>
-                <select
-                  className="form-select bg-white text-dark border"
-                  value={routeTarget}
-                  onChange={(e) => setRouteTarget(e.target.value as 'Inspector' | 'Approver')}
-                  style={{ fontSize: '0.825rem', borderRadius: '6px', maxWidth: '420px' }}
-                >
-                  <option value="Inspector">Forward to Inspector for Visual Survey</option>
-                  <option value="Approver">Forward to Approver Gate</option>
-                </select>
-                {linkedSet?.mandatoryInspectionRequired && (
-                  <div className="text-secondary small mt-1">
-                    Visual inspection is mandated for this assurance set.
-                  </div>
-                )}
-              </div>
-
               <div className="d-flex align-items-center justify-content-end gap-2 pt-3 border-top flex-wrap">
                 {canSubmit && (
                   <button
@@ -506,7 +481,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                   style={{ fontSize: '0.8rem', backgroundColor: '#059669', borderColor: '#059669' }}
                   onClick={handleVerify}
                 >
-                  Verify & Route Forward
+                  Verify Document
                 </button>
               </div>
             </div>
