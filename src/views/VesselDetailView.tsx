@@ -11,7 +11,7 @@ import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
 import { filterAuditTrailForPersona, filterVesselsForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
-import { calculateAssuranceSetReadiness, calculateVesselReadiness } from '../utils/readinessHelpers';
+import { calculateAssuranceSetReadiness, calculateVesselReadiness, isVesselAssuranceApproved, isVesselStatusPermitted } from '../utils/readinessHelpers';
 import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
 import { InspectionDrawer } from '../components/drawers/InspectionDrawer';
 import { AddCrewModal } from '../components/drawers/AddCrewModal';
@@ -604,7 +604,16 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
     setFormData((prev) => (prev ? { ...prev, [field]: val } : prev));
   };
 
+  const isAssuranceApproved = vessel ? isVesselAssuranceApproved(vessel, assuranceSets, documents) : false;
+
   const handleSave = () => {
+    const statusPermCheck = isVesselStatusPermitted(formData.status, vessel, assuranceSets, documents);
+    if (!statusPermCheck.isPermitted) {
+      setToastMessage(statusPermCheck.reason || 'Cannot set status: 100% approved assurance set required.');
+      setTimeout(() => setToastMessage(null), 4500);
+      return;
+    }
+
     if (canEditFull) {
       updateVessel(formData);
       setToastMessage('Vessel specifications updated successfully & recorded in audit trail.');
@@ -650,23 +659,47 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             <div className="d-flex align-items-center gap-2">
               <h2 className="fw-bold mb-1 text-primary m-0">{vessel.name}</h2>
               {fieldEditable('status') ? (
-                <select
-                  className="form-select form-select-sm"
-                  style={{ width: 'auto' }}
-                  value={formData.status}
-                  onChange={(e) =>
-                    handleInputChange('status', e.target.value as VesselRegistrationStatus)
-                  }
-                >
-                  <option value="In Operations">In Operations</option>
-                  <option value="In Transit">In Transit</option>
-                  <option value="Dry Docking">Dry Docking</option>
-                  <option value="Lay-up">Lay-up</option>
-                  <option value="Port Stay">Port Stay</option>
-                  <option value="Under Charter">Under Charter</option>
-                </select>
+                <div className="d-flex flex-column gap-1">
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ width: 'auto' }}
+                    value={formData.status}
+                    onChange={(e) =>
+                      handleInputChange('status', e.target.value as VesselRegistrationStatus)
+                    }
+                  >
+                    <option value="Port Stay">Port Stay</option>
+                    <option
+                      value="In Transit"
+                      disabled={!isAssuranceApproved}
+                    >
+                      In Transit {!isAssuranceApproved ? '(Requires 100% Approved Assurance)' : ''}
+                    </option>
+                    <option value="Dry Docking">Dry Docking</option>
+                    <option value="Lay-up">Lay-up</option>
+                    <option
+                      value="In Operations"
+                      disabled={!isAssuranceApproved}
+                    >
+                      In Operations {!isAssuranceApproved ? '(Requires 100% Approved Assurance)' : ''}
+                    </option>
+                    <option
+                      value="Under Charter"
+                      disabled={!isAssuranceApproved}
+                    >
+                      Under Charter {!isAssuranceApproved ? '(Requires 100% Approved Assurance)' : ''}
+                    </option>
+                  </select>
+                  {!isAssuranceApproved && (
+                    <span className="text-secondary small font-mono-code" style={{ fontSize: '0.72rem' }}>
+                      Under Charter, In Operations, and In Transit require 100% approved assurance set readiness.
+                    </span>
+                  )}
+                </div>
               ) : (
-                <span className="badge bg-primary text-uppercase">{vessel.status}</span>
+                <span className={`badge ${vessel.status === 'Under Charter' || vessel.status === 'In Operations' || vessel.status === 'In Transit' ? 'bg-primary' : 'bg-secondary'} text-uppercase`}>
+                  {vessel.status}
+                </span>
               )}
             </div>
             <div className="text-secondary small mt-1 font-mono-code">

@@ -270,6 +270,29 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   updateVessel: (updatedVessel) => {
     set((state) => ({
       vessels: state.vessels.map((v) => (v.id === updatedVessel.id ? updatedVessel : v)),
+      /* synchronize vessel name and imo across all linked assurance sets */
+      assuranceSets: state.assuranceSets.map((s) =>
+        s.vesselId === updatedVessel.id
+          ? {
+            ...s,
+            vesselName: updatedVessel.name,
+            imoNumber: updatedVessel.imoNumber,
+          }
+          : s
+      ),
+      /* synchronize vessel attributes in linked master documents */
+      documents: state.documents.map((d) =>
+        d.vesselId === updatedVessel.id && d.vesselAttributes
+          ? {
+            ...d,
+            vesselAttributes: {
+              ...d.vesselAttributes,
+              vesselName: updatedVessel.name,
+              imoNumber: updatedVessel.imoNumber,
+            },
+          }
+          : d
+      ),
     }));
 
     get().logAuditEvent({
@@ -319,7 +342,14 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
   },
   updateAssuranceStage: (setId, stage) => {
     set((state) => ({
-      assuranceSets: state.assuranceSets.map((s) => (s.id === setId ? { ...s, stage } : s)),
+      assuranceSets: state.assuranceSets.map((s) => {
+        if (s.id !== setId) return s;
+        const candidateSet: AssuranceSet = { ...s, stage };
+        return {
+          ...candidateSet,
+          readinessScore: calculateAssuranceSetReadiness(candidateSet),
+        };
+      }),
     }));
   },
   updateAssuranceInspector: (setId, inspectorName) => {

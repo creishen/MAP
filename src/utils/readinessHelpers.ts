@@ -127,16 +127,6 @@ export function calculateVesselReadiness(
   );
 
   if (linkedSets.length > 0) {
-    /* collect all requirements across linked assurance sets for this vessel */
-    const allReqScores = linkedSets.flatMap((s) =>
-      s.requirements.map((r) => getRequirementReadinessPercentage(r, s))
-    );
-
-    if (allReqScores.length > 0) {
-      const totalScore = allReqScores.reduce((sum, score) => sum + score, 0);
-      return Math.round(totalScore / allReqScores.length);
-    }
-
     const totalSetScore = linkedSets.reduce(
       (sum, s) => sum + calculateAssuranceSetReadiness(s),
       0
@@ -168,4 +158,60 @@ export function calculateVesselReadiness(
   }
 
   return vessel.complianceReadinessScore || STAGE_READINESS_WEIGHTS.initiated;
+}
+
+/**
+  what: checks whether a vessel has reached 100% assurance readiness or holds an approved assurance set.
+  how: examines linked assurance sets for approved/certified stages or 100% calculated readiness scores.
+  with what file: src/utils/readinessHelpers.ts consumed by VesselDetailView, VesselModal, and VesselTable.
+*/
+export function isVesselAssuranceApproved(
+  vessel: VesselParticulars,
+  assuranceSets: AssuranceSet[] = [],
+  documents: MasterDocument[] = [],
+): boolean {
+  /* find linked assurance sets for this vessel */
+  const linkedSets = assuranceSets.filter(
+    (s) => s.vesselId === vessel.id || (vessel.name && s.vesselName?.toLowerCase() === vessel.name.toLowerCase())
+  );
+
+  if (linkedSets.length > 0) {
+    return linkedSets.some(
+      (s) =>
+        s.stage === 'Approved' ||
+        s.stage === 'Certified' ||
+        s.approverDecision === 'Approved' ||
+        calculateAssuranceSetReadiness(s) >= 100
+    );
+  }
+
+  /* fallback: if no assurance sets exist, check calculated vessel readiness */
+  return calculateVesselReadiness(vessel, assuranceSets, documents) >= 100;
+}
+
+/**
+  what: validates if a target vessel operating or transit status is permitted based on assurance readiness approval gating.
+  how: prevents 'Under Charter', 'In Operations', and 'In Transit' unless the vessel is 100% ready or approved.
+  with what file: src/utils/readinessHelpers.ts consumed by VesselDetailView and VesselModal.
+*/
+export function isVesselStatusPermitted(
+  status: import('../types/vessel').VesselRegistrationStatus,
+  vessel: VesselParticulars,
+  assuranceSets: AssuranceSet[] = [],
+  documents: MasterDocument[] = [],
+): { isPermitted: boolean; reason?: string } {
+  const isRestrictedStatus = status === 'Under Charter' || status === 'In Operations' || status === 'In Transit';
+  if (!isRestrictedStatus) {
+    return { isPermitted: true };
+  }
+
+  const isApproved = isVesselAssuranceApproved(vessel, assuranceSets, documents);
+  if (!isApproved) {
+    return {
+      isPermitted: false,
+      reason: `Cannot set status to ${status}: Vessel assurance set readiness is not 100% ready or approved.`,
+    };
+  }
+
+  return { isPermitted: true };
 }

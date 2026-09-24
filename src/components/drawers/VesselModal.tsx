@@ -69,7 +69,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
   const [callSign, setCallSign] = useState('');
   const [flagState, setFlagState] = useState('Australia');
   const [portOfRegistry, setPortOfRegistry] = useState('Fremantle, WA');
-  const [vesselRegStatus, setVesselRegStatus] = useState<VesselParticulars['status']>('In Operations');
+  const [vesselRegStatus, setVesselRegStatus] = useState<VesselParticulars['status']>('Port Stay');
   const [hullIdSmallCraft, setHullIdSmallCraft] = useState('');
 
   // 2. Vessel Classification
@@ -142,6 +142,7 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     setSelectedDocIds({});
     setActiveVerifiedDocs({});
     setPendingVerificationState(null);
+    setVesselRegStatus('Port Stay');
     setRevealedVesselFields({ name: false, imoNumber: false, officialRegNumber: false, flagState: false, classificationSociety: false, yearBuilt: false, gt: false, dwt: false, registeredOwner: false });
 
     if (activePersona === 'Administrator') {
@@ -918,9 +919,9 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
                         value={vesselRegStatus}
                         onChange={(e) => setVesselRegStatus(e.target.value as VesselParticulars['status'])}
                       >
-                        <option value="In Operations">In Operations</option>
-                        <option value="Under Charter">Under Charter</option>
-                        <option value="In Transit">In Transit</option>
+                        <option value="In Operations" disabled>In Operations (Requires 100% Approved Assurance)</option>
+                        <option value="Under Charter" disabled>Under Charter (Requires 100% Approved Assurance)</option>
+                        <option value="In Transit" disabled>In Transit (Requires 100% Approved Assurance)</option>
                         <option value="Port Stay">Port Stay</option>
                         <option value="Dry Docking">Dry Docking</option>
                         <option value="Lay-up">Lay-up</option>

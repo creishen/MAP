@@ -322,7 +322,7 @@ function flagsForRole(role: UserRolePersona, key: string): CrudFlags {
       return emptyCrud();
 
     case 'verification_queue':
-      if (role === 'Administrator' || role === 'Submitter' || role === 'Verifier') {
+      if (role === 'Administrator' || role === 'Verifier') {
         return readOnly();
       }
       return emptyCrud();
