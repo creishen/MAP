@@ -58,6 +58,9 @@ describe('C Admin Inspector Checklist Isolation', () => {
           verifierStatus: 'Pending',
         },
       ],
+      stakeholders: undefined,
+      assignedStakeholders: undefined,
+      createdByPersona: ''
     };
 
     store.addAssuranceSet(newCAdminSet);

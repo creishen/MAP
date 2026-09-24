@@ -43,6 +43,9 @@ describe('Assurance Set Template Charterer Inclusion', () => {
       mandatoryInspectionRequired: templateSet.mandatoryInspectionRequired,
       inspectionCompleted: false,
       requirements: templateSet.requirements,
+      stakeholders: undefined,
+      assignedStakeholders: undefined,
+      createdByPersona: ''
     };
 
     store.addAssuranceSet(newSetFromTemplate);

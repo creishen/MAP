@@ -660,6 +660,9 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         linkedDocumentId: ''
       },
     ],
+    stakeholders: undefined,
+    assignedStakeholders: undefined,
+    createdByPersona: ''
   },
   {
     id: 'AS-2026-002',
@@ -692,6 +695,9 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         linkedDocumentId: ''
       },
     ],
+    stakeholders: undefined,
+    assignedStakeholders: undefined,
+    createdByPersona: ''
   },
   {
     id: 'AS-2026-003',
@@ -725,6 +731,9 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         linkedDocumentId: ''
       },
     ],
+    stakeholders: undefined,
+    assignedStakeholders: undefined,
+    createdByPersona: ''
   },
   {
     id: 'AS-2026-004',
@@ -768,6 +777,9 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         linkedDocumentId: ''
       },
     ],
+    stakeholders: undefined,
+    assignedStakeholders: undefined,
+    createdByPersona: ''
   },
   {
     id: 'AS-2026-005',
@@ -811,6 +823,9 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         linkedDocumentId: ''
       },
     ],
+    stakeholders: undefined,
+    assignedStakeholders: undefined,
+    createdByPersona: ''
   },
   {
     id: 'AS-2026-006',
@@ -842,6 +857,9 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         linkedDocumentId: ''
       },
     ],
+    stakeholders: undefined,
+    assignedStakeholders: undefined,
+    createdByPersona: ''
   },
   {
     id: 'AS-2026-007',
@@ -873,6 +891,9 @@ export const MOCK_ASSURANCE_SETS: AssuranceSet[] = [
         linkedDocumentId: ''
       },
     ],
+    stakeholders: undefined,
+    assignedStakeholders: undefined,
+    createdByPersona: ''
   },
 ];
 

@@ -117,6 +117,9 @@ export const AssuranceModal: React.FC<AssuranceModalProps> = ({ isOpen, onClose 
       mandatoryInspectionRequired: isClient ? false : inspectionRequired,
       inspectionCompleted: false,
       requirements: selectedRequirements,
+      stakeholders: undefined,
+      assignedStakeholders: undefined,
+      createdByPersona: ''
     };
 
     addAssuranceSet(newSet);

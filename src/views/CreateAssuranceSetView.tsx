@@ -327,6 +327,9 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
           : 'Pending Admin Assignment'
         : undefined,
       requirements: selectedRequirements,
+      stakeholders: undefined,
+      assignedStakeholders: undefined,
+      createdByPersona: ''
     };
 
     addAssuranceSet(newSet);
