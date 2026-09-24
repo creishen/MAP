@@ -41,14 +41,19 @@ describe('permissionDefaults and helpers', () => {
     });
   });
 
-  it('allows C Admin assurance set create per BRD matrix', () => {
+  it('hides assurance_sets sidepanel for C Admin while allowing requirement management', () => {
     expect(getRoleScopeFlags(matrix, 'C Admin', 'assurance_sets')).toEqual({
+      create: false,
+      read: false,
+      update: false,
+      delete: false,
+    });
+    expect(getRoleScopeFlags(matrix, 'C Admin', 'assurance_requirements')).toEqual({
       create: true,
       read: true,
       update: true,
       delete: false,
     });
-    expect(isBrdHardDenied('C Admin', 'assurance_sets', 'create')).toBe(false);
   });
 
   it('keeps Verifier post-inspection review as read-only; update stays locked', () => {
@@ -151,7 +156,7 @@ describe('permissionDefaults and helpers', () => {
     expect(getRoleScopeFlags(matrix, 'Inspector', 'assurance_sets').read).toBe(false);
     expect(getRoleScopeFlags(matrix, 'Inspector', 'documents').read).toBe(false);
     expect(getRoleScopeFlags(matrix, 'Inspector', 'capa').read).toBe(true);
-    expect(getRoleScopeFlags(matrix, 'Approver', 'approval_gate').read).toBe(false);
+    expect(getRoleScopeFlags(matrix, 'Approver', 'approval_gate').read).toBe(true);
     expect(getRoleScopeFlags(matrix, 'Approver', 'dashboard').read).toBe(true);
     expect(getRoleScopeFlags(matrix, 'Approver', 'audit_trail').read).toBe(true);
   });

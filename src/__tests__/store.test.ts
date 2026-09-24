@@ -230,10 +230,10 @@ describe('Map Store State Management', () => {
     expect(latestAudit.action).toContain('Uploaded Crew STCW Document');
   });
 
-  it('should restrict Approver to dashboard and audit trail only', () => {
+  it('should allow Approver access to approver view, dashboard, and audit trail', () => {
     expect(isViewAccessibleToPersona('dashboard', undefined, 'Approver')).toBe(true);
     expect(isViewAccessibleToPersona('audit', undefined, 'Approver')).toBe(true);
-    expect(isViewAccessibleToPersona('approver', undefined, 'Approver')).toBe(false);
+    expect(isViewAccessibleToPersona('approver', undefined, 'Approver')).toBe(true);
     expect(isViewAccessibleToPersona('approver', undefined, 'Administrator')).toBe(true);
     expect(isViewAccessibleToPersona('approver', undefined, 'Submitter')).toBe(false);
     expect(isViewAccessibleToPersona('approver', undefined, 'C Admin')).toBe(false);

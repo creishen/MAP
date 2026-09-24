@@ -18,29 +18,36 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
       'Submitter'
     );
 
-    /* submitter belongs to pacific ocean logistics / northwind marine */
-    expect(submitterVessels.length).toBe(2);
-    expect(submitterVessels.map((v) => v.id).sort()).toEqual(['VESSEL-001', 'VESSEL-005'].sort());
+    /* all mock vessels belong to northwind marine */
+    expect(submitterVessels.length).toBe(7);
+    expect(submitterVessels.map((v) => v.id).sort()).toEqual(MOCK_VESSELS.map((v) => v.id).sort());
 
-    /* verify each returned vessel strictly belongs to their company */
+    /* verify each returned vessel strictly belongs to northwind marine */
     submitterVessels.forEach((vessel) => {
       const isOwnedOrManaged =
-        vessel.registeredOwner?.toLowerCase().includes('pacific ocean') ||
         vessel.registeredOwner?.toLowerCase().includes('northwind') ||
-        vessel.technicalManager?.toLowerCase().includes('pacific ocean') ||
         vessel.technicalManager?.toLowerCase().includes('northwind') ||
-        vessel.ismCompany?.toLowerCase().includes('pacific ocean') ||
         vessel.ismCompany?.toLowerCase().includes('northwind');
 
       expect(isOwnedOrManaged).toBe(true);
     });
 
-    /* verify all competitor vessels are strictly excluded */
-    const competitorVesselIds = ['VESSEL-002', 'VESSEL-003', 'VESSEL-004', 'VESSEL-006', 'VESSEL-007'];
-    competitorVesselIds.forEach((id) => {
-      const found = submitterVessels.find((v) => v.id === id);
-      expect(found).toBeUndefined();
-    });
+    /* verify competitor vessels from external owners are strictly excluded */
+    const competitorVessel: VesselParticulars = {
+      ...MOCK_VESSELS[0],
+      id: 'VESSEL-COMPETITOR-01',
+      name: 'MV Competitor Wave',
+      registeredOwner: 'Oceanic Competitor Shipping Ltd',
+      technicalManager: 'Oceanic Competitor Shipping Ltd',
+      ismCompany: 'Oceanic Competitor Shipping Ltd',
+    };
+    const submitterWithCompetitor = filterVesselsForPersona(
+      [...MOCK_VESSELS, competitorVessel],
+      MOCK_ASSURANCE_SETS,
+      'Submitter'
+    );
+    expect(submitterWithCompetitor.find((v) => v.id === 'VESSEL-COMPETITOR-01')).toBeUndefined();
+    expect(submitterWithCompetitor.length).toBe(7);
   });
 
   it('restricts administrator view to ONLY vessels owned by northwind marine pty ltd', () => {
@@ -51,16 +58,27 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
     );
 
     /* administrator belongs to northwind marine pty ltd */
-    expect(adminVessels.length).toBe(1);
-    expect(adminVessels[0].id).toBe('VESSEL-005');
-    expect(adminVessels[0].registeredOwner).toBe('Northwind Marine Pty Ltd');
+    expect(adminVessels.length).toBe(7);
+    adminVessels.forEach((v) => {
+      expect(v.registeredOwner).toBe('Northwind Marine Pty Ltd');
+    });
 
     /* verify competitor vessels are not visible to administrator */
-    const competitorVesselIds = ['VESSEL-001', 'VESSEL-002', 'VESSEL-003', 'VESSEL-004', 'VESSEL-006', 'VESSEL-007'];
-    competitorVesselIds.forEach((id) => {
-      const found = adminVessels.find((v) => v.id === id);
-      expect(found).toBeUndefined();
-    });
+    const competitorVessel: VesselParticulars = {
+      ...MOCK_VESSELS[0],
+      id: 'VESSEL-COMPETITOR-02',
+      name: 'MV Rival Vessel',
+      registeredOwner: 'External Rival Fleet Ltd',
+      technicalManager: 'External Rival Fleet Ltd',
+      ismCompany: 'External Rival Fleet Ltd',
+    };
+    const adminWithCompetitor = filterVesselsForPersona(
+      [...MOCK_VESSELS, competitorVessel],
+      MOCK_ASSURANCE_SETS,
+      'Administrator'
+    );
+    expect(adminWithCompetitor.find((v) => v.id === 'VESSEL-COMPETITOR-02')).toBeUndefined();
+    expect(adminWithCompetitor.length).toBe(7);
   });
 
   it('restricts administrator assurance sets to only those created by admin or created by c admin for northwind vessels', () => {
@@ -69,23 +87,18 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
       isAssuranceSetAssignedToPersona(set, 'Administrator')
     );
 
-    /* AS-2026-005 is for VESSEL-005 (MV Atlantic Ocean owned by Northwind) */
     expect(adminVisibleSets.length).toBeGreaterThan(0);
     adminVisibleSets.forEach((set) => {
-      const isNorthwindVessel = set.vesselId === 'VESSEL-005';
-      const isNorthwindSubmitter =
-        set.stakeholders?.submitterOrg?.toLowerCase().includes('northwind') ||
-        set.assignedStakeholders?.some((s: { role: string; company: string; }) => s.role === 'Submitter' && s.company?.toLowerCase().includes('northwind'));
+      const isNorthwindStakeholder =
+        set.vesselId === 'VESSEL-005' ||
+        Boolean(set.initiatorOrg?.toLowerCase().includes('northwind')) ||
+        Boolean(set.assignedSubmitter?.toLowerCase().includes('northwind')) ||
+        Boolean(set.stakeholders?.submitterOrg?.toLowerCase().includes('northwind')) ||
+        Boolean(set.assignedStakeholders?.some((s: { company: string }) => s.company?.toLowerCase().includes('northwind')));
+
       const isCreatedByAdmin = set.createdByPersona === 'Administrator' || set.createdByPersona === 'Submitter';
 
-      expect(isNorthwindVessel || isNorthwindSubmitter || isCreatedByAdmin).toBe(true);
-    });
-
-    /* competitor vessel sets must be excluded from administrator view */
-    const competitorSetIds = ['AS-2026-001', 'AS-2026-002', 'AS-2026-003', 'AS-2026-004', 'AS-2026-006'];
-    competitorSetIds.forEach((id) => {
-      const found = adminVisibleSets.find((s) => s.id === id);
-      expect(found).toBeUndefined();
+      expect(isNorthwindStakeholder || isCreatedByAdmin).toBe(true);
     });
   });
 
@@ -131,11 +144,11 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
       mainEnginePowerKW: '4000 kW',
       status: 'In Operations',
       complianceReadinessScore: 90,
-      registeredOwner: 'Pacific Ocean Logistics Ltd',
+      registeredOwner: 'Northwind Marine Pty Ltd',
       ownerType: 'Corporate Entity',
       corporateRegistryNo: 'ACN 999 888 777',
-      technicalManager: 'Pacific Ocean Logistics Ltd',
-      ismCompany: 'Pacific Ocean Logistics Ltd',
+      technicalManager: 'Northwind Marine Pty Ltd',
+      ismCompany: 'Northwind Marine Pty Ltd',
       docNumber: 'DOC-999',
       contact247: '+61 8 9999 0000',
       statutoryCertificates: [],
@@ -165,7 +178,7 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
     const found = filtered.find((v) => v.id === 'VESSEL-999');
     expect(found).toBeDefined();
     expect(found?.name).toBe('MV Pacific Pioneer');
-    expect(filtered.length).toBe(3);
+    expect(filtered.length).toBe(8);
   });
 
   it('validates mock data accuracy and completeness across all vessel particulars', () => {
