@@ -17,7 +17,7 @@ interface VesselModalProps {
 }
 
 export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onRegistered }) => {
-  const { addVessel, vessels, documents, addDocument, linkDocumentToVessel } = useMapStore();
+  const { addVessel, vessels, documents, addDocument, linkDocumentToVessel, activePersona } = useMapStore();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -96,15 +96,16 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
   const [dwt, setDwt] = useState<number>(4200);
 
   // 4 & 5. Ownership, Operators & Management
-  const [registeredOwner, setRegisteredOwner] = useState('');
+  const isInitialAdmin = useMapStore.getState().activePersona === 'Administrator';
+  const [registeredOwner, setRegisteredOwner] = useState(isInitialAdmin ? 'Northwind Marine Pty Ltd' : '');
   const [ownerType, setOwnerType] = useState('Corporate Entity');
-  const [corporateRegNo, setCorporateRegNo] = useState('');
+  const [corporateRegNo, setCorporateRegNo] = useState(isInitialAdmin ? 'ACN 552 109 841' : '');
   const [registeredAddress, setRegisteredAddress] = useState('');
-  const [ismCompany, setIsmCompany] = useState('');
-  const [technicalManager, setTechnicalManager] = useState('');
-  const [commercialManager, setCommercialManager] = useState('');
+  const [ismCompany, setIsmCompany] = useState(isInitialAdmin ? 'Northwind Marine Pty Ltd' : '');
+  const [technicalManager, setTechnicalManager] = useState(isInitialAdmin ? 'Northwind Marine Pty Ltd' : '');
+  const [commercialManager, setCommercialManager] = useState(isInitialAdmin ? 'Northwind Marine Pty Ltd' : '');
   const [docNumber, setDocNumber] = useState('');
-  const [contact247, setContact247] = useState('');
+  const [contact247, setContact247] = useState(isInitialAdmin ? '+61 8 9185 2200 (24/7 Ops)' : '');
 
   // 6. Purchase & Title
   const [methodOfAcquisition, setMethodOfAcquisition] = useState('Outright Purchase');
@@ -142,7 +143,23 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
     setActiveVerifiedDocs({});
     setPendingVerificationState(null);
     setRevealedVesselFields({ name: false, imoNumber: false, officialRegNumber: false, flagState: false, classificationSociety: false, yearBuilt: false, gt: false, dwt: false, registeredOwner: false });
-  }, [isOpen]);
+
+    if (activePersona === 'Administrator') {
+      setRegisteredOwner('Northwind Marine Pty Ltd');
+      setCorporateRegNo('ACN 552 109 841');
+      setIsmCompany('Northwind Marine Pty Ltd');
+      setTechnicalManager('Northwind Marine Pty Ltd');
+      setCommercialManager('Northwind Marine Pty Ltd');
+      setContact247('+61 8 9185 2200 (24/7 Ops)');
+    } else {
+      setRegisteredOwner('');
+      setCorporateRegNo('');
+      setIsmCompany('');
+      setTechnicalManager('');
+      setCommercialManager('');
+      setContact247('');
+    }
+  }, [isOpen, activePersona]);
 
 
   if (!isOpen) return null;

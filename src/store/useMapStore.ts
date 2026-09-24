@@ -257,7 +257,7 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
     get().logAuditEvent({
       userId: 'USR-CURRENT',
       userRole: get().activePersona,
-      organization: 'Pacific Ocean Logistics',
+      organization: get().activePersona === 'Administrator' ? 'Northwind Marine Pty Ltd' : 'Pacific Ocean Logistics',
       action: 'Registered Unique Vessel Record',
       targetAsset: `${newVessel.name} (IMO ${newVessel.imoNumber})`,
       justificationNotes: `Registered vessel under ${newVessel.flagState} flag.`,

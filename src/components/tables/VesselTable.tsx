@@ -11,7 +11,7 @@ import { ReadinessGauge } from '../common/ReadinessGauge';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 import { getDaysUntilExpiry } from '../../utils/formatters';
 
-import { filterVesselsForPersona } from '../../utils/rbacHelpers';
+import { filterVesselsForPersona, isAssuranceSetAssignedToPersona } from '../../utils/rbacHelpers';
 import { canPerform } from '../../utils/permissionHelpers';
 
 type VesselSortField =
@@ -76,11 +76,17 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
   const baseVessels =
     activePersona === 'Submitter'
       ? filterVesselsForPersona(vessels, assuranceSets, 'Submitter')
-      : filterMode === 'all'
-        ? vessels
-        : filterMode === 'chartered'
-          ? filterVesselsForPersona(vessels, assuranceSets, 'C Admin')
-          : filterVesselsForPersona(vessels, assuranceSets, activePersona);
+      : activePersona === 'C Admin'
+        ? filterMode === 'chartered'
+          ? vessels.filter((v) =>
+            assuranceSets.some(
+              (set) =>
+                set.vesselId === v.id &&
+                isAssuranceSetAssignedToPersona(set, 'C Admin')
+            )
+          )
+          : vessels
+        : filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
   const filteredVessels = baseVessels.filter((v) => {
     const term = searchTerm.toLowerCase();

@@ -96,7 +96,7 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'approver',
       label: 'Approval Gate',
-      allowedRoles: ['Administrator'],
+      allowedRoles: ['Approver'],
     },
     {
       key: 'capa',

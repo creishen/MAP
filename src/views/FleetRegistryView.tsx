@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { VesselTable } from '../components/tables/VesselTable';
 import { VesselModal } from '../components/drawers/VesselModal';
-import { filterVesselsForPersona } from '../utils/rbacHelpers';
+import { filterVesselsForPersona, isAssuranceSetAssignedToPersona } from '../utils/rbacHelpers';
 
 /**
   what: renders the fleet master registry page.
@@ -18,11 +18,15 @@ import { filterVesselsForPersona } from '../utils/rbacHelpers';
 export const FleetRegistryView: React.FC = () => {
   const { setCurrentHashView, setActiveVesselId, vessels, assuranceSets, activePersona } = useMapStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'chartered'>(
-    activePersona === 'C Admin' ? 'chartered' : 'all'
-  );
+  const [activeTab, setActiveTab] = useState<'all' | 'chartered'>('all');
 
-  const charteredVessels = filterVesselsForPersona(vessels, assuranceSets, 'C Admin');
+  const charteredVessels = vessels.filter((v) =>
+    assuranceSets.some(
+      (set) =>
+        set.vesselId === v.id &&
+        isAssuranceSetAssignedToPersona(set, 'C Admin')
+    )
+  );
   const charteredCount = charteredVessels.length;
 
   const handleVesselRegistered = (vesselId: string) => {

@@ -1,16 +1,17 @@
 /* 
-  file summary: unit test suite validating vessel admin / submitter own vessel isolation.
-  responsibilities: verifies rbac filtering ensures submitters and vessel admins only access their own vessels and assurance sets while preventing access to other marine providers.
+  file summary: unit test suite validating vessel provider ownership isolation, c admin full vessel visibility, and mock data accuracy.
+  responsibilities: verifies rbac filtering ensures submitters/vessel providers only access their own vessels while c admin and administrator see all vessels across the platform.
   role in system: automated regression testing executed via vitest.
 */
 
 import { describe, expect, it } from 'vitest';
 import { filterVesselsForPersona, isAssuranceSetAssignedToPersona } from '../utils/rbacHelpers';
-import { MOCK_VESSELS, MOCK_ASSURANCE_SETS } from '../store/mockData';
+import { MOCK_VESSELS, MOCK_ASSURANCE_SETS, MOCK_DOCUMENTS } from '../store/mockData';
 import { VesselParticulars } from '../types/vessel';
+import { useMapStore } from '../store/useMapStore';
 
-describe('vessel admin / submitter fleet ownership isolation', () => {
-  it('restricts submitter / vessel admin to only view their own vessels', () => {
+describe('vessel provider fleet ownership isolation and c admin visibility', () => {
+  it('restricts submitter / vessel provider to ONLY view the vessels that they own', () => {
     const submitterVessels = filterVesselsForPersona(
       MOCK_VESSELS,
       MOCK_ASSURANCE_SETS,
@@ -18,28 +19,24 @@ describe('vessel admin / submitter fleet ownership isolation', () => {
     );
 
     /* submitter belongs to pacific ocean logistics / northwind marine */
-    expect(submitterVessels.length).toBeGreaterThan(0);
-    expect(submitterVessels.length).toBeLessThan(MOCK_VESSELS.length);
+    expect(submitterVessels.length).toBe(2);
+    expect(submitterVessels.map((v) => v.id).sort()).toEqual(['VESSEL-001', 'VESSEL-005'].sort());
 
-    /* verify each returned vessel belongs to their company or assigned campaigns */
+    /* verify each returned vessel strictly belongs to their company */
     submitterVessels.forEach((vessel) => {
       const isOwnedOrManaged =
         vessel.registeredOwner?.toLowerCase().includes('pacific ocean') ||
         vessel.registeredOwner?.toLowerCase().includes('northwind') ||
         vessel.technicalManager?.toLowerCase().includes('pacific ocean') ||
-        vessel.technicalManager?.toLowerCase().includes('northwind');
+        vessel.technicalManager?.toLowerCase().includes('northwind') ||
+        vessel.ismCompany?.toLowerCase().includes('pacific ocean') ||
+        vessel.ismCompany?.toLowerCase().includes('northwind');
 
-      const isAssigned = MOCK_ASSURANCE_SETS.some(
-        (set) =>
-          set.vesselId === vessel.id &&
-          isAssuranceSetAssignedToPersona(set, 'Submitter')
-      );
-
-      expect(isOwnedOrManaged || isAssigned).toBe(true);
+      expect(isOwnedOrManaged).toBe(true);
     });
 
-    /* verify competitor vessels are excluded */
-    const competitorVesselIds = ['VESSEL-003', 'VESSEL-004', 'VESSEL-006', 'VESSEL-007'];
+    /* verify all competitor vessels are strictly excluded */
+    const competitorVesselIds = ['VESSEL-002', 'VESSEL-003', 'VESSEL-004', 'VESSEL-006', 'VESSEL-007'];
     competitorVesselIds.forEach((id) => {
       const found = submitterVessels.find((v) => v.id === id);
       expect(found).toBeUndefined();
@@ -54,24 +51,20 @@ describe('vessel admin / submitter fleet ownership isolation', () => {
     );
 
     expect(adminVessels.length).toBe(MOCK_VESSELS.length);
+    expect(adminVessels.length).toBe(7);
   });
 
-  it('filters c admin to only chartered vessels with active assurance sets', () => {
+  it('allows c admin to view ALL vessels under the platform', () => {
     const cAdminVessels = filterVesselsForPersona(
       MOCK_VESSELS,
       MOCK_ASSURANCE_SETS,
       'C Admin'
     );
 
-    /* verify c admin only gets vessels chartered by their organization */
-    cAdminVessels.forEach((vessel) => {
-      const hasCharterSet = MOCK_ASSURANCE_SETS.some(
-        (set) =>
-          set.vesselId === vessel.id &&
-          isAssuranceSetAssignedToPersona(set, 'C Admin')
-      );
-      expect(hasCharterSet).toBe(true);
-    });
+    /* c admin has complete visibility across all vessels on the platform */
+    expect(cAdminVessels.length).toBe(MOCK_VESSELS.length);
+    expect(cAdminVessels.length).toBe(7);
+    expect(cAdminVessels.map((v) => v.id)).toEqual(MOCK_VESSELS.map((v) => v.id));
   });
 
   it('correctly includes newly registered vessels owned by submitter company', () => {
@@ -137,5 +130,68 @@ describe('vessel admin / submitter fleet ownership isolation', () => {
     const found = filtered.find((v) => v.id === 'VESSEL-999');
     expect(found).toBeDefined();
     expect(found?.name).toBe('MV Pacific Pioneer');
+    expect(filtered.length).toBe(3);
+  });
+
+  it('validates mock data accuracy and completeness across all vessel particulars', () => {
+    expect(MOCK_VESSELS.length).toBe(7);
+
+    MOCK_VESSELS.forEach((vessel) => {
+      /* verify essential maritime data fields are populated accurately */
+      expect(vessel.id).toBeTruthy();
+      expect(vessel.name).toBeTruthy();
+      expect(vessel.imoNumber).toMatch(/^\d{7}$/);
+      expect(vessel.officialRegNumber).toBeTruthy();
+      expect(vessel.mmsiNumber).toMatch(/^\d{9}$/);
+      expect(vessel.callSign).toBeTruthy();
+      expect(vessel.flagState).toBeTruthy();
+      expect(vessel.portOfRegistry).toBeTruthy();
+      expect(vessel.classificationSociety).toBeTruthy();
+      expect(vessel.registeredOwner).toBeTruthy();
+      expect(vessel.technicalManager).toBeTruthy();
+      expect(vessel.ismCompany).toBeTruthy();
+      expect(vessel.complianceReadinessScore).toBeGreaterThanOrEqual(0);
+      expect(vessel.complianceReadinessScore).toBeLessThanOrEqual(100);
+      expect(vessel.statutoryCertificates.length).toBeGreaterThan(0);
+    });
+
+    /* verify mock assurance sets have matching vessel ids and assigned stakeholders */
+    MOCK_ASSURANCE_SETS.forEach((set) => {
+      const targetVessel = MOCK_VESSELS.find((v) => v.id === set.vesselId);
+      expect(targetVessel).toBeDefined();
+      expect(set.vesselName).toBe(targetVessel?.name);
+      expect(set.imoNumber).toBe(targetVessel?.imoNumber);
+      expect(set.requirements.length).toBeGreaterThan(0);
+    });
+
+    /* verify mock documents link to valid statutory certificates */
+    MOCK_DOCUMENTS.forEach((doc) => {
+      expect(doc.id).toBeTruthy();
+      expect(doc.title).toBeTruthy();
+      expect(doc.versions.length).toBeGreaterThan(0);
+      expect(doc.ocrConfidence).toBeGreaterThan(0);
+    });
+  });
+
+  it('defaults organization to northwind marine when administrator registers a vessel in store', () => {
+    useMapStore.getState().setActivePersona('Administrator');
+
+    const adminRegisteredVessel: VesselParticulars = {
+      ...MOCK_VESSELS[0],
+      id: 'VESSEL-ADMIN-NORTHWIND',
+      name: 'MV Northwind Sentinel',
+      imoNumber: '9988112',
+      officialRegNumber: 'NW-998811',
+      registeredOwner: 'Northwind Marine Pty Ltd',
+      technicalManager: 'Northwind Marine Pty Ltd',
+      ismCompany: 'Northwind Marine Pty Ltd',
+    };
+
+    const res = useMapStore.getState().addVessel(adminRegisteredVessel);
+    expect(res.success).toBe(true);
+
+    const latestAudit = useMapStore.getState().auditEvents[0];
+    expect(latestAudit.organization).toBe('Northwind Marine Pty Ltd');
+    expect(latestAudit.action).toBe('Registered Unique Vessel Record');
   });
 });

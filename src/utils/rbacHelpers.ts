@@ -103,7 +103,7 @@ export function filterDocumentsForVerifierQueue(
 
 /**
   what: filters a list of vessels based on active stakeholder assignments and ownership.
-  how: for Submitter / Vessel Admin, matches vessels owned/managed by their company or assigned in their assurance sets; for other non-admin personas, matches assigned assurance sets.
+  how: for submitter / vessel admin, matches vessels owned/managed by their company; for c admin and administrator, allows full access to all vessels under the platform; for other non-admin personas, matches assigned assurance sets.
   with what file: src/utils/rbacHelpers.ts used by FleetRegistryView.tsx, VesselTable.tsx, DashboardView.tsx, and InspectorWorkspaceView.tsx.
 */
 export function filterVesselsForPersona(
@@ -111,25 +111,24 @@ export function filterVesselsForPersona(
   assuranceSets: AssuranceSet[],
   persona: UserRolePersona,
 ): VesselParticulars[] {
-  if (persona === "Administrator") return vessels;
+  if (persona === "Administrator" || persona === "C Admin") return vessels;
 
   if (persona === "Submitter") {
-    /* vessel admin / submitter can only see their OWN vessels (owned/managed by their organization or assigned in their assurance sets) */
-    const assignedSetVesselIds = new Set(
-      assuranceSets
-        .filter((set) => isAssuranceSetAssignedToPersona(set, persona))
-        .map((set) => set.vesselId),
-    );
+    /* vessel admin / submitter can only see their own vessels (owned/managed by their organization) */
+    return vessels.filter((v) => {
+      const ownerLower = (v.registeredOwner || "").toLowerCase();
+      const techManagerLower = (v.technicalManager || "").toLowerCase();
+      const ismLower = (v.ismCompany || "").toLowerCase();
 
-    return vessels.filter(
-      (v) =>
-        assignedSetVesselIds.has(v.id) ||
-        v.registeredOwner.includes("Pacific Ocean Logistics") ||
-        v.registeredOwner.includes("Northwind Marine") ||
-        (v.technicalManager &&
-          (v.technicalManager.includes("Pacific") ||
-            v.technicalManager.includes("Northwind"))),
-    );
+      return (
+        ownerLower.includes("pacific ocean") ||
+        ownerLower.includes("northwind") ||
+        techManagerLower.includes("pacific") ||
+        techManagerLower.includes("northwind") ||
+        ismLower.includes("pacific") ||
+        ismLower.includes("northwind")
+      );
+    });
   }
 
   const assignedSetVesselIds = new Set(
