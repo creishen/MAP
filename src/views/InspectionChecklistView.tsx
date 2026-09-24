@@ -48,9 +48,8 @@ interface InspectionChecklistViewProps {
   with what file: src/views/InspectionChecklistView.tsx loaded by App.tsx when hash is /inspector/:vesselName or /inspection/:vesselName.
 */
 export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = ({ vesselName = 'MV Pacific Endeavour' }) => {
-  const { capaItems, addCapaItem, logAuditEvent, activePersona, setCurrentHashView, previousHashView, previousEntityId } = useMapStore();
-
-  const backInfo = getBackButtonInfo('inspector', 'Physical Survey Schedule', previousHashView, activePersona, previousEntityId);
+  const cleanVesselName = decodeURIComponent(vesselName || 'MV Pacific Endeavour');
+  const { capaItems, addCapaItem, logAuditEvent, activePersona, setCurrentHashView } = useMapStore();
 
   const [items, setItems] = useState<InspectionItem[]>([
     {
@@ -611,7 +610,16 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
                       <div className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>{item.title}</div>
                       <div className="font-mono-code small text-muted" style={{ fontSize: '0.75rem' }}>{item.subtitle}</div>
                       {item.capaCode && (
-                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle mt-1" style={{ fontSize: '0.675rem' }}>
+                        <span
+                          className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle mt-1 cursor-pointer"
+                          style={{ fontSize: '0.675rem', cursor: 'pointer' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const matched = capaItems.find((c) => c.id === item.capaCode);
+                            if (matched) setSelectedCapaForDrawer(matched);
+                          }}
+                          title={`Click to view ${item.capaCode} in drawer`}
+                        >
                           Linked {item.capaCode}
                         </span>
                       )}
@@ -1044,13 +1052,17 @@ export const InspectionChecklistView: React.FC<InspectionChecklistViewProps> = (
             <div className="d-flex flex-column gap-2.5">
               {(() => {
                 const storeCapas = capaItems.filter(
-                  (c) => c.vesselName.toLowerCase() === vesselName.toLowerCase()
+                  (c) =>
+                    c.vesselName.toLowerCase() === cleanVesselName.toLowerCase() ||
+                    c.vesselId === cleanVesselName ||
+                    c.vesselName.toLowerCase().includes(cleanVesselName.toLowerCase()) ||
+                    cleanVesselName.toLowerCase().includes(c.vesselName.toLowerCase())
                 );
                 const displayList = storeCapas.length > 0
                   ? storeCapas
                   : capas.map((c) => ({
                     id: c.id,
-                    vesselName,
+                    vesselName: cleanVesselName,
                     checklistItemTitle: 'Inspection Finding',
                     title: c.title,
                     findingDescription: 'Corrective action item logged during visual survey.',

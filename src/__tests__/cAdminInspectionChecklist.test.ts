@@ -6,7 +6,7 @@
 
 import { describe, expect, it, beforeEach } from 'vitest';
 import { useMapStore } from '../store/useMapStore';
-import { isViewAccessibleToPersona } from '../utils/rbacHelpers';
+import { getBackButtonInfo, isViewAccessibleToPersona } from '../utils/rbacHelpers';
 import { AssuranceSet } from '../types/assurance';
 
 describe('C Admin Inspector Checklist Isolation', () => {
@@ -70,5 +70,54 @@ describe('C Admin Inspector Checklist Isolation', () => {
     expect(created?.mandatoryInspectionRequired).toBe(false);
     expect(created?.assignedInspector).toBeUndefined();
     expect(created?.requirements.every((r) => r.category !== 'Inspection Report')).toBe(true);
+  });
+
+  /**
+    what: tests that back button info correctly returns back to physical inspections in administrator view.
+    how: queries getBackButtonInfo for inspector and capa parent views from different routes.
+    with what file: src/__tests__/cAdminInspectionChecklist.test.ts testing rbacHelpers.ts.
+  */
+  it('should return correct back button navigation to physical inspections in Administrator view', () => {
+    /* when administrator opened from physical inspections workspace schedule list */
+    const backFromInspectorList = getBackButtonInfo('inspector', 'Physical Inspections', 'inspector', 'Administrator', undefined);
+    expect(backFromInspectorList.targetView).toBe('inspector');
+    expect(backFromInspectorList.label).toContain('Back to Physical Inspections');
+
+    /* when administrator opened CAPA page from physical inspections schedule */
+    const backFromCapaPage = getBackButtonInfo('capa', 'Physical Inspections', 'inspector', 'Administrator', undefined);
+    expect(backFromCapaPage.targetView).toBe('inspector');
+    expect(backFromCapaPage.label).toContain('Back to Physical Inspections');
+
+    /* when administrator opened from vessel detail view */
+    const backFromVesselDetail = getBackButtonInfo('inspector', 'Physical Inspections', 'vessels', 'Administrator', 'VESSEL-001');
+    expect(backFromVesselDetail.targetView).toBe('vessels');
+    expect(backFromVesselDetail.targetEntityId).toBe('VESSEL-001');
+    expect(backFromVesselDetail.label).toContain('Back to Vessel Detail');
+  });
+
+  /**
+    what: tests that each physical inspection vessel has realistic mock CAPAs with evidence and checklist links.
+    how: verifies capaItems in store match each vessel inspection and contain non-empty details.
+    with what file: src/__tests__/cAdminInspectionChecklist.test.ts testing capaMockData.ts.
+  */
+  it('should ensure each physical inspection vessel has linked mock CAPA items with realistic details', () => {
+    const store = useMapStore.getState();
+    const vesselsWithInspections = store.vessels;
+
+    for (const v of vesselsWithInspections) {
+      const capasForVessel = store.capaItems.filter(
+        (c) => c.vesselName.toLowerCase() === v.name.toLowerCase() || c.vesselId === v.id
+      );
+      expect(capasForVessel.length).toBeGreaterThan(0);
+      for (const capa of capasForVessel) {
+        expect(capa.id).toMatch(/^CAPA-\d+/);
+        expect(capa.title.length).toBeGreaterThan(5);
+        expect(capa.findingDescription.length).toBeGreaterThan(10);
+        expect(capa.owner.length).toBeGreaterThan(3);
+        expect(capa.dueDate.length).toBeGreaterThan(5);
+        expect(capa.checklistId).toBeDefined();
+        expect(capa.checklistItemTitle).toBeDefined();
+      }
+    }
   });
 });

@@ -1,6 +1,6 @@
 /* 
   file summary: seed dataset for vessel corrective and preventive action (capa) items.
-  responsibilities: provides initial mock capa items for active vessels in fleet schedule.
+  responsibilities: provides realistic, maritime-accurate mock capa items linked to physical inspections for all fleet vessels.
   role in system: loaded by useMapStore.ts on initial state instantiation.
 */
 
@@ -123,7 +123,17 @@ export const MOCK_CAPA_ITEMS: CapaItem[] = [
     status: 'Open',
     inspectorNotes: 'Flag state inspector requested updated calibration report prior to departure.',
     createdDate: '17 Sep 2026',
-    evidences: [],
+    evidences: [
+      {
+        id: 'EV-115',
+        title: 'OWS monitor sensor calibration test sheet',
+        type: 'Document',
+        fileName: 'ows_calibration_report_2026.pdf',
+        fileSize: '620 KB',
+        uploadedAt: '18 Sep 2026 10:15',
+        uploadedBy: 'Second Engineer R. Tanaka',
+      },
+    ],
   },
   {
     id: 'CAPA-109',
@@ -133,12 +143,22 @@ export const MOCK_CAPA_ITEMS: CapaItem[] = [
     checklistItemTitle: 'Life-saving appliances — stowage and condition',
     title: 'Renew starboard lifeboat embarkation ladder rungs',
     findingDescription: 'Top two rungs of starboard embarkation ladder showing signs of salt wear.',
-    owner: 'Offshore Subsea Logistics',
+    owner: 'Northwind Marine Technical Dept',
     dueDate: '30 Sep 2026',
     status: 'Open',
     inspectorNotes: 'Raised during routine physical survey. Replacement ladder ordered from supplier.',
     createdDate: '14 Sep 2026',
-    evidences: [],
+    evidences: [
+      {
+        id: 'EV-109',
+        title: 'Starboard embarkation ladder wear photo',
+        type: 'Photo',
+        fileName: 'ladder_rungs_wear.jpg',
+        fileSize: '2.8 MB',
+        uploadedAt: '14 Sep 2026 15:40',
+        uploadedBy: 'Inspector Marcus Vance',
+      },
+    ],
   },
   {
     id: 'CAPA-116',
@@ -148,12 +168,22 @@ export const MOCK_CAPA_ITEMS: CapaItem[] = [
     checklistItemTitle: 'Crew familiarity — muster and abandon ship',
     title: 'Update ISM emergency drill log sign-off matrix',
     findingDescription: 'Muster drill attendance sheet missing master endorsement signature for August drill.',
-    owner: 'Offshore Subsea Logistics',
+    owner: 'Northwind Marine Technical Dept',
     dueDate: '24 Sep 2026',
     status: 'Rectification Required',
     inspectorNotes: 'Audit observation logged during safety management survey.',
     createdDate: '16 Sep 2026',
-    evidences: [],
+    evidences: [
+      {
+        id: 'EV-116',
+        title: 'Muster drill sheet scan',
+        type: 'Document',
+        fileName: 'muster_drill_sheet_aug2026.pdf',
+        fileSize: '410 KB',
+        uploadedAt: '16 Sep 2026 16:30',
+        uploadedBy: 'Chief Mate D. Kovacs',
+      },
+    ],
   },
   {
     id: 'CAPA-121',
@@ -163,12 +193,22 @@ export const MOCK_CAPA_ITEMS: CapaItem[] = [
     checklistItemTitle: 'DP3 System Redundancy & Thruster Performance',
     title: 'Recalibrate DP thruster #3 feedback sensor',
     findingDescription: 'Thruster #3 feedback signal experienced minor noise spike during DP trial.',
-    owner: 'Coral Marine Assets Ltd',
+    owner: 'Northwind Marine Technical Dept',
     dueDate: '10 Oct 2026',
     status: 'Under Re-Inspection',
     inspectorNotes: 'Kongsberg technician replaced sensor module. Sea trial verification pending.',
     createdDate: '15 Sep 2026',
-    evidences: [],
+    evidences: [
+      {
+        id: 'EV-121',
+        title: 'Kongsberg DP thruster feedback test report',
+        type: 'Document',
+        fileName: 'dp_thruster3_sensor_service.pdf',
+        fileSize: '1.4 MB',
+        uploadedAt: '16 Sep 2026 11:20',
+        uploadedBy: 'Kongsberg Service Engineer',
+      },
+    ],
   },
   {
     id: 'CAPA-122',
@@ -178,12 +218,22 @@ export const MOCK_CAPA_ITEMS: CapaItem[] = [
     checklistItemTitle: 'Cargo Ship Safety Equipment',
     title: 'Recalibrate bridge EPIRB hydrostatic release mechanism',
     findingDescription: 'EPIRB battery expiry date approaching within 60 days.',
-    owner: 'Tasman Maritime Ops',
+    owner: 'Northwind Marine Technical Dept',
     dueDate: '15 Oct 2026',
     status: 'Open',
     inspectorNotes: 'Noted during pre-charter verification audit.',
     createdDate: '18 Sep 2026',
-    evidences: [],
+    evidences: [
+      {
+        id: 'EV-122',
+        title: 'Bridge EPIRB serial & battery inspection photo',
+        type: 'Photo',
+        fileName: 'bridge_epirb_tag.jpg',
+        fileSize: '2.1 MB',
+        uploadedAt: '18 Sep 2026 13:50',
+        uploadedBy: 'Inspector Marcus Vance',
+      },
+    ],
   },
   {
     id: 'CAPA-123',
@@ -193,12 +243,22 @@ export const MOCK_CAPA_ITEMS: CapaItem[] = [
     checklistItemTitle: 'ERRV Rescue Craft Davit System',
     title: 'Inspect starboard fast rescue craft (FRC) winch brake lining',
     findingDescription: 'FRC winch brake friction pad wear measured near maintenance threshold.',
-    owner: 'Kimberley Marine Services',
+    owner: 'Northwind Marine Technical Dept',
     dueDate: '20 Oct 2026',
     status: 'Open',
     inspectorNotes: 'Logged during annual safety standby audit.',
     createdDate: '20 Sep 2026',
-    evidences: [],
+    evidences: [
+      {
+        id: 'EV-123',
+        title: 'FRC davit winch brake measurement report',
+        type: 'Document',
+        fileName: 'frc_winch_measurement_log.pdf',
+        fileSize: '780 KB',
+        uploadedAt: '20 Sep 2026 14:10',
+        uploadedBy: 'Inspector Marcus Vance',
+      },
+    ],
   },
   {
     id: 'CAPA-124',
@@ -208,11 +268,21 @@ export const MOCK_CAPA_ITEMS: CapaItem[] = [
     checklistItemTitle: 'MARPOL Annex IV · Sewage Treatment Plant',
     title: 'Replace aeration blower filter on sewage treatment unit',
     findingDescription: 'Sewage plant blower inlet filter clogged, causing mild pressure drop.',
-    owner: 'Ningaloo Offshore Supply',
+    owner: 'Northwind Marine Technical Dept',
     dueDate: '28 Oct 2026',
     status: 'Open',
     inspectorNotes: 'Class surveyor requested replacement prior to next charter departure.',
     createdDate: '21 Sep 2026',
-    evidences: [],
+    evidences: [
+      {
+        id: 'EV-124',
+        title: 'Sewage plant blower inlet photo',
+        type: 'Photo',
+        fileName: 'sewage_blower_filter.jpg',
+        fileSize: '1.9 MB',
+        uploadedAt: '21 Sep 2026 11:45',
+        uploadedBy: 'Inspector Marcus Vance',
+      },
+    ],
   },
 ];

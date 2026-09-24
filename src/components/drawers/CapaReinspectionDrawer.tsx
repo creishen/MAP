@@ -224,13 +224,13 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
         <div className="offcanvas-header border-bottom p-3 bg-white d-flex align-items-center justify-content-between">
           <div>
             <div className="font-mono-code text-uppercase small" style={{ fontSize: '0.725rem', color: '#94a3b8', letterSpacing: '0.05em' }}>
-              {isInspector ? 'INSPECTOR RE-INSPECTION WORKFLOW' : 'C ADMIN CAPA MONITORING'} · {capa.id}
+              {isInspector ? 'INSPECTOR RE-INSPECTION WORKFLOW' : 'CAPA MONITORING'} · {capa.id}
             </div>
             <h5 className="offcanvas-title fw-bold text-dark m-0" style={{ fontSize: '1.2rem' }}>
               {capa.title}
             </h5>
             <div className="font-mono-code small text-muted" style={{ fontSize: '0.75rem' }}>
-              Vessel: {capa.vesselName} · Linked Point: {capa.checklistItemTitle}
+              Vessel: {capa.vesselName} · Checklist Item: {capa.checklistItemTitle}
             </div>
           </div>
           <button type="button" className="btn-close ms-auto" onClick={onClose} aria-label="Close" />
@@ -275,7 +275,7 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
             <div className="card map-card-custom p-3 bg-white">
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <label className="form-label fw-bold text-dark small m-0">
-                  Inspector Re-Inspection Status Decision
+                  Re-Inspection Status
                 </label>
               </div>
 
@@ -340,7 +340,7 @@ export const CapaReinspectionDrawer: React.FC<CapaReinspectionDrawerProps> = ({ 
               <div className="d-flex align-items-center justify-between mb-3 border-bottom pb-2">
                 <div>
                   <h6 className="fw-bold text-dark m-0" style={{ fontSize: '0.9rem' }}>
-                    Re-Inspection Supporting Evidence ({capa.evidences.length})
+                    Re-Inspection Supporting Evidence
                   </h6>
                   <div className="small text-muted" style={{ fontSize: '0.725rem' }}>
                     {isInspector ? 'Attach real-life photos or documents endorsing CAPA status' : 'Inspect evidence photos and documents uploaded by inspector'}

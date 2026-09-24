@@ -33,7 +33,7 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
     previousEntityId,
   } = useMapStore();
 
-  const backInfo = getBackButtonInfo('inspector', 'Inspector Workspace', previousHashView, activePersona, previousEntityId);
+  const backInfo = getBackButtonInfo('inspector', 'Physical Inspections', previousHashView, activePersona, previousEntityId);
 
   /* filter available vessels and capas for non-admin personas */
   const availableVessels =
@@ -53,7 +53,7 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
         );
 
   /* parse vesselName prop or target CAPA ID if passed as vesselName:capaId or CAPA ID */
-  const rawProp = vesselName || '';
+  const rawProp = decodeURIComponent(vesselName || '');
   let targetVesselName = rawProp;
   let targetCapaId: string | undefined = undefined;
 
@@ -87,7 +87,9 @@ export const CapaManagementView: React.FC<CapaManagementViewProps> = ({ vesselNa
     : availableCapas.filter(
         (c) =>
           c.vesselName.toLowerCase() === selectedVesselName.toLowerCase() ||
-          c.vesselId === selectedVesselName
+          c.vesselId === selectedVesselName ||
+          c.vesselName.toLowerCase().includes(selectedVesselName.toLowerCase()) ||
+          selectedVesselName.toLowerCase().includes(c.vesselName.toLowerCase())
       );
 
   /* filter, sort & search state */

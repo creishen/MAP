@@ -39,7 +39,11 @@ export const HeaderBanner: React.FC = () => {
       case 'crew':
         return getBackButtonInfo('crew', 'Crew Directory', previousHashView, activePersona, previousEntityId);
       case 'inspection':
-        return getBackButtonInfo('inspector', 'Inspections', previousHashView, activePersona, previousEntityId);
+      case 'inspector':
+        return getBackButtonInfo('inspector', 'Physical Inspections', previousHashView, activePersona, previousEntityId);
+      case 'capa':
+      case 'capas':
+        return getBackButtonInfo('capa', 'Physical Inspections', previousHashView, activePersona, previousEntityId);
       case 'approver':
         return getBackButtonInfo('approver', 'Approval Gate', previousHashView, activePersona, previousEntityId);
       case 'create-assurance-set':
@@ -113,7 +117,7 @@ export const HeaderBanner: React.FC = () => {
         if (currentEntityId) {
           return {
             breadcrumb: 'PHYSICAL AUDIT · VISUAL SURVEY',
-            title: `${currentEntityId} Physical Inspection`,
+            title: `${decodeURIComponent(currentEntityId)} Physical Inspection`,
           };
         }
         return { breadcrumb: 'PHYSICAL AUDIT · VISUAL SURVEY', title: 'Physical Inspections' };
@@ -121,6 +125,12 @@ export const HeaderBanner: React.FC = () => {
         return { breadcrumb: 'CHARTER AUTHORITY · READINESS SIGN-OFF', title: 'Approval Gate' };
       case 'capa':
       case 'capas':
+        if (currentEntityId && currentEntityId !== 'ALL_FLEET' && currentEntityId !== 'ALL') {
+          return {
+            breadcrumb: 'CORRECTIVE ACTIONS · PHYSICAL AUDIT',
+            title: `${decodeURIComponent(currentEntityId)} Physical Inspection CAPAs`,
+          };
+        }
         return { breadcrumb: 'CORRECTIVE ACTION TRACKER · FLEET OVERVIEW', title: 'CAPA Tracker' };
       case 'audit':
         return { breadcrumb: 'IMMUTABLE LOGS · CRYPTOGRAPHIC AUDIT', title: 'Immutable Audit Trail' };

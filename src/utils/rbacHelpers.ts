@@ -393,7 +393,7 @@ export function getBackButtonInfo(
     return {
       label: previousEntityId
         ? "Back to Inspection Checklist"
-        : "Back to Physical Survey Schedule",
+        : "Back to Physical Inspections",
       targetView: "inspector",
       targetEntityId: previousEntityId,
     };
