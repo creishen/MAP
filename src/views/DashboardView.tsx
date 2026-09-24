@@ -1,6 +1,6 @@
 /* 
   file summary: executive overview dashboard view for the marine assurance platform (map) in light theme.
-  responsibilities: presents fleet compliance readiness stats or client created assurance sets, active vetting campaigns summary, role context banner, and audit log feed.
+  responsibilities: presents fleet compliance readiness stats or client created assurance sets, active vetting campaigns summary, and role context banner.
   role in system: primary home view rendered on default navigation.
 */
 
@@ -13,16 +13,16 @@ import { InspectorWorkspaceView } from './InspectorWorkspaceView';
 import { ApproverDashboardView } from './ApproverDashboardView';
 import { Vessel } from '../types/vessel';
 import { AssuranceStage } from '../types/assurance';
-import { isAssuranceSetAssignedToPersona, filterAuditTrailForPersona, filterVesselsForPersona } from '../utils/rbacHelpers';
+import { isAssuranceSetAssignedToPersona, filterVesselsForPersona } from '../utils/rbacHelpers';
 import { calculateAssuranceSetReadiness, calculateVesselReadiness } from '../utils/readinessHelpers';
 
 /**
   what: renders the executive dashboard workspace view in light theme.
-  how: aggregates stats from zustand vessels, assuranceSets, documents, and auditEvents state arrays, rendering role-aligned KPI cards and tables for Approver, Submitter, C Admin, or default roles.
+  how: aggregates stats from zustand vessels, assuranceSets, and documents state arrays, rendering role-aligned KPI cards and tables for Approver, Submitter, C Admin, or default roles.
   with what file: src/views/DashboardView.tsx loaded by App.tsx.
 */
 export const DashboardView: React.FC = () => {
-  const { vessels, assuranceSets, documents, auditEvents, activePersona, setCurrentHashView } = useMapStore();
+  const { vessels, assuranceSets, documents, activePersona, setCurrentHashView } = useMapStore();
   const [cAdminSearchTerm, setCAdminSearchTerm] = useState('');
 
   if (activePersona === 'Verifier') {
@@ -37,7 +37,6 @@ export const DashboardView: React.FC = () => {
     return <ApproverDashboardView />;
   }
 
-  const visibleAuditEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
   const visibleVessels: Vessel[] = filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
   const totalVessels = visibleVessels.length;
@@ -332,7 +331,7 @@ export const DashboardView: React.FC = () => {
         </div>
       ) : (
         <div className="row g-4">
-          <div className="col-lg-8">
+          <div className="col-12">
             <div className="card map-card-custom">
               <div className="card-header d-flex align-items-center justify-between">
                 <span>Fleet Assurance Overview</span>
@@ -374,32 +373,12 @@ export const DashboardView: React.FC = () => {
                             <span className="badge bg-light text-dark border">{v.status}</span>
                           </td>
                           <td>
-                            <ReadinessGauge score={v.complianceReadinessScore} size="sm" />
+                            <ReadinessGauge score={calculateVesselReadiness(v, assuranceSets, documents)} size="sm" />
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-lg-4">
-            <div className="card map-card-custom">
-              <div className="card-header">Recent Audit Activity</div>
-              <div className="card-body p-3">
-                <div className="d-flex flex-column gap-3">
-                  {visibleAuditEvents.slice(0, 4).map((ev) => (
-                    <div key={ev.id} className="p-2 border-bottom pb-2">
-                      <div className="fw-bold text-primary small">{ev.action}</div>
-                      <div className="text-secondary small">{ev.targetAsset}</div>
-                      <div className="d-flex align-items-center justify-between mt-1" style={{ fontSize: '0.75rem' }}>
-                        <span className="badge bg-light text-dark border">{ev.userRole}</span>
-                        <span className="font-mono-code text-muted">{formatMaritimeDate(ev.timestampUtc)}</span>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
