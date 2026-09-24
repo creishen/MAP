@@ -219,17 +219,17 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
               </div>
 
               {/* quality checks list */}
-              <div className="d-flex flex-column gap-2">
-                <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
+              <div className="d-flex flex-column gap-2 mt-2 p-2 bg-light rounded border">
+                <div className={`${isJustLoaded ? 'map-criteria-item-1' : ''} d-flex align-items-center gap-2 small`} style={{ fontSize: '0.75rem', color: '#475569' }}>
                   <span
                     className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
                     style={{ width: '18px', height: '18px', backgroundColor: '#059669', fontSize: '0.65rem' }}
                   >
                     ✓
                   </span>
-                  <span className="ps-0.5">Resolution 240 DPI</span>
+                  <span className="ps-0.5 text-dark fw-medium">Resolution 240 DPI</span>
                 </div>
-                <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
+                <div className={`${isJustLoaded ? 'map-criteria-item-2' : ''} d-flex align-items-center gap-2 small`} style={{ fontSize: '0.75rem', color: '#475569' }}>
                   <span
                     className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
                     style={{
@@ -241,9 +241,9 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                   >
                     {isFullPagePassed ? '✓' : '!'}
                   </span>
-                  <span className="ps-0.5">Full page captured</span>
+                  <span className="ps-0.5 text-dark fw-medium">Full page captured</span>
                 </div>
-                <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.75rem', color: '#475569' }}>
+                <div className={`${isJustLoaded ? 'map-criteria-item-3' : ''} d-flex align-items-center gap-2 small`} style={{ fontSize: '0.75rem', color: '#475569' }}>
                   <span
                     className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
                     style={{
@@ -255,7 +255,7 @@ export const DocumentReviewDrawer: React.FC<DocumentReviewDrawerProps> = ({ docu
                   >
                     {isSignaturePassed ? '✓' : '!'}
                   </span>
-                  <span className="ps-0.5">Signature / stamp present</span>
+                  <span className="ps-0.5 text-dark fw-medium">Signature / stamp present</span>
                 </div>
               </div>
             </div>

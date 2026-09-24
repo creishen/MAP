@@ -55,6 +55,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   /* simulated AI extraction states */
   const [isExtractingAi, setIsExtractingAi] = useState(false);
   const [isAiExtracted, setIsAiExtracted] = useState(false);
+  const [isNewExtractionAnimate, setIsNewExtractionAnimate] = useState(false);
   const [aiOcrConfidence, setAiOcrConfidence] = useState(99.2);
 
   /* manual inline field editing state */
@@ -100,6 +101,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       setExpiryDate(found.expiryDate);
       setFileName(found.versions[0]?.fileName || `${found.title}.pdf`);
       setIsAiExtracted(true);
+      setIsNewExtractionAnimate(true);
       setAiOcrConfidence(found.ocrConfidence || 99.2);
     }
   };
@@ -108,6 +110,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     if (isOpen) {
       setUploadOption('new_file');
       setSelectedUnassignedDocId('');
+      setIsNewExtractionAnimate(false);
       if (existingDocument) {
         setTitle(existingDocument.title);
         setEntityType(existingDocument.entityType);
@@ -220,6 +223,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     setTimeout(() => {
       setIsExtractingAi(false);
       setIsAiExtracted(true);
+      setIsNewExtractionAnimate(true);
       setAiOcrConfidence(99.2);
 
       /* stagger 1: certificate number — add shimmer, remove after 750ms */
@@ -519,28 +523,28 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                                   </div>
                                 </div>
 
-                                <div className="d-flex flex-column gap-2">
-                                  <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
-                                    <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success me-1.5 flex-shrink-0" style={{ width: '18px', height: '18px', fontSize: '0.65rem' }}>✓</span>
-                                    <span className="ps-0.5">Resolution 240 DPI</span>
+                                <div className="d-flex flex-column gap-2 mt-2 p-2 bg-light rounded border">
+                                  <div className={`${isNewExtractionAnimate ? 'map-criteria-item-1' : ''} d-flex align-items-center gap-2 small`} style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                    <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success flex-shrink-0" style={{ width: '18px', height: '18px', fontSize: '0.65rem' }}>✓</span>
+                                    <span className="ps-0.5 text-dark fw-medium">Resolution 240 DPI</span>
                                   </div>
-                                  <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                  <div className={`${isNewExtractionAnimate ? 'map-criteria-item-2' : ''} d-flex align-items-center gap-2 small`} style={{ fontSize: '0.725rem', color: '#475569' }}>
                                     <span
-                                      className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
+                                      className="d-flex align-items-center justify-content-center rounded text-white fw-bold flex-shrink-0"
                                       style={{ width: '18px', height: '18px', backgroundColor: isFullPageCaptured ? '#059669' : '#c2410c', fontSize: '0.65rem' }}
                                     >
                                       {isFullPageCaptured ? '✓' : '!'}
                                     </span>
-                                    <span className="ps-0.5">Full page captured</span>
+                                    <span className="ps-0.5 text-dark fw-medium">Full page captured</span>
                                   </div>
-                                  <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                  <div className={`${isNewExtractionAnimate ? 'map-criteria-item-3' : ''} d-flex align-items-center gap-2 small`} style={{ fontSize: '0.725rem', color: '#475569' }}>
                                     <span
-                                      className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
+                                      className="d-flex align-items-center justify-content-center rounded text-white fw-bold flex-shrink-0"
                                       style={{ width: '18px', height: '18px', backgroundColor: isSignaturePresent ? '#059669' : '#c2410c', fontSize: '0.65rem' }}
                                     >
                                       {isSignaturePresent ? '✓' : '!'}
                                     </span>
-                                    <span className="ps-0.5">Signature / stamp present</span>
+                                    <span className="ps-0.5 text-dark fw-medium">Signature / stamp present</span>
                                   </div>
                                 </div>
                               </div>
@@ -741,76 +745,6 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
                       </select>
                     </div>
                   </div>
-
-                  {/* Upload Source Segmented Option Controls for Admin & Submitter */}
-                  {!existingDocument && (
-                    <div>
-                      <label className="form-label text-dark fw-bold small mb-1.5">
-                        Upload Option *
-                      </label>
-                      <div className="btn-group w-100 p-1 bg-light border rounded-3" role="group">
-                        <button
-                          type="button"
-                          className={`btn btn-sm ${uploadOption === 'new_file' ? 'btn-primary active text-white fw-bold' : 'btn-light text-secondary'}`}
-                          style={{ fontSize: '0.78rem' }}
-                          onClick={() => {
-                            setUploadOption('new_file');
-                            setSelectedUnassignedDocId('');
-                          }}
-                        >
-                          Upload New Document
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn btn-sm ${uploadOption === 'unassigned_doc' ? 'btn-primary active text-white fw-bold' : 'btn-light text-secondary'}`}
-                          style={{ fontSize: '0.78rem' }}
-                          onClick={() => setUploadOption('unassigned_doc')}
-                        >
-                          Use Unassigned Document ({unassignedDocuments.length})
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Option 2: Select Unassigned Document from Library */}
-                  {!existingDocument && uploadOption === 'unassigned_doc' && (
-                    <div className="p-3 bg-light border rounded-3 d-flex flex-column gap-2.5">
-                      <label className="form-label text-dark fw-bold small m-0" htmlFor="unassigned-doc-select">
-                        Select Unassigned Document from Library *
-                      </label>
-                      <select
-                        id="unassigned-doc-select"
-                        className="form-select form-select-sm font-mono-code bg-white text-dark border-secondary"
-                        value={selectedUnassignedDocId}
-                        onChange={(e) => handleSelectUnassignedDoc(e.target.value)}
-                        required
-                      >
-                        <option value="">-- Choose unassigned document from vault --</option>
-                        {unassignedDocuments.map((doc) => (
-                          <option key={doc.id} value={doc.id}>
-                            {doc.title} — {doc.certificateNo || doc.id} ({doc.issuingAuthority})
-                          </option>
-                        ))}
-                      </select>
-
-                      {selectedUnassignedDocId ? (
-                        <div className="d-flex flex-column gap-1 p-2.5 bg-white border rounded small font-mono-code text-muted">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <span className="badge bg-success text-white">Selected Library Document</span>
-                            <span className="fw-bold text-dark">{selectedUnassignedDocId}</span>
-                          </div>
-                          <div className="text-secondary small">
-                            Certificate: <strong>{certificateNo || 'N/A'}</strong> · Authority: <strong>{issuingAuthority || 'IACS'}</strong> · Expiry: <strong>{expiryDate}</strong>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-muted small font-mono-code" style={{ fontSize: '0.725rem' }}>
-                          Select an existing unassigned statutory document from the vault to immediately link it to this assurance requirement.
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {/* Option 1: Drag and Drop / Clickable File Upload Dropzone */}
                   {(!existingDocument && uploadOption === 'new_file') || existingDocument ? (
                     <div>

@@ -30,7 +30,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
   initialLayer,
   onClose,
 }) => {
-  const { addCrewDocument, updateCrewDocument, activePersona } = useMapStore();
+  const { documents, addCrewDocument, updateCrewDocument, activePersona } = useMapStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,9 +46,14 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
   const [fileName, setFileName] = useState('');
   const [changeSummary, setChangeSummary] = useState('');
 
+  /* Option A / Option B intake source selection */
+  const [uploadOption, setUploadOption] = useState<'option_a_library' | 'option_b_file'>('option_b_file');
+  const [selectedLibraryDocId, setSelectedLibraryDocId] = useState('');
+
   /* simulated AI extraction states */
   const [isExtractingAi, setIsExtractingAi] = useState(false);
   const [isAiExtracted, setIsAiExtracted] = useState(false);
+  const [isNewExtractionAnimate, setIsNewExtractionAnimate] = useState(false);
   const [aiOcrConfidence, setAiOcrConfidence] = useState(99.2);
 
   /* manual inline field editing state */
@@ -72,6 +77,14 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
   /* autofill animation state for programmatically populated fields */
   const [animatingFields, setAnimatingFields] = useState<Set<string>>(new Set());
 
+  /* unassigned crew documents in document library */
+  const unassignedCrewDocs = documents.filter((d) => {
+    if (d.entityType !== 'Crew Certificate') return false;
+    const vId = d.vesselId?.trim().toUpperCase();
+    const isVesselUnassigned = !vId || vId === '' || vId === 'UNASSIGNED' || vId === 'UNLINKED' || vId.startsWith('VESSEL-PENDING');
+    return isVesselUnassigned;
+  });
+
   /*
     what: triggers map-autofill-animate shimmer on specified form inputs or display values.
     how: adds field keys to animatingFields set and removes them after 750ms.
@@ -92,8 +105,50 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
     }, 750);
   };
 
+  /*
+    what: handles selecting an unassigned crew certificate from document library (option a).
+    how: populates certificate form values, layer, dates, filename, sets extraction review active, and triggers autofill animations.
+    with what file: src/components/drawers/CrewDocumentUploadModal.tsx.
+  */
+  const handleSelectLibraryDoc = (docId: string) => {
+    setSelectedLibraryDocId(docId);
+    if (!docId) return;
+
+    const chosenDoc = unassignedCrewDocs.find((d) => d.id === docId);
+    if (!chosenDoc) return;
+
+    setTitle(chosenDoc.title.replace(/\s*—\s*.*$/, ''));
+    if (
+      chosenDoc.title.toLowerCase().includes('layer 2') ||
+      chosenDoc.title.toLowerCase().includes('endorsement') ||
+      chosenDoc.title.toLowerCase().includes('dp ') ||
+      chosenDoc.title.toLowerCase().includes('tanker') ||
+      chosenDoc.title.toLowerCase().includes('master unlimited') ||
+      chosenDoc.title.toLowerCase().includes('chief engineer')
+    ) {
+      setLayer('Layer 2 - Vessel Specific & Endorsements');
+    } else {
+      setLayer('Layer 1 - Universal Core');
+    }
+    setStcwRegulation(chosenDoc.crewAttributes?.certType || chosenDoc.title);
+    setCertificateNo(chosenDoc.certificateNo);
+    setIssuingAuthority(chosenDoc.issuingAuthority);
+    setFlagState(chosenDoc.crewAttributes?.nationality || 'Australia');
+    setIssueDate(chosenDoc.crewAttributes?.issueDate || '2026-01-01');
+    setExpiryDate(chosenDoc.expiryDate);
+    setVerificationStatus('Verified');
+    setFileName(chosenDoc.versions[0]?.fileName || `${chosenDoc.id.toLowerCase()}.pdf`);
+    setChangeSummary(`Linked unassigned certificate ${chosenDoc.certificateNo} from Document Library.`);
+    setIsAiExtracted(true);
+    setIsExtractingAi(false);
+    setIsPendingVerification(false);
+    triggerAutofillAnimation(['doc-title', 'doc-cert-no', 'doc-issuing-auth', 'doc-flag-state', 'doc-expiry-date']);
+  };
+
   useEffect(() => {
     if (isOpen) {
+      setSelectedLibraryDocId('');
+      setUploadOption('option_b_file');
       if (existingDocument) {
         setTitle(existingDocument.title);
         setLayer(existingDocument.layer);
@@ -137,7 +192,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
 
   if (!isOpen) return null;
 
-  const canManage = activePersona === 'Administrator' || activePersona === 'Submitter';
+  const canManage = activePersona === 'Administrator' || activePersona === 'C Admin' || activePersona === 'Submitter';
   const isEditing = Boolean(existingDocument);
 
   /* handles file attachment selection and stages document for user verification before AI extraction */
@@ -272,7 +327,7 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
 
     setTimeout(() => {
       const docToSave: STCWDocumentItem = {
-        id: existingDocument ? existingDocument.id : `DOC-CRW-${Math.floor(600 + Math.random() * 400)}`,
+        id: existingDocument ? existingDocument.id : (selectedLibraryDocId || `DOC-CRW-${Math.floor(600 + Math.random() * 400)}`),
         title: title.trim(),
         layer,
         stcwRegulation: stcwRegulation.trim() || 'STCW Convention Standard',
@@ -442,28 +497,28 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                               </div>
                             </div>
 
-                            <div className="d-flex flex-column gap-2">
-                              <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
-                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success me-1.5 flex-shrink-0" style={{ width: '18px', height: '18px', fontSize: '0.65rem' }}>✓</span>
-                                <span className="ps-0.5">Resolution 240 DPI</span>
+                            <div className="d-flex flex-column gap-2 mt-2 p-2 bg-light rounded border">
+                              <div className={`${isNewExtractionAnimate ? 'map-criteria-item-1' : ''} d-flex align-items-center gap-2 small`} style={{ fontSize: '0.725rem', color: '#475569' }}>
+                                <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success flex-shrink-0" style={{ width: '18px', height: '18px', fontSize: '0.65rem' }}>✓</span>
+                                <span className="ps-0.5 text-dark fw-medium">Resolution 240 DPI</span>
                               </div>
-                              <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                              <div className={`${isNewExtractionAnimate ? 'map-criteria-item-2' : ''} d-flex align-items-center gap-2 small`} style={{ fontSize: '0.725rem', color: '#475569' }}>
                                 <span
-                                  className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
+                                  className="d-flex align-items-center justify-content-center rounded text-white fw-bold flex-shrink-0"
                                   style={{ width: '18px', height: '18px', backgroundColor: isFullPageCaptured ? '#059669' : '#c2410c', fontSize: '0.65rem' }}
                                 >
                                   {isFullPageCaptured ? '✓' : '!'}
                                 </span>
-                                <span className="ps-0.5">Full page captured</span>
+                                <span className="ps-0.5 text-dark fw-medium">Full page captured</span>
                               </div>
-                              <div className="d-flex align-items-center gap-2.5 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                              <div className={`${isNewExtractionAnimate ? 'map-criteria-item-3' : ''} d-flex align-items-center gap-2 small`} style={{ fontSize: '0.725rem', color: '#475569' }}>
                                 <span
-                                  className="d-flex align-items-center justify-content-center rounded text-white fw-bold me-1.5 flex-shrink-0"
+                                  className="d-flex align-items-center justify-content-center rounded text-white fw-bold flex-shrink-0"
                                   style={{ width: '18px', height: '18px', backgroundColor: isSignaturePresent ? '#059669' : '#c2410c', fontSize: '0.65rem' }}
                                 >
                                   {isSignaturePresent ? '✓' : '!'}
                                 </span>
-                                <span className="ps-0.5">Signature / stamp present</span>
+                                <span className="ps-0.5 text-dark fw-medium">Signature / stamp present</span>
                               </div>
                             </div>
                           </div>
@@ -629,23 +684,9 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                     Document Upload &amp; Re-upload Panel
                   </div>
 
-                  {/* STCW Compliance Layer Selector */}
-                  <div>
-                    <label className="form-label small fw-semibold text-secondary mb-1">STCW Compliance Layer *</label>
-                    <select
-                      className="form-select form-select-sm bg-white text-dark border-secondary"
-                      value={layer}
-                      onChange={(e) => setLayer(e.target.value as STCWLayer)}
-                      disabled={isUploading || isExtractingAi || !!existingDocument}
-                    >
-                      <option value="Layer 1 - Universal Core">Layer 1 — Universal STCW Core (Passport, Seaman Book, BST, ENG1 Medical)</option>
-                      <option value="Layer 2 - Vessel Specific & Endorsements">Layer 2 — Vessel Specific & Endorsements (CoC, Tanker, IGF, DP, FSE)</option>
-                    </select>
-                  </div>
-
-                  {/* Document Title & STCW Regulation */}
+                  {/* Document Title & Entity / Layer Selection (Same Row matching reference design) */}
                   <div className="row g-2">
-                    <div className="col-md-7">
+                    <div className="col-md-6">
                       <label className="form-label text-secondary small fw-semibold" htmlFor="doc-title">
                         Document Title *
                       </label>
@@ -660,107 +701,110 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                         required
                       />
                     </div>
-                    <div className="col-md-5">
-                      <label className="form-label text-secondary small fw-semibold" htmlFor="stcw-reg">
-                        STCW Reg Ref
+                    <div className="col-md-6">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="doc-layer">
+                        Entity Type *
                       </label>
-                      <input
-                        id="stcw-reg"
-                        type="text"
-                        className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
-                        placeholder="STCW Reg II/2"
-                        value={stcwRegulation}
-                        onChange={(e) => setStcwRegulation(e.target.value)}
-                        disabled={isUploading || isExtractingAi}
-                      />
+                      <select
+                        id="doc-layer"
+                        className="form-select form-select-sm bg-white text-dark border-secondary"
+                        value={layer}
+                        onChange={(e) => setLayer(e.target.value as STCWLayer)}
+                        disabled={isUploading || isExtractingAi || !!existingDocument}
+                      >
+                        <option value="Layer 1 - Universal Core">Crew Certificate</option>
+                        <option value="Layer 2 - Vessel Specific & Endorsements">Vessel Certificate</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Certificate No & Issuing Authority */}
-                  <div className="row g-2">
-                    <div className="col-md-6">
-                      <label className="form-label text-secondary small fw-semibold" htmlFor="cert-no">
-                        Certificate No *
-                      </label>
-                      <input
-                        id="cert-no"
-                        type="text"
-                        className={`form-control form-control-sm bg-white text-dark border-secondary font-mono-code${animatingFields.has('doc-cert-no') ? ' map-autofill-animate' : ''}`}
-                        placeholder="e.g. CoC-II-2-0041"
-                        value={certificateNo}
-                        onChange={(e) => setCertificateNo(e.target.value)}
-                        disabled={isUploading || isExtractingAi}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label text-secondary small fw-semibold" htmlFor="issuing-auth">
-                        Issuing Body *
-                      </label>
-                      <input
-                        id="issuing-auth"
-                        type="text"
-                        className={`form-control form-control-sm bg-white text-dark border-secondary${animatingFields.has('doc-issuing-auth') ? ' map-autofill-animate' : ''}`}
-                        placeholder="AMSA Australia"
-                        value={issuingAuthority}
-                        onChange={(e) => setIssuingAuthority(e.target.value)}
-                        disabled={isUploading || isExtractingAi}
-                      />
-                    </div>
-                  </div>
+                  {/* Option A: Auto-Fill from Document Library (if unassigned certs exist) */}
+                  {!existingDocument && (
+                    <div className="p-2.5 bg-light border rounded-3 d-flex flex-column gap-2 mb-1">
+                      <div className="d-flex flex-column">
+                        <label className="form-label text-secondary small fw-semibold mb-1 text-truncate" htmlFor="crew-unassigned-doc-select">
+                          Option A: Auto-Fill from Document Library
+                        </label>
+                        <select
+                          id="crew-unassigned-doc-select"
+                          className={`form-select form-select-sm bg-white text-dark border-secondary w-100 font-mono-code ${selectedLibraryDocId ? 'border-primary shadow-2xs' : ''}`}
+                          style={{ height: '36px', fontSize: '0.8125rem' }}
+                          value={selectedLibraryDocId}
+                          onChange={(e) => {
+                            handleSelectLibraryDoc(e.target.value);
+                            if (e.target.value) setUploadOption('option_a_library');
+                          }}
+                          disabled={isExtractingAi || isUploading}
+                        >
+                          <option value="">
+                            {unassignedCrewDocs.length > 0
+                              ? `-- Select from ${unassignedCrewDocs.length} Unassigned Cert${unassignedCrewDocs.length > 1 ? 's' : ''} --`
+                              : '-- No unassigned crew certificates --'}
+                          </option>
+                          {unassignedCrewDocs.map((doc) => (
+                            <option key={doc.id} value={doc.id}>
+                              {doc.title} ({doc.certificateNo || doc.id})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                  {/* Flag State & Expiry Date */}
-                  <div className="row g-2">
-                    <div className="col-md-6">
-                      <label className="form-label text-secondary small fw-semibold" htmlFor="flag-state">
-                        Flag State Authority
-                      </label>
-                      <input
-                        id="flag-state"
-                        type="text"
-                        className={`form-control form-control-sm bg-white text-dark border-secondary${animatingFields.has('doc-flag-state') ? ' map-autofill-animate' : ''}`}
-                        placeholder="e.g. Australia / Liberia"
-                        value={flagState}
-                        onChange={(e) => setFlagState(e.target.value)}
-                        disabled={isUploading || isExtractingAi}
-                      />
+                      {selectedLibraryDocId && (
+                        <div className="d-flex align-items-center justify-content-between p-2 bg-white border border-success rounded small font-mono-code">
+                          <div className="d-flex align-items-center gap-2 text-truncate">
+                            <span className="badge bg-success text-white flex-shrink-0">Document Library Entity</span>
+                            <span className="fw-bold text-dark text-truncate">{selectedLibraryDocId}</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-link p-0 text-danger small text-decoration-none ms-2"
+                            onClick={() => {
+                              setSelectedLibraryDocId('');
+                              setFileName('');
+                              setTitle('');
+                              setCertificateNo('');
+                              setIsAiExtracted(false);
+                              setIsExtractingAi(false);
+                              setIsPendingVerification(false);
+                            }}
+                          >
+                            Clear Selection
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="col-md-6">
-                      <label className="form-label text-secondary small fw-semibold" htmlFor="expiry-date">
-                        Expiry Date *
-                      </label>
-                      <input
-                        id="expiry-date"
-                        type="date"
-                        className={`form-control form-control-sm bg-white text-dark border-secondary font-mono-code${animatingFields.has('doc-expiry-date') ? ' map-autofill-animate' : ''}`}
-                        value={expiryDate}
-                        onChange={(e) => setExpiryDate(e.target.value)}
-                        disabled={isUploading || isExtractingAi}
-                        required
-                      />
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Drag and Drop / Clickable File Upload Dropzone */}
+                  {/* Select Document File Dropzone Box matching screenshot */}
                   <div>
                     <label className="form-label text-dark fw-bold small mb-1">
                       Select Document File *
                     </label>
                     <div
-                      className={`p-4 border border-2 border-dashed rounded text-center transition-all ${isDraggingOver
-                        ? 'border-primary bg-primary-subtle'
-                        : fileName
-                          ? 'border-success bg-light'
+                      className={`p-4 border rounded text-center transition-all ${fileName
+                        ? 'border-success bg-light'
+                        : isDraggingOver
+                          ? 'border-primary bg-primary-subtle'
                           : 'border-secondary-subtle bg-light hover-bg-gray'
                         }`}
-                      style={{ cursor: isUploading || isExtractingAi ? 'not-allowed' : 'pointer' }}
+                      style={{
+                        borderStyle: fileName ? 'solid' : 'dashed',
+                        borderColor: fileName ? '#16a34a' : undefined,
+                        borderWidth: '1.5px',
+                        cursor: isUploading || isExtractingAi ? 'not-allowed' : 'pointer'
+                      }}
                       onClick={() => {
                         if (!isUploading && !isExtractingAi) {
+                          setUploadOption('option_b_file');
                           fileInputRef.current?.click();
                         }
                       }}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
+                      onDrop={(e) => {
+                        setUploadOption('option_b_file');
+                        handleDrop(e);
+                      }}
                     >
                       <div className="d-flex flex-column align-items-center justify-content-center gap-2">
                         <div className="rounded-circle bg-white p-2 border shadow-2xs">
@@ -785,25 +829,125 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
                       </div>
                     </div>
 
-                    {/* Quick File Selection Chips */}
-                    <div className="d-flex align-items-center gap-1.5 flex-wrap mt-2">
-                      <span className="text-secondary small me-1" style={{ fontSize: '0.7rem' }}>
-                        Sample file attach:
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
-                        style={{ fontSize: '0.675rem' }}
-                        onClick={() =>
-                          handleSampleFileClick(
-                            `STCW_CoC_Master_Unlimited_2026.pdf`
-                          )
-                        }
-                        disabled={isUploading || isExtractingAi}
-                      >
-                        + STCW_CoC_Master_Unlimited_2026.pdf
-                      </button>
+                    {/* Quick Sample File Attach Chips & Clear Selection */}
+                    <div className="d-flex align-items-center justify-content-between gap-1.5 flex-wrap mt-2">
+                      <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                        <span className="text-secondary small me-1" style={{ fontSize: '0.7rem' }}>
+                          Sample file attach:
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-secondary font-mono-code py-0 px-2"
+                          style={{ fontSize: '0.675rem' }}
+                          onClick={() =>
+                            handleSampleFileClick(
+                              `IOPP_MARPOL_Annex1_Certificate_2026.pdf`
+                            )
+                          }
+                          disabled={isUploading || isExtractingAi}
+                        >
+                          + IOPP_MARPOL_Annex1_Certificate_2026.pdf
+                        </button>
+                      </div>
+
+                      {fileName && (
+                        <button
+                          type="button"
+                          className="btn btn-link p-0 text-danger small text-decoration-none font-mono-code"
+                          style={{ fontSize: '0.75rem' }}
+                          onClick={() => {
+                            setFileName('');
+                            setSelectedLibraryDocId('');
+                            setIsAiExtracted(false);
+                            setIsExtractingAi(false);
+                            setIsPendingVerification(false);
+                          }}
+                          disabled={isUploading || isExtractingAi}
+                        >
+                          Clear Selection
+                        </button>
+                      )}
                     </div>
+                  </div>
+
+                  {/* STCW Regulation & Certificate Number */}
+                  <div className="row g-2">
+                    <div className="col-md-5">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="stcw-reg">
+                        STCW Reg Ref
+                      </label>
+                      <input
+                        id="stcw-reg"
+                        type="text"
+                        className="form-control form-control-sm bg-white text-dark border-secondary font-mono-code"
+                        placeholder="STCW Reg II/2"
+                        value={stcwRegulation}
+                        onChange={(e) => setStcwRegulation(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                      />
+                    </div>
+                    <div className="col-md-7">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="cert-no">
+                        Certificate No *
+                      </label>
+                      <input
+                        id="cert-no"
+                        type="text"
+                        className={`form-control form-control-sm bg-white text-dark border-secondary font-mono-code${animatingFields.has('doc-cert-no') ? ' map-autofill-animate' : ''}`}
+                        placeholder="e.g. CoC-II-2-0041"
+                        value={certificateNo}
+                        onChange={(e) => setCertificateNo(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Issuing Authority & Flag State */}
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="issuing-auth">
+                        Issuing Body *
+                      </label>
+                      <input
+                        id="issuing-auth"
+                        type="text"
+                        className={`form-control form-control-sm bg-white text-dark border-secondary${animatingFields.has('doc-issuing-auth') ? ' map-autofill-animate' : ''}`}
+                        placeholder="AMSA Australia"
+                        value={issuingAuthority}
+                        onChange={(e) => setIssuingAuthority(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label text-secondary small fw-semibold" htmlFor="flag-state">
+                        Flag State Authority
+                      </label>
+                      <input
+                        id="flag-state"
+                        type="text"
+                        className={`form-control form-control-sm bg-white text-dark border-secondary${animatingFields.has('doc-flag-state') ? ' map-autofill-animate' : ''}`}
+                        placeholder="e.g. Australia / Liberia"
+                        value={flagState}
+                        onChange={(e) => setFlagState(e.target.value)}
+                        disabled={isUploading || isExtractingAi}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Expiry Date */}
+                  <div>
+                    <label className="form-label text-secondary small fw-semibold" htmlFor="expiry-date">
+                      Expiry Date *
+                    </label>
+                    <input
+                      id="expiry-date"
+                      type="date"
+                      className={`form-control form-control-sm bg-white text-dark border-secondary font-mono-code${animatingFields.has('doc-expiry-date') ? ' map-autofill-animate' : ''}`}
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                      disabled={isUploading || isExtractingAi}
+                      required
+                    />
                   </div>
 
                   {/* Reason for revision / change summary field when editing */}
@@ -871,84 +1015,84 @@ export const CrewDocumentUploadModal: React.FC<CrewDocumentUploadModalProps> = (
               </button>
             </div>
           </form>
-        </div>
-      </div>
+        </div >
+      </div >
 
       {/* Document File Preview & Verification Gate Popup Modal */}
-      {isPendingVerification && (
-        <div
-          className="modal show d-block map-modal-backdrop"
-          tabIndex={-1}
-          style={{ zIndex: 1070 }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsPendingVerification(false);
-          }}
-        >
-          <div className="modal-dialog modal-lg modal-dialog-centered">
-            <div className="modal-content bg-white text-dark border shadow-lg">
-              {/* Header */}
-              <div className="modal-header border-bottom bg-light d-flex align-items-center justify-content-between p-3">
-                <div>
-                  <h5 className="modal-title fw-bold text-dark m-0">
-                    Document Preview
-                  </h5>
-                  <div className="text-secondary small mt-0.5">
-                    Verify seafarer certificate scan clarity before authorizing AI metadata extraction
+      {
+        isPendingVerification && (
+          <div
+            className="modal show d-block map-modal-backdrop"
+            tabIndex={-1}
+            style={{ zIndex: 1070 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsPendingVerification(false);
+            }}
+          >
+            <div className="modal-dialog modal-lg modal-dialog-centered">
+              <div className="modal-content bg-white text-dark border shadow-lg">
+                {/* Header */}
+                <div className="modal-header border-bottom bg-light d-flex align-items-center justify-content-between p-3">
+                  <div>
+                    <h5 className="modal-title fw-bold text-dark m-0">
+                      Document Preview
+                    </h5>
+                    <div className="text-secondary small mt-0.5">
+                      Verify seafarer certificate scan clarity before authorizing AI metadata extraction
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setIsPendingVerification(false)}
+                    aria-label="Close"
+                  />
+                </div>
+
+                {/* Body */}
+                <div className="modal-body p-4">
+                  <div className="alert alert-info py-2 px-3 small font-mono-code mb-3">
+                    <strong>File Staged:</strong> {fileName} (Ready for automated AI spec extraction)
+                  </div>
+
+                  {/* Simulated Document Preview Box */}
+                  <div
+                    className="p-5 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-light shadow-2xs"
+                    style={{ minHeight: '260px', borderStyle: 'dashed', borderColor: '#cbd5e1' }}
+                  >
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary mb-2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                      <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                    <div className="fw-bold text-dark mb-1">{fileName}</div>
+                    <div className="text-secondary small font-mono-code">240 DPI · Scanned STCW Certificate · 1 Page</div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setIsPendingVerification(false)}
-                  aria-label="Close"
-                />
-              </div>
 
-              {/* Body */}
-              <div className="modal-body p-4">
-                <div className="alert alert-info py-2 px-3 small font-mono-code mb-3">
-                  <strong>File Staged:</strong> {fileName} (Ready for automated AI spec extraction)
+                {/* Footer */}
+                <div className="modal-footer border-top bg-light d-flex align-items-center justify-content-end gap-2 p-3">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => setIsPendingVerification(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary fw-bold px-3 d-inline-flex align-items-center gap-1.5"
+                    onClick={handleConfirmVerifyAndExtract}
+                  >
+                    Confirm Document &amp; Extract Specs
+                  </button>
                 </div>
-
-                {/* Simulated Document Preview Box */}
-                <div
-                  className="p-5 border rounded-3 text-center d-flex flex-column align-items-center justify-content-center bg-light shadow-2xs"
-                  style={{ minHeight: '260px', borderStyle: 'dashed', borderColor: '#cbd5e1' }}
-                >
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary mb-2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                  </svg>
-                  <div className="fw-bold text-dark mb-1">{fileName}</div>
-                  <div className="text-secondary small font-mono-code">240 DPI · Scanned STCW Certificate · 1 Page</div>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="modal-footer border-top bg-light d-flex align-items-center justify-content-end gap-2 p-3">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary"
-                  onClick={() => setIsPendingVerification(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary fw-bold px-3 d-inline-flex align-items-center gap-1.5"
-                  onClick={handleConfirmVerifyAndExtract}
-                >
-                  Confirm Document &amp; Extract Specs
-                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
+        )}
+    </div >
+  )
+}

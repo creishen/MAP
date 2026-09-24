@@ -1415,7 +1415,24 @@ export const VesselModal: React.FC<VesselModalProps> = ({ isOpen, onClose, onReg
 
                     <div className="text-secondary mt-1">TARGET STAGE: Registration Stage {pendingVerificationState.stepNumber}</div>
                     <div className="text-secondary">EXTRACTABLE FIELDS: Vessel Name, IMO Number, Flag State, Classification Society, Year Built, GT/DWT</div>
-                    <div className="p-2.5 bg-light border rounded mt-2.5 text-muted text-center" style={{ fontSize: '0.725rem' }}>
+                    
+                    {/* OCR Criteria with universal staggered animation */}
+                    <div className="d-flex flex-column gap-2 mt-2.5 p-2 bg-light rounded border font-sans">
+                      <div className="map-criteria-item-1 d-flex align-items-center gap-2 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                        <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success flex-shrink-0" style={{ width: '18px', height: '18px', fontSize: '0.65rem' }}>✓</span>
+                        <span className="ps-0.5 text-dark fw-medium">Resolution 240 DPI</span>
+                      </div>
+                      <div className="map-criteria-item-2 d-flex align-items-center gap-2 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                        <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success flex-shrink-0" style={{ width: '18px', height: '18px', fontSize: '0.65rem' }}>✓</span>
+                        <span className="ps-0.5 text-dark fw-medium">Full page captured</span>
+                      </div>
+                      <div className="map-criteria-item-3 d-flex align-items-center gap-2 small" style={{ fontSize: '0.725rem', color: '#475569' }}>
+                        <span className="d-flex align-items-center justify-content-center rounded text-white fw-bold bg-success flex-shrink-0" style={{ width: '18px', height: '18px', fontSize: '0.65rem' }}>✓</span>
+                        <span className="ps-0.5 text-dark fw-medium">Signature / stamp present</span>
+                      </div>
+                    </div>
+
+                    <div className="p-2 bg-light border rounded mt-2 text-muted text-center" style={{ fontSize: '0.725rem' }}>
                       [ High resolution scan ready for automated AI OCR parsing &amp; form auto-population for Stage {pendingVerificationState.stepNumber} ]
                     </div>
                   </div>

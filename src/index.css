@@ -129,3 +129,28 @@ html, body {
     display: none !important;
   }
 }
+
+/* universal ocr criteria staggered entrance animation */
+@keyframes mapCriteriaReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.map-criteria-item-1 {
+  animation: mapCriteriaReveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+.map-criteria-item-2 {
+  animation: mapCriteriaReveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.40s both;
+}
+
+.map-criteria-item-3 {
+  animation: mapCriteriaReveal 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.65s both;
+}
+
