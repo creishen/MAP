@@ -143,7 +143,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                     className="btn btn-sm btn-outline-primary"
                     onClick={() => setCurrentHashView('create-assurance-set', assuranceSet.id)}
                   >
-                    Use as Template for C Admin
+                    Use as Template
                   </button>
                 )}
                 <div className="dropdown position-relative">
@@ -299,7 +299,11 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
               <div className="text-uppercase font-mono-code fw-bold text-secondary mb-2" style={{ fontSize: '0.725rem', letterSpacing: '0.05em' }}>
                 Assurance Campaign Stage Pipeline
               </div>
-              <PipelineStepper currentStage={assuranceSet.stage} orientation="vertical" />
+              <PipelineStepper
+                currentStage={assuranceSet.stage}
+                readinessScore={calculateAssuranceSetReadiness(assuranceSet)}
+                orientation="vertical"
+              />
             </div>
 
             <div className="p-3 bg-light border rounded-3">
@@ -318,7 +322,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
       <div className="card map-card-custom">
         <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
           <div className="fw-bold text-dark">
-            Statutory Requirements Register ({totalCount} Items)
+            Statutory Requirements Register
           </div>
           <div className="dropdown position-relative">
             <button

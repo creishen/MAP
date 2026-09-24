@@ -243,13 +243,7 @@ export const DashboardView: React.FC = () => {
           <div className="col-12">
             <div className="card map-card-custom">
               <div className="card-header d-flex flex-wrap align-items-center justify-between gap-2">
-                <div className="d-flex align-items-center gap-3">
-                  <span className="fw-bold fs-6">Created Assurance Sets</span>
-                  <span className="badge bg-light text-secondary border font-mono-code">
-                    {cAdminAssuranceSets.length} Total
-                  </span>
-                </div>
-                <div className="d-flex align-items-center gap-2">
+                <div className="d-flex align-items-center justify-between w-100 gap-2">
                   <input
                     type="text"
                     className="form-control form-control-sm"
