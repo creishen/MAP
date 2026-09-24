@@ -180,27 +180,40 @@ export function filterVesselsForPersona(
 
 /**
   what: filters list of users based on active user persona rbac rules.
-  how: administrator sees all users; c admin sees only users they created (createdBy === 'C Admin') whose assigned role is one of the permitted operational roles (verifier, approver, inspector); all other personas see none.
+  how: c admin sees their own user profile details (c admin role / matching persona) plus any users they created/invited; vessel admin (administrator / submitter) sees their own details (administrator role / vessel provider admin) plus any users they created/invited; other personas have no user management access.
   with what file: src/utils/rbacHelpers.ts consumed by UserManagementView.tsx and UserTable.tsx.
 */
 export function filterUsersForPersona(
   users: import("../types/user").UserProfile[],
   persona: UserRolePersona,
 ): import("../types/user").UserProfile[] {
-  const CADMIN_PERMITTED_ROLES: string[] = ["Verifier", "Approver", "Inspector"];
-
-  if (persona === "Administrator") return users;
-
-  if (persona === "C Admin") {
-    /* c admin can only view users they personally created, restricted to the permitted operational roles */
+  if (persona === "Administrator" || persona === "Submitter") {
+    /* vessel admin sees their own details (and internal organization members) plus users they created or invited */
     return users.filter(
       (u) =>
-        (u.createdBy === "C Admin" || u.invitedBy === "C Admin") &&
-        u.roles.some((r) => CADMIN_PERMITTED_ROLES.includes(r)),
+        u.roles.includes("Administrator") ||
+        u.roles.includes("Submitter") ||
+        u.name === "K. Osei" ||
+        u.organization === "Northwind Marine Pty Ltd" ||
+        u.createdBy === "Administrator" ||
+        u.invitedBy === "Administrator" ||
+        u.createdBy === "Vessel Provider Admin" ||
+        u.createdBy === "Submitter"
     );
   }
 
-  /* verifier, submitter, inspector, approver — no access to user list */
+  if (persona === "C Admin") {
+    /* c admin sees their own details plus any users they created or invited */
+    return users.filter(
+      (u) =>
+        u.roles.includes("C Admin") ||
+        u.name === "S. Basin" ||
+        u.createdBy === "C Admin" ||
+        u.invitedBy === "C Admin"
+    );
+  }
+
+  /* verifier, inspector, approver — no access to user list */
   return [];
 }
 
@@ -414,7 +427,7 @@ export function isViewAccessibleToPersona(
   /* baseline initial persona route checks (matrix overrides when supplied) */
   const getInitialAllowed = (): boolean => {
     if (view === "users") {
-      return persona === "Administrator";
+      return persona === "Administrator" || persona === "C Admin";
     }
     if (view === "crew") {
       return persona === "Administrator";

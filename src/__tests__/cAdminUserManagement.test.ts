@@ -1,7 +1,7 @@
 /* 
-  file summary: unit tests for c admin user management, user provisioning, and role visibility controls.
-  responsibilities: tests that c admin can add or invite users while hiding platform full access control and the c admin operational role.
-  role in system: validates rbac boundary enforcement for client administrators in user management.
+  file summary: unit tests for c admin and vessel admin user management, user provisioning, and role visibility controls.
+  responsibilities: tests that c admin and vessel admin can see their own details and created users, and validates rbac isolation.
+  role in system: validates rbac boundary enforcement for user management directory.
 */
 
 import { describe, expect, it, beforeEach } from 'vitest';
@@ -10,11 +10,16 @@ import { filterUsersForPersona } from '../utils/rbacHelpers';
 import { getOperationalRoleOptions, buildRolesFromForm } from '../utils/userRoleHelpers';
 import { UserProfile } from '../types/user';
 
-describe('C Admin User Management & RBAC Isolation', () => {
+describe('C Admin & Vessel Admin User Management & RBAC Isolation', () => {
   beforeEach(() => {
     useMapStore.getState().setActivePersona('C Admin');
   });
 
+  /**
+    what: tests role options exclude c admin role when specified.
+    how: queries getOperationalRoleOptions with c admin excluded.
+    with what file: src/__tests__/cAdminUserManagement.test.ts testing userRoleHelpers.ts.
+  */
   it('should exclude C Admin role from operational role options when excluded', () => {
     const options = getOperationalRoleOptions([], ['C Admin']);
     const roleKeys = options.map((opt) => opt.role);
@@ -25,6 +30,11 @@ describe('C Admin User Management & RBAC Isolation', () => {
     expect(roleKeys).not.toContain('C Admin');
   });
 
+  /**
+    what: tests role options exclude both c admin and submitter for client admin provisioning.
+    how: queries getOperationalRoleOptions with both roles excluded.
+    with what file: src/__tests__/cAdminUserManagement.test.ts testing userRoleHelpers.ts.
+  */
   it('should exclude both C Admin and Submitter roles when C Admin provisions user roles', () => {
     const options = getOperationalRoleOptions([], ['C Admin', 'Submitter']);
     const roleKeys = options.map((opt) => opt.role);
@@ -35,32 +45,37 @@ describe('C Admin User Management & RBAC Isolation', () => {
     expect(roleKeys).toContain('Approver');
   });
 
-  it('should filter out Administrator and uninvited users from C Admin visible directory', () => {
+  /**
+    what: tests that c admin can see their own details and the users they created while filtering out unrelated users.
+    how: passes mock user list to filterUsersForPersona with 'C Admin' persona.
+    with what file: src/__tests__/cAdminUserManagement.test.ts testing rbacHelpers.ts.
+  */
+  it('should allow C Admin to see their own details and users they created while filtering out unrelated users', () => {
     const mockUsers: UserProfile[] = [
       {
         id: 'USR-ADMIN',
         name: 'Platform Admin',
-        email: 'admin@map.io',
+        email: 'admin@northwindmarine.com',
         roles: ['Administrator'],
         userType: 'Organization',
-        organization: 'MAP Governance Team',
+        organization: 'Northwind Marine Pty Ltd',
         departmentOrScope: 'System Administration',
         status: 'Active',
         lastActive: 'Just Now',
       },
       {
-        id: 'USR-CLIENT',
-        name: 'C Admin User',
-        email: 'cadmin@southernbasin.com',
-        roles: ['C Admin'],
+        id: 'USR-CLIENT-SELF',
+        name: 'S. Basin',
+        email: 's.basin@southernbasin.com.au',
+        roles: ['C Admin', 'Approver'],
         userType: 'Organization',
-        organization: 'Southern Basin Energy Pty Ltd',
-        departmentOrScope: 'Chartering',
+        organization: 'Southern Basin Energy',
+        departmentOrScope: 'Client / Charterer Management',
         status: 'Active',
         lastActive: 'Just Now',
       },
       {
-        id: 'USR-VERIFIER',
+        id: 'USR-VERIFIER-CREATED',
         name: 'Jane Auditor',
         email: 'jane@dnv.com',
         roles: ['Verifier'],
@@ -88,15 +103,76 @@ describe('C Admin User Management & RBAC Isolation', () => {
     const visibleToCAdmin = filterUsersForPersona(mockUsers, 'C Admin');
     const visibleIds = visibleToCAdmin.map((u) => u.id);
 
+    /* C Admin sees their own details */
+    expect(visibleIds).toContain('USR-CLIENT-SELF');
+    /* C Admin sees users they created */
+    expect(visibleIds).toContain('USR-VERIFIER-CREATED');
+    /* Platform Admin and unrelated vessel operators are filtered out */
     expect(visibleIds).not.toContain('USR-ADMIN');
-    /* USR-CLIENT is a C Admin account not created by this C Admin — must not appear */
-    expect(visibleIds).not.toContain('USR-CLIENT');
-    /* USR-UNRELATED is a Submitter not created by C Admin — must not appear */
     expect(visibleIds).not.toContain('USR-UNRELATED');
-    /* USR-VERIFIER was created/invited by C Admin with an operational role — must appear */
-    expect(visibleIds).toContain('USR-VERIFIER');
   });
 
+  /**
+    what: tests that vessel admin (administrator) can see their own details and users they created while filtering out client-created users.
+    how: passes mock user list to filterUsersForPersona with 'Administrator' persona.
+    with what file: src/__tests__/cAdminUserManagement.test.ts testing rbacHelpers.ts.
+  */
+  it('should allow Vessel Admin to see their own details and users they created while filtering out client-created users', () => {
+    const mockUsers: UserProfile[] = [
+      {
+        id: 'USR-ADMIN-SELF',
+        name: 'K. Osei',
+        email: 'k.osei@northwindmarine.com',
+        roles: ['Administrator'],
+        userType: 'Organization',
+        organization: 'Northwind Marine Pty Ltd',
+        departmentOrScope: 'IT Systems & Governance',
+        status: 'Active',
+        lastActive: 'Just Now',
+      },
+      {
+        id: 'USR-OPS-CREATED',
+        name: 'M. Chen',
+        email: 'm.chen@northwindmarine.com',
+        roles: ['Submitter'],
+        userType: 'Organization',
+        organization: 'Northwind Marine Pty Ltd',
+        departmentOrScope: 'Vessel Operations',
+        status: 'Active',
+        lastActive: '1 hr ago',
+        createdBy: 'Administrator',
+      },
+      {
+        id: 'USR-CLIENT-USER',
+        name: 'D. Harrison',
+        email: 'd.harrison@chevron.com',
+        roles: ['C Admin'],
+        userType: 'Third-Party',
+        organization: 'Chevron Australia',
+        departmentOrScope: 'Charter Vetting',
+        status: 'Pending Invitation',
+        lastActive: 'Invitation Sent',
+        createdBy: 'C Admin',
+        invitedBy: 'C Admin',
+      },
+    ];
+
+    const visibleToAdmin = filterUsersForPersona(mockUsers, 'Administrator');
+    const visibleIds = visibleToAdmin.map((u) => u.id);
+
+    /* Vessel admin sees their own details */
+    expect(visibleIds).toContain('USR-ADMIN-SELF');
+    /* Vessel admin sees users they created */
+    expect(visibleIds).toContain('USR-OPS-CREATED');
+    /* Client admin users created by C Admin are filtered out */
+    expect(visibleIds).not.toContain('USR-CLIENT-USER');
+  });
+
+  /**
+    what: tests that c admin can provision and add an invited user to the store.
+    how: dispatches addUser and verifies the user is present in store and visible to c admin.
+    with what file: src/__tests__/cAdminUserManagement.test.ts testing useMapStore.ts.
+  */
   it('should allow C Admin to provision and add an invited third-party auditor user', () => {
     const store = useMapStore.getState();
     const newUser: UserProfile = {
@@ -125,56 +201,11 @@ describe('C Admin User Management & RBAC Isolation', () => {
     expect(visibleUsers.some((u) => u.id === 'USR-TEST-INVITE')).toBe(true);
   });
 
-  it('should guarantee C Admin sees only own-created users with permitted operational roles', () => {
-    const mockUsers: UserProfile[] = [
-      {
-        id: 'USR-CADMIN-SELF',
-        name: 'Self C Admin',
-        email: 'cadmin.self@chevron.com',
-        roles: ['C Admin'],
-        userType: 'Organization',
-        organization: 'Chevron Australia',
-        departmentOrScope: 'Vetting',
-        status: 'Active',
-        lastActive: 'Just Now',
-      },
-      {
-        id: 'USR-ADDED-BY-CADMIN',
-        name: 'Invited Verifier',
-        email: 'invited@bv.com',
-        roles: ['Verifier'],
-        userType: 'Third-Party',
-        organization: 'Bureau Veritas',
-        departmentOrScope: 'Audits',
-        status: 'Pending Invitation',
-        lastActive: 'Invitation Sent',
-        createdBy: 'C Admin',
-        invitedBy: 'C Admin',
-      },
-      {
-        id: 'USR-OTHER-SYSTEM-USER',
-        name: 'Other System User',
-        email: 'other@northwind.com',
-        roles: ['Submitter', 'Verifier'],
-        userType: 'Organization',
-        organization: 'Northwind Marine',
-        departmentOrScope: 'Operations',
-        status: 'Active',
-        lastActive: '1 day ago',
-      },
-    ];
-
-    const visibleUsers = filterUsersForPersona(mockUsers, 'C Admin');
-    const visibleIds = visibleUsers.map((u) => u.id);
-
-    /* USR-CADMIN-SELF is a C Admin account — not in the permitted operational roles, not own-created */
-    expect(visibleIds).not.toContain('USR-CADMIN-SELF');
-    /* USR-OTHER-SYSTEM-USER was not created by C Admin */
-    expect(visibleIds).not.toContain('USR-OTHER-SYSTEM-USER');
-    /* USR-ADDED-BY-CADMIN was created by C Admin and has an operational role */
-    expect(visibleIds).toContain('USR-ADDED-BY-CADMIN');
-  });
-
+  /**
+    what: tests that building roles for c admin form excludes platform administrator.
+    how: calls buildRolesFromForm with isCAdmin flag active.
+    with what file: src/__tests__/cAdminUserManagement.test.ts testing userRoleHelpers.ts.
+  */
   it('should guarantee that building roles for C Admin excludes Platform Administrator', () => {
     const isCAdmin = true;
     const isPlatformAdminChecked = false;

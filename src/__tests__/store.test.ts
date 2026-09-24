@@ -179,13 +179,13 @@ describe('Map Store State Management', () => {
     expect(latestAudit.targetAsset).toContain('Captain Updated Name');
   });
 
-  it('should restrict users management view access strictly to Administrator persona', () => {
+  it('should allow Administrator and C Admin access to users management view while restricting operational roles', () => {
     expect(isViewAccessibleToPersona('users', undefined, 'Administrator')).toBe(true);
+    expect(isViewAccessibleToPersona('users', undefined, 'C Admin')).toBe(true);
     expect(isViewAccessibleToPersona('users', undefined, 'Submitter')).toBe(false);
     expect(isViewAccessibleToPersona('users', undefined, 'Verifier')).toBe(false);
     expect(isViewAccessibleToPersona('users', undefined, 'Inspector')).toBe(false);
     expect(isViewAccessibleToPersona('users', undefined, 'Approver')).toBe(false);
-    expect(isViewAccessibleToPersona('users', undefined, 'C Admin')).toBe(false);
   });
 
   it('should add STCW Layer 1 and Layer 2 certificates to crew members and record audit log', () => {
