@@ -357,6 +357,40 @@ describe('Map Store State Management', () => {
     expect(otherReq?.title).toBe('Supplemental Bunkering Audit Certificate');
     expect(otherReq?.verifierStatus).toBe('Pending');
   });
+
+  it('should update stakeholder role assignments (Submitter, Verifier, Inspector, Approver) and log audit events', () => {
+    const store = useMapStore.getState();
+    const targetSet = store.assuranceSets[0];
+
+    // Test Submitter update
+    store.updateAssuranceStakeholder(targetSet.id, 'Submitter', 'E. Ramirez (Pacific Ocean Shipping)');
+    let currentSet = useMapStore.getState().assuranceSets.find((s) => s.id === targetSet.id);
+    expect(currentSet?.assignedSubmitter).toBe('E. Ramirez (Pacific Ocean Shipping)');
+
+    // Test Verifier update
+    store.updateAssuranceStakeholder(targetSet.id, 'Verifier', 'S. Basin (Southern Basin Energy Pty Ltd)');
+    currentSet = useMapStore.getState().assuranceSets.find((s) => s.id === targetSet.id);
+    expect(currentSet?.assignedVerifier).toBe('S. Basin (Southern Basin Energy Pty Ltd)');
+    expect(currentSet?.verificationRequired).toBe(true);
+
+    // Test Inspector update
+    store.updateAssuranceStakeholder(targetSet.id, 'Inspector', 'N. Technical (Meridian Marine Surveyors)');
+    currentSet = useMapStore.getState().assuranceSets.find((s) => s.id === targetSet.id);
+    expect(currentSet?.assignedInspector).toBe('N. Technical (Meridian Marine Surveyors)');
+    expect(currentSet?.mandatoryInspectionRequired).toBe(true);
+
+    // Test Approver update
+    store.updateAssuranceStakeholder(targetSet.id, 'Approver', 'P. Nardelli (Marine Assurance Authority)');
+    currentSet = useMapStore.getState().assuranceSets.find((s) => s.id === targetSet.id);
+    expect(currentSet?.assignedApprover).toBe('P. Nardelli (Marine Assurance Authority)');
+    expect(currentSet?.formalApprovalRequired).toBe(true);
+
+    // Verify audit logs
+    const latestAudit = useMapStore.getState().auditEvents[0];
+    expect(latestAudit.action).toBe('Assigned Vessel Approver');
+    expect(latestAudit.targetAsset).toContain(targetSet.id);
+  });
 });
+
 
 

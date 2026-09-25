@@ -68,6 +68,11 @@ export interface MapStoreState {
   assuranceSets: AssuranceSet[];
   addAssuranceSet: (set: AssuranceSet) => void;
   updateAssuranceStage: (setId: string, stage: AssuranceStage) => void;
+  updateAssuranceStakeholder: (
+    setId: string,
+    role: 'Submitter' | 'Verifier' | 'Inspector' | 'Approver',
+    assigneeName: string
+  ) => void;
   updateAssuranceInspector: (setId: string, inspectorName: string) => void;
   updateRequirementStatus: (
     setId: string,
@@ -370,20 +375,36 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       }),
     }));
   },
-  updateAssuranceInspector: (setId, inspectorName) => {
+  updateAssuranceStakeholder: (setId, role, assigneeName) => {
     set((state) => ({
-      assuranceSets: state.assuranceSets.map((s) =>
-        s.id === setId ? { ...s, assignedInspector: inspectorName, mandatoryInspectionRequired: true } : s
-      ),
+      assuranceSets: state.assuranceSets.map((s) => {
+        if (s.id !== setId) return s;
+        if (role === 'Submitter') {
+          return { ...s, assignedSubmitter: assigneeName };
+        }
+        if (role === 'Verifier') {
+          return { ...s, assignedVerifier: assigneeName, verificationRequired: true };
+        }
+        if (role === 'Inspector') {
+          return { ...s, assignedInspector: assigneeName, mandatoryInspectionRequired: true };
+        }
+        if (role === 'Approver') {
+          return { ...s, assignedApprover: assigneeName, formalApprovalRequired: true };
+        }
+        return s;
+      }),
     }));
     get().logAuditEvent({
       userId: 'USR-CURRENT',
       userRole: get().activePersona,
       organization: get().activePersona === 'C Admin' ? 'Southern Basin Energy' : 'Northwind Marine',
-      action: 'Assigned Vessel Inspector',
-      targetAsset: `${setId} · ${inspectorName}`,
-      justificationNotes: `Assigned inspector ${inspectorName} to assurance campaign ${setId}`,
+      action: `Assigned Vessel ${role}`,
+      targetAsset: `${setId} · ${assigneeName}`,
+      justificationNotes: `Assigned ${role.toLowerCase()} ${assigneeName} to assurance campaign ${setId}`,
     });
+  },
+  updateAssuranceInspector: (setId, inspectorName) => {
+    get().updateAssuranceStakeholder(setId, 'Inspector', inspectorName);
   },
   updateRequirementStatus: (setId, reqId, status, notes) => {
     const affectedDocIds = new Set<string>();

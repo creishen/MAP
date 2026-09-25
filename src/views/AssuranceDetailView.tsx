@@ -17,7 +17,7 @@ import { AssuranceRequirement } from '../types/assurance';
 import { VersionHistoryDrawer } from '../components/drawers/VersionHistoryDrawer';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { DocumentUploadModal } from '../components/drawers/DocumentUploadModal';
-import { userHasRole } from '../utils/userRoleHelpers';
+import { userHasRole, getEligibleVerifiers } from '../utils/userRoleHelpers';
 import { calculateAssuranceSetReadiness } from '../utils/readinessHelpers';
 
 interface AssuranceDetailViewProps {
@@ -30,14 +30,24 @@ interface AssuranceDetailViewProps {
   with what file: src/views/AssuranceDetailView.tsx loaded by App.tsx.
 */
 export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId }) => {
-  const { assuranceSets, vessels, updateRequirementStatus, updateAssuranceInspector, documents, activePersona, users, setCurrentHashView } = useMapStore();
+  const {
+    assuranceSets,
+    vessels,
+    updateRequirementStatus,
+    updateAssuranceStakeholder,
+    updateAssuranceInspector,
+    documents,
+    activePersona,
+    users,
+    setCurrentHashView,
+  } = useMapStore();
   const [selectedDocForReview, setSelectedDocForReview] = useState<{ doc: MasterDocument; notes?: string } | null>(null);
   const [selectedDocForVersionHistory, setSelectedDocForVersionHistory] = useState<MasterDocument | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadTargetRequirement, setUploadTargetRequirement] = useState<AssuranceRequirement | null>(null);
   const [replaceExistingDoc, setReplaceExistingDoc] = useState<MasterDocument | null>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const [isAssigningInspector, setIsAssigningInspector] = useState(false);
+  const [editingRole, setEditingRole] = useState<'Submitter' | 'Verifier' | 'Inspector' | 'Approver' | null>(null);
 
   type ReqSortField = 'category' | 'title' | 'ocrConfidence' | 'status';
   const [reqSortField, setReqSortField] = useState<ReqSortField>('category');
@@ -272,33 +282,127 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   <div className="text-uppercase fw-bold text-secondary mb-1" style={{ fontSize: '0.725rem', letterSpacing: '0.05em' }}>
                     Stakeholder Role Assignments
                   </div>
-                  <div className="border-bottom pb-1.5">
-                    <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Submitter:</div>
-                    <div className="fw-bold text-dark">{assuranceSet.assignedSubmitter || 'M. Chen (Northwind Marine Pty Ltd)'}</div>
-                  </div>
-                  <div className="border-bottom pb-1.5">
-                    <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Verifier:</div>
-                    <div className="fw-bold text-dark">
-                      {assuranceSet.verificationRequired === false
-                        ? 'N/A (Verification Bypassed)'
-                        : (assuranceSet.assignedVerifier || 'A. Fontaine (Bureau Veritas Inspectorate)')}
-                    </div>
-                  </div>
+
+                  {/* Submitter */}
                   <div className="border-bottom pb-1.5">
                     <div className="d-flex align-items-center justify-content-between">
-                      <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Inspector:</div>
-                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && assuranceSet.mandatoryInspectionRequired && (
+                      <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Submitter:</div>
+                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && (
                         <button
                           type="button"
                           className="btn btn-link p-0 text-decoration-none small font-mono-code ms-auto"
                           style={{ fontSize: '0.7rem', color: '#0284c7' }}
-                          onClick={() => setIsAssigningInspector(!isAssigningInspector)}
+                          onClick={() => setEditingRole(editingRole === 'Submitter' ? null : 'Submitter')}
                         >
-                          {isAssigningInspector ? 'Cancel' : 'Assign / Change'}
+                          {editingRole === 'Submitter' ? 'Cancel' : 'Assign / Change'}
                         </button>
                       )}
                     </div>
-                    {isAssigningInspector ? (
+                    {editingRole === 'Submitter' ? (
+                      <div className="mt-1 d-flex flex-column gap-1">
+                        <select
+                          className="form-select form-select-sm font-mono-code"
+                          style={{ fontSize: '0.75rem' }}
+                          value={assuranceSet.assignedSubmitter || ''}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              updateAssuranceStakeholder(assuranceSet.id, 'Submitter', e.target.value);
+                              setEditingRole(null);
+                            }
+                          }}
+                        >
+                          <option value="">Select Submitter...</option>
+                          {users
+                            .filter((u) => userHasRole(u, 'Submitter') || userHasRole(u, 'Administrator'))
+                            .map((u) => (
+                              <option key={u.id} value={`${u.name} (${u.organization})`}>
+                                {u.name} - {u.organization}
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-primary font-mono-code align-self-start mt-1"
+                          style={{ fontSize: '0.675rem' }}
+                          onClick={() => setCurrentHashView('users')}
+                        >
+                          + Invite New Submitter in User Management
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="fw-bold text-dark">{assuranceSet.assignedSubmitter || 'M. Chen (Northwind Marine Pty Ltd)'}</div>
+                    )}
+                  </div>
+
+                  {/* Verifier */}
+                  <div className="border-bottom pb-1.5">
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Verifier:</div>
+                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && (
+                        <button
+                          type="button"
+                          className="btn btn-link p-0 text-decoration-none small font-mono-code ms-auto"
+                          style={{ fontSize: '0.7rem', color: '#0284c7' }}
+                          onClick={() => setEditingRole(editingRole === 'Verifier' ? null : 'Verifier')}
+                        >
+                          {editingRole === 'Verifier' ? 'Cancel' : 'Assign / Change'}
+                        </button>
+                      )}
+                    </div>
+                    {editingRole === 'Verifier' ? (
+                      <div className="mt-1 d-flex flex-column gap-1">
+                        <select
+                          className="form-select form-select-sm font-mono-code"
+                          style={{ fontSize: '0.75rem' }}
+                          value={assuranceSet.assignedVerifier || ''}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              updateAssuranceStakeholder(assuranceSet.id, 'Verifier', e.target.value);
+                              setEditingRole(null);
+                            }
+                          }}
+                        >
+                          <option value="">Select Verifier...</option>
+                          {getEligibleVerifiers(users).map((u) => (
+                            <option key={u.id} value={`${u.name} (${u.organization})`}>
+                              {u.name} - {u.organization}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-primary font-mono-code align-self-start mt-1"
+                          style={{ fontSize: '0.675rem' }}
+                          onClick={() => setCurrentHashView('users')}
+                        >
+                          + Invite New Verifier in User Management
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="fw-bold text-dark">
+                        {assuranceSet.verificationRequired === false
+                          ? 'N/A (Verification Bypassed)'
+                          : (assuranceSet.assignedVerifier || 'A. Fontaine (Bureau Veritas Inspectorate)')}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Inspector */}
+                  <div className="border-bottom pb-1.5">
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Inspector:</div>
+                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && (
+                        <button
+                          type="button"
+                          className="btn btn-link p-0 text-decoration-none small font-mono-code ms-auto"
+                          style={{ fontSize: '0.7rem', color: '#0284c7' }}
+                          onClick={() => setEditingRole(editingRole === 'Inspector' ? null : 'Inspector')}
+                        >
+                          {editingRole === 'Inspector' ? 'Cancel' : 'Assign / Change'}
+                        </button>
+                      )}
+                    </div>
+                    {editingRole === 'Inspector' ? (
                       <div className="mt-1 d-flex flex-column gap-1">
                         <select
                           className="form-select form-select-sm font-mono-code"
@@ -306,8 +410,8 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                           value={assuranceSet.assignedInspector || ''}
                           onChange={(e) => {
                             if (e.target.value) {
-                              updateAssuranceInspector(assuranceSet.id, e.target.value);
-                              setIsAssigningInspector(false);
+                              updateAssuranceStakeholder(assuranceSet.id, 'Inspector', e.target.value);
+                              setEditingRole(null);
                             }
                           }}
                         >
@@ -333,17 +437,64 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                       <div className="fw-bold text-dark">
                         {assuranceSet.mandatoryInspectionRequired
                           ? (assuranceSet.assignedInspector || 'N. Technical (Meridian Marine Surveyors)')
-                          : 'N/A (Not Required)'}
+                          : (assuranceSet.assignedInspector || 'N/A (Not Required)')}
                       </div>
                     )}
                   </div>
+
+                  {/* Approver */}
                   <div>
-                    <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Approver:</div>
-                    <div className="fw-bold text-dark">
-                      {assuranceSet.formalApprovalRequired === false
-                        ? 'N/A (Direct Sign-Off)'
-                        : (assuranceSet.assignedApprover || 'P. Nardelli (Marine Assurance Authority)')}
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Approver:</div>
+                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && (
+                        <button
+                          type="button"
+                          className="btn btn-link p-0 text-decoration-none small font-mono-code ms-auto"
+                          style={{ fontSize: '0.7rem', color: '#0284c7' }}
+                          onClick={() => setEditingRole(editingRole === 'Approver' ? null : 'Approver')}
+                        >
+                          {editingRole === 'Approver' ? 'Cancel' : 'Assign / Change'}
+                        </button>
+                      )}
                     </div>
+                    {editingRole === 'Approver' ? (
+                      <div className="mt-1 d-flex flex-column gap-1">
+                        <select
+                          className="form-select form-select-sm font-mono-code"
+                          style={{ fontSize: '0.75rem' }}
+                          value={assuranceSet.assignedApprover || ''}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              updateAssuranceStakeholder(assuranceSet.id, 'Approver', e.target.value);
+                              setEditingRole(null);
+                            }
+                          }}
+                        >
+                          <option value="">Select Approver...</option>
+                          {users
+                            .filter((u) => userHasRole(u, 'Approver') || userHasRole(u, 'C Admin'))
+                            .map((u) => (
+                              <option key={u.id} value={`${u.name} (${u.organization})`}>
+                                {u.name} - {u.organization}
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-primary font-mono-code align-self-start mt-1"
+                          style={{ fontSize: '0.675rem' }}
+                          onClick={() => setCurrentHashView('users')}
+                        >
+                          + Invite New Approver in User Management
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="fw-bold text-dark">
+                        {assuranceSet.formalApprovalRequired === false
+                          ? 'N/A (Direct Sign-Off)'
+                          : (assuranceSet.assignedApprover || 'P. Nardelli (Marine Assurance Authority)')}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
