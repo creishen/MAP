@@ -125,6 +125,27 @@ export function filterDocumentsForVerifierQueue(
 }
 
 /**
+  what: checks if a vessel is owned or managed by the current administrator organization.
+  how: inspects registeredOwner, technicalManager, and ismCompany for organization keywords.
+  with what file: src/utils/rbacHelpers.ts used by VesselDetailView.tsx, FleetRegistryView.tsx, and VesselTable.tsx.
+*/
+export function isVesselOwnedByAdmin(v?: VesselParticulars): boolean {
+  if (!v) return false;
+  const ownerLower = (v.registeredOwner || '').toLowerCase();
+  const techManagerLower = (v.technicalManager || '').toLowerCase();
+  const ismLower = (v.ismCompany || '').toLowerCase();
+
+  return (
+    ownerLower.includes('northwind') ||
+    ownerLower.includes('pacific ocean') ||
+    techManagerLower.includes('northwind') ||
+    techManagerLower.includes('pacific') ||
+    ismLower.includes('northwind') ||
+    ismLower.includes('pacific')
+  );
+}
+
+/**
   what: filters a list of vessels based on active stakeholder assignments and ownership.
   how: for administrator, restricts to vessels owned/managed by northwind marine pty ltd; for submitter / vessel admin, matches vessels owned/managed by their company; for c admin, allows full access to all vessels under the platform; for other non-admin personas, matches assigned assurance sets.
   with what file: src/utils/rbacHelpers.ts used by FleetRegistryView.tsx, VesselTable.tsx, DashboardView.tsx, and InspectorWorkspaceView.tsx.

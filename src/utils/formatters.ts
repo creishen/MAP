@@ -42,3 +42,30 @@ export function getDaysUntilExpiry(expiryDateStr: string): number {
   const diffTime = expiry.getTime() - now.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
+
+/**
+  what: returns the css badge class and color styling for vessel operational registration status.
+  how: maps awaiting orders to green, in-transit to yellow, port stay to blue, under charter to red, dry docking to grey.
+  with what file: src/utils/formatters.ts used by VesselTable.tsx, VesselDetailView.tsx, etc.
+*/
+export function getVesselStatusBadgeClass(status: string): string {
+  switch (status) {
+    case 'Awaiting Orders':
+      return 'bg-success text-white';
+    case 'In Transit':
+    case 'In-Transit':
+      return 'bg-warning text-dark';
+    case 'Port Stay':
+      return 'bg-primary text-white';
+    case 'Under Charter':
+      return 'bg-danger text-white';
+    case 'Dry Docking':
+    case 'Dry-Docking':
+    case 'Lay-up':
+      return 'bg-secondary text-white';
+    case 'In Operations':
+      return 'bg-success text-white';
+    default:
+      return 'bg-secondary text-white';
+  }
+}

@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { isVesselAssuranceApproved, isVesselStatusPermitted } from '../utils/readinessHelpers';
+import { getVesselStatusBadgeClass } from '../utils/formatters';
 import { Vessel } from '../types/vessel';
 import { AssuranceSet } from '../types/assurance';
 import { MasterDocument } from '../types/document';
@@ -171,5 +172,24 @@ describe('vessel status assurance gating', () => {
     expect(isVesselStatusPermitted('In Transit', mockVessel, [readySet], emptyDocs).isPermitted).toBe(true);
     expect(isVesselStatusPermitted('Under Charter', mockVessel, [readySet], emptyDocs).isPermitted).toBe(true);
     expect(isVesselStatusPermitted('In Operations', mockVessel, [readySet], emptyDocs).isPermitted).toBe(true);
+  });
+
+  it('maps vessel statuses to correct color badge classes (green, yellow, blue, red, grey)', () => {
+    // Awaiting Orders -> Green
+    expect(getVesselStatusBadgeClass('Awaiting Orders')).toBe('bg-success text-white');
+
+    // In-Transit / In Transit -> Yellow
+    expect(getVesselStatusBadgeClass('In-Transit')).toBe('bg-warning text-dark');
+    expect(getVesselStatusBadgeClass('In Transit')).toBe('bg-warning text-dark');
+
+    // Port Stay -> Blue
+    expect(getVesselStatusBadgeClass('Port Stay')).toBe('bg-primary text-white');
+
+    // Under Charter -> Red
+    expect(getVesselStatusBadgeClass('Under Charter')).toBe('bg-danger text-white');
+
+    // Dry Docking / Dry-Docking -> Grey
+    expect(getVesselStatusBadgeClass('Dry Docking')).toBe('bg-secondary text-white');
+    expect(getVesselStatusBadgeClass('Dry-Docking')).toBe('bg-secondary text-white');
   });
 });

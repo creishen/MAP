@@ -4,7 +4,16 @@
   role in system: foundational type declarations consumed across store, tables, details views, and registration forms.
 */
 
-export type VesselRegistrationStatus = 'In Operations' | 'In Transit' | 'Dry Docking' | 'Lay-up' | 'Port Stay' | 'Under Charter';
+export type VesselRegistrationStatus =
+  | 'Awaiting Orders'
+  | 'In-Transit'
+  | 'In Transit'
+  | 'Port Stay'
+  | 'Under Charter'
+  | 'Dry-Docking'
+  | 'Dry Docking'
+  | 'In Operations'
+  | 'Lay-up';
 
 export type ClassificationSociety = 'DNV' | 'ABS' | "Lloyd's Register" | 'Bureau Veritas' | 'RINA';
 

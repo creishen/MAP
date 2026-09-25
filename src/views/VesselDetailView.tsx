@@ -8,8 +8,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { VesselParticulars, ClassificationSociety, VesselRegistrationStatus } from '../types/vessel';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
-import { formatMaritimeDate, getDaysUntilExpiry } from '../utils/formatters';
-import { filterAuditTrailForPersona, filterVesselsForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
+import { formatMaritimeDate, getDaysUntilExpiry, getVesselStatusBadgeClass } from '../utils/formatters';
+import { filterAuditTrailForPersona, filterVesselsForPersona, getBackButtonInfo, isVesselOwnedByAdmin } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { calculateAssuranceSetReadiness, calculateVesselReadiness, isVesselAssuranceApproved, isVesselStatusPermitted } from '../utils/readinessHelpers';
 import { CapaReinspectionDrawer } from '../components/drawers/CapaReinspectionDrawer';
@@ -137,12 +137,20 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
   const isAdmin = activePersona === 'Administrator';
   const isSubmitter = activePersona === 'Submitter';
   const isCAdmin = activePersona === 'C Admin';
+  const isOwned = isVesselOwnedByAdmin(vessel);
   const isReadOnly = isCAdmin || activePersona === 'Inspector';
   const canEditFull = isAdmin;
   const canEditStatus = isAdmin || isSubmitter;
   const canShowEditButton = canEditFull || canEditStatus;
   const canUploadDocs = isAdmin || isSubmitter;
   const canExport = isAdmin || isCAdmin;
+
+  /* fallback active tab to particulars if current tab is restricted for non-owned vessels */
+  useEffect(() => {
+    if (!isOwned && (activeTab === 'clients' || activeTab === 'crew' || activeTab === 'audit')) {
+      setActiveTab('particulars');
+    }
+  }, [isOwned, activeTab]);
 
   /*
     what: exports vessel 11-category particulars and statutory details to csv format.
@@ -720,36 +728,30 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                       handleInputChange('status', e.target.value as VesselRegistrationStatus)
                     }
                   >
+                    <option value="Awaiting Orders">Awaiting Orders</option>
+                    <option
+                      value="In-Transit"
+                      disabled={!isAssuranceApproved}
+                    >
+                      In-Transit {!isAssuranceApproved ? '(Requires 100% Approved Assurance)' : ''}
+                    </option>
                     <option value="Port Stay">Port Stay</option>
-                    <option
-                      value="In Transit"
-                      disabled={!isAssuranceApproved}
-                    >
-                      In Transit {!isAssuranceApproved ? '(Requires 100% Approved Assurance)' : ''}
-                    </option>
-                    <option value="Dry Docking">Dry Docking</option>
-                    <option value="Lay-up">Lay-up</option>
-                    <option
-                      value="In Operations"
-                      disabled={!isAssuranceApproved}
-                    >
-                      In Operations {!isAssuranceApproved ? '(Requires 100% Approved Assurance)' : ''}
-                    </option>
                     <option
                       value="Under Charter"
                       disabled={!isAssuranceApproved}
                     >
                       Under Charter {!isAssuranceApproved ? '(Requires 100% Approved Assurance)' : ''}
                     </option>
+                    <option value="Dry-Docking">Dry-Docking</option>
                   </select>
                   {!isAssuranceApproved && (
                     <span className="text-secondary small font-mono-code" style={{ fontSize: '0.72rem' }}>
-                      Under Charter, In Operations, and In Transit require 100% approved assurance set readiness.
+                      Under Charter and In-Transit require 100% approved assurance set readiness.
                     </span>
                   )}
                 </div>
               ) : (
-                <span className={`badge ${vessel.status === 'Under Charter' || vessel.status === 'In Operations' || vessel.status === 'In Transit' ? 'bg-primary' : 'bg-secondary'} text-uppercase`}>
+                <span className={`badge ${getVesselStatusBadgeClass(vessel.status)} text-uppercase`}>
                   {vessel.status}
                 </span>
               )}
@@ -888,7 +890,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             Physical Inspections ({linkedSets.length})
           </button>
         </li>
-        {isAdmin && (
+        {isAdmin && isOwned && (
           <li className="nav-item">
             <button
               type="button"
@@ -899,7 +901,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             </button>
           </li>
         )}
-        {isAdmin && (
+        {isAdmin && isOwned && (
           <li className="nav-item">
             <button
               type="button"
@@ -910,7 +912,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             </button>
           </li>
         )}
-        {isAdmin && (
+        {isAdmin && isOwned && (
           <li className="nav-item">
             <button
               type="button"
@@ -1298,12 +1300,11 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                           handleInputChange('status', e.target.value as VesselRegistrationStatus)
                         }
                       >
-                        <option value="In Operations">In Operations</option>
-                        <option value="In Transit">In Transit</option>
-                        <option value="Dry Docking">Dry Docking</option>
-                        <option value="Lay-up">Lay-up</option>
+                        <option value="Awaiting Orders">Awaiting Orders</option>
+                        <option value="In-Transit">In-Transit</option>
                         <option value="Port Stay">Port Stay</option>
                         <option value="Under Charter">Under Charter</option>
+                        <option value="Dry-Docking">Dry-Docking</option>
                       </select>
                     ) : (
                       <strong className={`d-block text-dark${isJustLoaded ? ' map-autofill-animate' : ''}`}>{vessel.status}</strong>
@@ -1629,7 +1630,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       )}
 
       {/* Tab 4: Client / Charter History */}
-      {activeTab === 'clients' && isAdmin && (
+      {activeTab === 'clients' && isAdmin && isOwned && (
         <div className="card map-card-custom">
           {/* Table Controls Header */}
           <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
@@ -1779,7 +1780,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       )}
 
       {/* Tab 5: Assigned Crew Directory */}
-      {activeTab === 'crew' && isAdmin && (
+      {activeTab === 'crew' && isAdmin && isOwned && (
         <div className="card map-card-custom">
           {/* Table Header Controls Row matching standard CrewTable.tsx layout */}
           <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">
@@ -2067,7 +2068,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       )}
 
       {/* Tab 6: Audit Trail */}
-      {activeTab === 'audit' && isAdmin && (
+      {activeTab === 'audit' && isAdmin && isOwned && (
         <div className="card map-card-custom">
           {/* Table Controls Header */}
           <div className="card-header d-flex flex-wrap align-items-center justify-between gap-3 p-3">

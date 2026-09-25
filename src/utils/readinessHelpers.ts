@@ -237,7 +237,11 @@ export function isVesselStatusPermitted(
   assuranceSets: AssuranceSet[] = [],
   documents: MasterDocument[] = [],
 ): { isPermitted: boolean; reason?: string } {
-  const isRestrictedStatus = status === 'Under Charter' || status === 'In Operations' || status === 'In Transit';
+  const isRestrictedStatus =
+    status === 'Under Charter' ||
+    status === 'In Operations' ||
+    status === 'In Transit' ||
+    status === 'In-Transit';
   if (!isRestrictedStatus) {
     return { isPermitted: true };
   }

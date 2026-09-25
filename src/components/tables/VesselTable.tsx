@@ -9,9 +9,9 @@ import { useMapStore } from '../../store/useMapStore';
 import { VesselParticulars } from '../../types/vessel';
 import { ReadinessGauge } from '../common/ReadinessGauge';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
-import { getDaysUntilExpiry } from '../../utils/formatters';
+import { getVesselStatusBadgeClass } from '../../utils/formatters';
 
-import { filterVesselsForPersona, isAssuranceSetAssignedToPersona } from '../../utils/rbacHelpers';
+import { filterVesselsForPersona, isAssuranceSetAssignedToPersona, isVesselOwnedByAdmin } from '../../utils/rbacHelpers';
 import { canPerform } from '../../utils/permissionHelpers';
 import { calculateVesselReadiness } from '../../utils/readinessHelpers';
 
@@ -21,20 +21,12 @@ type VesselSortField =
   | 'flagState'
   | 'registeredOwner'
   | 'status'
-  | 'certAlerts'
   | 'complianceReadinessScore';
-
-function vesselHasExpiringCert(vessel: VesselParticulars): boolean {
-  return vessel.statutoryCertificates.some((cert) => {
-    const daysLeft = getDaysUntilExpiry(cert.expiryDate);
-    return daysLeft >= 0 && daysLeft < 90;
-  });
-}
 
 interface VesselTableProps {
   onSelectVessel: (vessel: VesselParticulars) => void;
   onRegisterVessel?: () => void;
-  filterMode?: 'all' | 'chartered';
+  filterMode?: 'all' | 'chartered' | 'owned';
 }
 
 /**
@@ -67,6 +59,9 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
     if (activePersona === 'C Admin') {
       return assuranceSets.filter((set) => isAssuranceSetAssignedToPersona(set, 'C Admin'));
     }
+    if (activePersona === 'Administrator' || activePersona === 'Submitter') {
+      return assuranceSets.filter((set) => isAssuranceSetAssignedToPersona(set, activePersona));
+    }
     return assuranceSets;
   }, [assuranceSets, activePersona]);
 
@@ -83,6 +78,8 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
       customScopes,
     );
 
+  const isVesselOwned = isVesselOwnedByAdmin;
+
   const isVesselCharteredByCAdmin = (v: VesselParticulars) =>
     v.status === 'Under Charter' ||
     assuranceSets.some(
@@ -92,18 +89,23 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
     );
 
   const baseVessels =
-    activePersona === 'Submitter'
-      ? filterVesselsForPersona(vessels, assuranceSets, 'Submitter')
-      : activePersona === 'C Admin'
-        ? assuranceSetFilter !== 'ALL'
-          ? vessels.filter((v) => v.status !== 'Under Charter')
-          : filterMode === 'chartered'
-            ? vessels.filter((v) => isVesselCharteredByCAdmin(v) && v.status !== 'Under Charter')
-            : vessels.filter((v) => !isVesselCharteredByCAdmin(v) && v.status !== 'Under Charter')
+    activePersona === 'C Admin'
+      ? filterMode === 'chartered'
+        ? vessels.filter((v) => isVesselCharteredByCAdmin(v) && v.status !== 'Under Charter')
+        : vessels.filter((v) => !isVesselCharteredByCAdmin(v) && v.status !== 'Under Charter')
+      : activePersona === 'Administrator' || activePersona === 'Submitter'
+        ? filterMode === 'all'
+          ? vessels.filter((v) => !isVesselOwned(v) && v.status !== 'Under Charter')
+          : filterMode === 'owned'
+            ? vessels.filter(isVesselOwned)
+            : filterVesselsForPersona(vessels, assuranceSets, activePersona)
         : filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
   const filteredVessels = baseVessels.filter((v) => {
     if (activePersona === 'C Admin' && v.status === 'Under Charter') {
+      return false;
+    }
+    if (filterMode === 'all' && v.status === 'Under Charter') {
       return false;
     }
 
@@ -116,7 +118,13 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
 
     const matchesFlag = flagFilter === 'ALL' || v.flagState === flagFilter;
     const matchesClass = classFilter === 'ALL' || v.classificationSociety === classFilter;
-    const matchesStatus = statusFilter === 'ALL' || v.status === statusFilter;
+    const matchesStatus =
+      statusFilter === 'ALL' ||
+      v.status === statusFilter ||
+      (statusFilter === 'In-Transit' && (v.status === 'In Transit' || v.status === 'In-Transit')) ||
+      (statusFilter === 'In Transit' && (v.status === 'In Transit' || v.status === 'In-Transit')) ||
+      (statusFilter === 'Dry-Docking' && (v.status === 'Dry Docking' || v.status === 'Dry-Docking')) ||
+      (statusFilter === 'Dry Docking' && (v.status === 'Dry Docking' || v.status === 'Dry-Docking'));
     const matchesAssuranceSet =
       assuranceSetFilter === 'ALL' ||
       assuranceSets.some(
@@ -148,10 +156,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
     let valA: any = '';
     let valB: any = '';
 
-    if (sortField === 'certAlerts') {
-      valA = vesselHasExpiringCert(a) ? 1 : 0;
-      valB = vesselHasExpiringCert(b) ? 1 : 0;
-    } else if (sortField === 'complianceReadinessScore') {
+    if (sortField === 'complianceReadinessScore') {
       valA = calculateVesselReadiness(a, assuranceSets, documents);
       valB = calculateVesselReadiness(b, assuranceSets, documents);
     } else {
@@ -238,7 +243,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
             <option value="Bureau Veritas">Bureau Veritas</option>
           </select>
 
-          {activePersona !== 'C Admin' && (
+          {(activePersona === 'Administrator' || activePersona === 'Submitter') && filterMode === 'owned' && (
             <select
               className="form-select form-select-sm bg-white text-dark border-secondary"
               value={statusFilter}
@@ -246,22 +251,21 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
               style={{ width: '150px' }}
             >
               <option value="ALL">All Statuses</option>
-              <option value="In Operations">In Operations</option>
-              <option value="Under Charter">Under Charter</option>
-              <option value="In Transit">In Transit</option>
-              <option value="Dry Docking">Dry Docking</option>
-              <option value="Lay-up">Lay-up</option>
+              <option value="Awaiting Orders">Awaiting Orders</option>
+              <option value="In-Transit">In-Transit</option>
               <option value="Port Stay">Port Stay</option>
+              <option value="Under Charter">Under Charter</option>
+              <option value="Dry-Docking">Dry-Docking</option>
             </select>
           )}
 
-          {activePersona === 'C Admin' && availableAssuranceSets.length > 0 && (
+          {(activePersona === 'C Admin' || activePersona === 'Administrator' || activePersona === 'Submitter') && availableAssuranceSets.length > 0 && (
             <select
               className="form-select form-select-sm bg-white text-dark border-secondary font-mono-code"
               value={assuranceSetFilter}
               onChange={(e) => setAssuranceSetFilter(e.target.value)}
               style={{ minWidth: '220px', maxWidth: '300px', fontSize: '0.8rem' }}
-              title="Filter by Client Assurance Set"
+              title="Filter by Assurance Set"
             >
               <option value="ALL">All Assurance Sets</option>
               {availableAssuranceSets.map((set) => (
@@ -331,9 +335,6 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
               <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Status {renderSortIndicator('status')}
               </th>
-              <th onClick={() => handleSort('certAlerts')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                Cert Alerts {renderSortIndicator('certAlerts')}
-              </th>
               <th onClick={() => handleSort('complianceReadinessScore')} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
                 Assurance Readiness {renderSortIndicator('complianceReadinessScore')}
               </th>
@@ -343,7 +344,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
           <tbody>
             {sortedVessels.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-5">
+                <td colSpan={7} className="text-center py-5">
                   <div className="map-vessel-empty-state">
                     <div className="map-vessel-empty-title">No vessels match your search</div>
                     <div className="map-vessel-empty-hint text-muted small">
@@ -377,14 +378,7 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
                     <div className="fw-semibold text-dark">{v.registeredOwner}</div>
                   </td>
                   <td>
-                    <span className="badge bg-primary text-uppercase">{v.status}</span>
-                  </td>
-                  <td>
-                    {vesselHasExpiringCert(v) ? (
-                      <span className="badge map-vessel-cert-warning">Expiring &lt; 90d</span>
-                    ) : (
-                      <span className="badge bg-light text-success border">All clear</span>
-                    )}
+                    <span className={`badge ${getVesselStatusBadgeClass(v.status)} text-uppercase`}>{v.status}</span>
                   </td>
                   <td>
                     <ReadinessGauge score={calculateVesselReadiness(v, assuranceSets, documents)} size="sm" />

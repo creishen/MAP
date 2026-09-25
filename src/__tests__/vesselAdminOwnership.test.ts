@@ -5,7 +5,7 @@
 */
 
 import { describe, expect, it } from 'vitest';
-import { filterVesselsForPersona, isAssuranceSetAssignedToPersona } from '../utils/rbacHelpers';
+import { filterVesselsForPersona, isAssuranceSetAssignedToPersona, isVesselOwnedByAdmin } from '../utils/rbacHelpers';
 import { MOCK_VESSELS, MOCK_ASSURANCE_SETS, MOCK_DOCUMENTS } from '../store/mockData';
 import { VesselParticulars } from '../types/vessel';
 import { useMapStore } from '../store/useMapStore';
@@ -18,9 +18,12 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
       'Submitter'
     );
 
-    /* all mock vessels belong to northwind marine */
+    /* all 7 northwind mock vessels belong to submitter */
     expect(submitterVessels.length).toBe(7);
-    expect(submitterVessels.map((v) => v.id).sort()).toEqual(MOCK_VESSELS.map((v) => v.id).sort());
+    expect(submitterVessels.every((v) => v.registeredOwner?.toLowerCase().includes('northwind'))).toBe(true);
+    expect(submitterVessels.find((v) => v.id === 'VESSEL-008')).toBeUndefined();
+    expect(submitterVessels.find((v) => v.id === 'VESSEL-009')).toBeUndefined();
+    expect(submitterVessels.find((v) => v.id === 'VESSEL-010')).toBeUndefined();
 
     /* verify each returned vessel strictly belongs to northwind marine */
     submitterVessels.forEach((vessel) => {
@@ -111,7 +114,7 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
 
     /* c admin has complete visibility across all vessels on the platform */
     expect(cAdminVessels.length).toBe(MOCK_VESSELS.length);
-    expect(cAdminVessels.length).toBe(7);
+    expect(cAdminVessels.length).toBe(10);
     expect(cAdminVessels.map((v) => v.id)).toEqual(MOCK_VESSELS.map((v) => v.id));
   });
 
@@ -199,6 +202,77 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
     expect(cAdminVisibleVessels.some((v) => v.status === 'Under Charter')).toBe(false);
   });
 
+  it('supports Vessel Admin All Fleet Vessels (unchartered from other organizations) and Owned Vessels tabs with assurance set filtering', () => {
+    const isVesselOwned = (v: VesselParticulars) => {
+      const ownerLower = (v.registeredOwner || '').toLowerCase();
+      const techManagerLower = (v.technicalManager || '').toLowerCase();
+      const ismLower = (v.ismCompany || '').toLowerCase();
+      return (
+        ownerLower.includes('northwind') ||
+        ownerLower.includes('pacific ocean') ||
+        techManagerLower.includes('northwind') ||
+        techManagerLower.includes('pacific') ||
+        ismLower.includes('northwind') ||
+        ismLower.includes('pacific')
+      );
+    };
+
+    const competitorUnchartered: VesselParticulars = {
+      ...MOCK_VESSELS[0],
+      id: 'VESSEL-EXT-01',
+      name: 'MV Global Transporter',
+      registeredOwner: 'Global Maritime Lines',
+      technicalManager: 'Global Maritime Lines',
+      ismCompany: 'Global Maritime Lines',
+      status: 'Port Stay',
+    };
+
+    const competitorUnderCharter: VesselParticulars = {
+      ...MOCK_VESSELS[0],
+      id: 'VESSEL-EXT-02',
+      name: 'MV Oceanic Voyager',
+      registeredOwner: 'Global Maritime Lines',
+      technicalManager: 'Global Maritime Lines',
+      ismCompany: 'Global Maritime Lines',
+      status: 'Under Charter',
+    };
+
+    const allPlatformVessels = [...MOCK_VESSELS, competitorUnchartered, competitorUnderCharter];
+
+    // Owned vessels tab
+    const owned = allPlatformVessels.filter(isVesselOwned);
+    expect(owned.length).toBe(7);
+    owned.forEach((v) => {
+      expect(isVesselOwned(v)).toBe(true);
+    });
+
+    // All Fleet Vessels tab (vessels that are unchartered from other organizations)
+    const allFleet = allPlatformVessels.filter((v) => !isVesselOwned(v) && v.status !== 'Under Charter');
+    expect(allFleet.length).toBe(4);
+    expect(allFleet.map((v) => v.id)).toContain('VESSEL-EXT-01');
+    expect(allFleet.find((v) => v.id === 'VESSEL-EXT-02')).toBeUndefined();
+    allFleet.forEach((v) => {
+      expect(v.status).not.toBe('Under Charter');
+    });
+
+    // Assurance set filter on All Fleet Vessels
+    const extAssuranceSet = {
+      ...MOCK_ASSURANCE_SETS[0],
+      id: 'AS-NORTHWIND-EXT',
+      vesselId: 'VESSEL-EXT-01',
+      vesselName: 'MV Global Transporter',
+      assignedSubmitter: 'M. Chen (Northwind Marine Pty Ltd)',
+    };
+
+    const sets = [...MOCK_ASSURANCE_SETS, extAssuranceSet];
+    const filteredBySet = allFleet.filter((v) =>
+      sets.some((s) => s.id === 'AS-NORTHWIND-EXT' && (s.vesselId === v.id || s.vesselName === v.name))
+    );
+
+    expect(filteredBySet.length).toBe(1);
+    expect(filteredBySet[0].name).toBe('MV Global Transporter');
+  });
+
   it('correctly includes newly registered vessels owned by submitter company', () => {
     const newSubmitterVessel: VesselParticulars = {
       id: 'VESSEL-999',
@@ -266,7 +340,7 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
   });
 
   it('validates mock data accuracy and completeness across all vessel particulars', () => {
-    expect(MOCK_VESSELS.length).toBe(7);
+    expect(MOCK_VESSELS.length).toBe(10);
 
     MOCK_VESSELS.forEach((vessel) => {
       /* verify essential maritime data fields are populated accurately */
@@ -325,5 +399,92 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
     const latestAudit = useMapStore.getState().auditEvents[0];
     expect(latestAudit.organization).toBe('Northwind Marine Pty Ltd');
     expect(latestAudit.action).toBe('Registered Unique Vessel Record');
+  });
+
+  it('correctly identifies owned vs non-owned vessels for the current admin organization', () => {
+    // Northwind / Pacific owned vessels
+    const ownedVessels = MOCK_VESSELS.filter(isVesselOwnedByAdmin);
+    expect(ownedVessels.length).toBe(7);
+    ownedVessels.forEach((v) => {
+      expect(isVesselOwnedByAdmin(v)).toBe(true);
+    });
+
+    // External organization vessels
+    const externalVessels = MOCK_VESSELS.filter((v) => !isVesselOwnedByAdmin(v));
+    expect(externalVessels.length).toBe(3);
+    expect(externalVessels.map((v) => v.id)).toEqual(['VESSEL-008', 'VESSEL-009', 'VESSEL-010']);
+    externalVessels.forEach((v) => {
+      expect(isVesselOwnedByAdmin(v)).toBe(false);
+    });
+  });
+
+  it('restricts client history, assigned crew, and audit trail tabs to owned vessels only in vessel detail view', () => {
+    const ownedVessel = MOCK_VESSELS.find((v) => v.id === 'VESSEL-001')!;
+    const externalVessel = MOCK_VESSELS.find((v) => v.id === 'VESSEL-008')!;
+
+    // Owned vessel allows admin access to client history, assigned crew, and audit trail
+    const isOwnedForOwned = isVesselOwnedByAdmin(ownedVessel);
+    expect(isOwnedForOwned).toBe(true);
+
+    // Non-owned vessel hides client history, assigned crew, and audit trail
+    const isOwnedForExternal = isVesselOwnedByAdmin(externalVessel);
+    expect(isOwnedForExternal).toBe(false);
+
+    const getVisibleTabs = (v: VesselParticulars, persona: string) => {
+      const isAdmin = persona === 'Administrator';
+      const isOwned = isVesselOwnedByAdmin(v);
+      const tabs = ['particulars', 'vault', 'assurance', 'inspections'];
+      if (isAdmin && isOwned) {
+        tabs.push('clients', 'crew', 'audit');
+      }
+      return tabs;
+    };
+
+    const ownedTabs = getVisibleTabs(ownedVessel, 'Administrator');
+    expect(ownedTabs).toContain('clients');
+    expect(ownedTabs).toContain('crew');
+    expect(ownedTabs).toContain('audit');
+
+    const externalTabs = getVisibleTabs(externalVessel, 'Administrator');
+    expect(externalTabs).not.toContain('clients');
+    expect(externalTabs).not.toContain('crew');
+    expect(externalTabs).not.toContain('audit');
+  });
+
+  it('guarantees only unchartered vessels show up in All Fleet Vessels panel regardless of whether persona is admin or client admin', () => {
+    const isVesselCharteredByCAdmin = (v: VesselParticulars) =>
+      v.status === 'Under Charter' ||
+      MOCK_ASSURANCE_SETS.some(
+        (set) =>
+          set.vesselId === v.id &&
+          isAssuranceSetAssignedToPersona(set, 'C Admin')
+      );
+
+    // C Admin All Fleet Vessels logic
+    const cAdminAllFleet = MOCK_VESSELS.filter(
+      (v) => !isVesselCharteredByCAdmin(v) && v.status !== 'Under Charter'
+    );
+    expect(cAdminAllFleet.length).toBeGreaterThan(0);
+    cAdminAllFleet.forEach((v) => {
+      expect(v.status).not.toBe('Under Charter');
+      expect(isVesselCharteredByCAdmin(v)).toBe(false);
+    });
+
+    // Administrator All Fleet Vessels logic (unchartered from external orgs)
+    const adminAllFleet = MOCK_VESSELS.filter(
+      (v) => !isVesselOwnedByAdmin(v) && v.status !== 'Under Charter'
+    );
+    expect(adminAllFleet.length).toBe(3);
+    adminAllFleet.forEach((v) => {
+      expect(v.status).not.toBe('Under Charter');
+      expect(isVesselOwnedByAdmin(v)).toBe(false);
+    });
+
+    // Even if an under-charter vessel has an assurance set filter, it is excluded
+    const underCharterVessel = MOCK_VESSELS.find((v) => v.status === 'Under Charter');
+    if (underCharterVessel) {
+      expect(cAdminAllFleet.map((v) => v.id)).not.toContain(underCharterVessel.id);
+      expect(adminAllFleet.map((v) => v.id)).not.toContain(underCharterVessel.id);
+    }
   });
 });
