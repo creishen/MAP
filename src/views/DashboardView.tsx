@@ -701,19 +701,6 @@ export const DashboardView: React.FC = () => {
             <div>
               <h5 className="offcanvas-title fw-bold text-slate-900 m-0 d-flex align-items-center gap-2">
                 <span>Returned Documents Queue</span>
-                <span className="badge bg-danger font-mono-code" style={{ fontSize: '0.75rem' }}>
-                  {
-                    selectedReturnedSet.requirements.filter((r) => {
-                      const linkedDoc = documents.find((d) => d.id === r.documentId || (r.linkedDocumentId && d.id === r.linkedDocumentId));
-                      return (
-                        r.verifierStatus === 'Correction Requested' ||
-                        r.verifierStatus === 'Rejected' ||
-                        linkedDoc?.verificationStatus === 'Correction Requested' ||
-                        linkedDoc?.verificationStatus === 'Rejected'
-                      );
-                    }).length
-                  } Requiring Revision
-                </span>
               </h5>
               <div className="text-secondary small font-mono-code mt-0.5">
                 {selectedReturnedSet.id} · {selectedReturnedSet.title}
