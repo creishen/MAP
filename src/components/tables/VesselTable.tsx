@@ -75,19 +75,21 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
       customScopes,
     );
 
+  const isVesselCharteredByCAdmin = (v: VesselParticulars) =>
+    v.status === 'Under Charter' ||
+    assuranceSets.some(
+      (set) =>
+        set.vesselId === v.id &&
+        isAssuranceSetAssignedToPersona(set, 'C Admin')
+    );
+
   const baseVessels =
     activePersona === 'Submitter'
       ? filterVesselsForPersona(vessels, assuranceSets, 'Submitter')
       : activePersona === 'C Admin'
         ? filterMode === 'chartered'
-          ? vessels.filter((v) =>
-            assuranceSets.some(
-              (set) =>
-                set.vesselId === v.id &&
-                isAssuranceSetAssignedToPersona(set, 'C Admin')
-            )
-          )
-          : vessels
+          ? vessels.filter(isVesselCharteredByCAdmin)
+          : vessels.filter((v) => !isVesselCharteredByCAdmin(v))
         : filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
   const filteredVessels = baseVessels.filter((v) => {

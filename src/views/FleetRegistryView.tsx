@@ -20,14 +20,18 @@ export const FleetRegistryView: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'chartered'>('all');
 
-  const charteredVessels = vessels.filter((v) =>
+  const isVesselChartered = (v: (typeof vessels)[0]) =>
+    v.status === 'Under Charter' ||
     assuranceSets.some(
       (set) =>
         set.vesselId === v.id &&
         isAssuranceSetAssignedToPersona(set, 'C Admin')
-    )
-  );
+    );
+
+  const charteredVessels = vessels.filter(isVesselChartered);
+  const availableVessels = vessels.filter((v) => !isVesselChartered(v));
   const charteredCount = charteredVessels.length;
+  const availableCount = availableVessels.length;
 
   const handleVesselRegistered = (vesselId: string) => {
     setActiveVesselId(vesselId);
@@ -47,7 +51,7 @@ export const FleetRegistryView: React.FC = () => {
               style={{ fontSize: '0.8rem' }}
               onClick={() => setActiveTab('all')}
             >
-              All Fleet Vessels ({vessels.length})
+              All Fleet Vessels ({availableCount})
             </button>
             <button
               type="button"

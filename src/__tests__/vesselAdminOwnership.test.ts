@@ -115,6 +115,40 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
     expect(cAdminVessels.map((v) => v.id)).toEqual(MOCK_VESSELS.map((v) => v.id));
   });
 
+  it('filters available/unchartered vessels for All Fleet Vessels and chartered vessels for Chartered Vessels in C Admin view', () => {
+    const isVesselCharteredByCAdmin = (v: VesselParticulars) =>
+      v.status === 'Under Charter' ||
+      MOCK_ASSURANCE_SETS.some(
+        (set) =>
+          set.vesselId === v.id &&
+          isAssuranceSetAssignedToPersona(set, 'C Admin')
+      );
+
+    const availableVessels = MOCK_VESSELS.filter((v) => !isVesselCharteredByCAdmin(v));
+    const charteredVessels = MOCK_VESSELS.filter(isVesselCharteredByCAdmin);
+
+    /* available vessels should not be under charter and should not have active C Admin charters */
+    expect(availableVessels.length).toBeGreaterThan(0);
+    expect(charteredVessels.length).toBeGreaterThan(0);
+    expect(availableVessels.length + charteredVessels.length).toBe(MOCK_VESSELS.length);
+
+    availableVessels.forEach((v) => {
+      expect(v.status).not.toBe('Under Charter');
+      const hasCAdminCharter = MOCK_ASSURANCE_SETS.some(
+        (set) => set.vesselId === v.id && isAssuranceSetAssignedToPersona(set, 'C Admin')
+      );
+      expect(hasCAdminCharter).toBe(false);
+    });
+
+    charteredVessels.forEach((v) => {
+      const isUnderCharter = v.status === 'Under Charter';
+      const hasCAdminCharter = MOCK_ASSURANCE_SETS.some(
+        (set) => set.vesselId === v.id && isAssuranceSetAssignedToPersona(set, 'C Admin')
+      );
+      expect(isUnderCharter || hasCAdminCharter).toBe(true);
+    });
+  });
+
   it('correctly includes newly registered vessels owned by submitter company', () => {
     const newSubmitterVessel: VesselParticulars = {
       id: 'VESSEL-999',
