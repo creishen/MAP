@@ -96,13 +96,17 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
       ? filterVesselsForPersona(vessels, assuranceSets, 'Submitter')
       : activePersona === 'C Admin'
         ? assuranceSetFilter !== 'ALL'
-          ? vessels
+          ? vessels.filter((v) => v.status !== 'Under Charter')
           : filterMode === 'chartered'
-            ? vessels.filter(isVesselCharteredByCAdmin)
-            : vessels.filter((v) => !isVesselCharteredByCAdmin(v))
+            ? vessels.filter((v) => isVesselCharteredByCAdmin(v) && v.status !== 'Under Charter')
+            : vessels.filter((v) => !isVesselCharteredByCAdmin(v) && v.status !== 'Under Charter')
         : filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
   const filteredVessels = baseVessels.filter((v) => {
+    if (activePersona === 'C Admin' && v.status === 'Under Charter') {
+      return false;
+    }
+
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       v.name.toLowerCase().includes(term) ||

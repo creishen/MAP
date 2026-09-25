@@ -28,8 +28,8 @@ export const FleetRegistryView: React.FC = () => {
         isAssuranceSetAssignedToPersona(set, 'C Admin')
     );
 
-  const charteredVessels = vessels.filter(isVesselChartered);
-  const availableVessels = vessels.filter((v) => !isVesselChartered(v));
+  const charteredVessels = vessels.filter((v) => isVesselChartered(v) && v.status !== 'Under Charter');
+  const availableVessels = vessels.filter((v) => !isVesselChartered(v) && v.status !== 'Under Charter');
   const charteredCount = charteredVessels.length;
   const availableCount = availableVessels.length;
 

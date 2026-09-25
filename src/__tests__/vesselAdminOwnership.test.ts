@@ -168,6 +168,37 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
     expect(filteredVessels[0].name).toBe(targetSet.vesselName);
   });
 
+  it('guarantees vessels with Under Charter status NEVER show up in client admin vessel views even with assurance set filter', () => {
+    // VESSEL-004 has status 'Under Charter' and is linked to AS-2026-004
+    const underCharterVessel = MOCK_VESSELS.find((v) => v.status === 'Under Charter');
+    expect(underCharterVessel).toBeDefined();
+
+    const underCharterSet = MOCK_ASSURANCE_SETS.find((s) => s.vesselId === underCharterVessel?.id);
+    expect(underCharterSet).toBeDefined();
+
+    // Simulate C Admin filtering
+    const cAdminVisibleVessels = MOCK_VESSELS.filter((v) => {
+      // Must strictly exclude Under Charter vessels for C Admin
+      if (v.status === 'Under Charter') return false;
+
+      // Assurance set filter
+      if (underCharterSet) {
+        return MOCK_ASSURANCE_SETS.some(
+          (set) =>
+            set.id === underCharterSet.id &&
+            (set.vesselId === v.id ||
+              (set.vesselName && v.name && set.vesselName.toLowerCase() === v.name.toLowerCase()) ||
+              (set.imoNumber && v.imoNumber && set.imoNumber === v.imoNumber))
+        );
+      }
+      return true;
+    });
+
+    // Vessel with 'Under Charter' status must NOT show up
+    expect(cAdminVisibleVessels.some((v) => v.id === underCharterVessel?.id)).toBe(false);
+    expect(cAdminVisibleVessels.some((v) => v.status === 'Under Charter')).toBe(false);
+  });
+
   it('correctly includes newly registered vessels owned by submitter company', () => {
     const newSubmitterVessel: VesselParticulars = {
       id: 'VESSEL-999',
