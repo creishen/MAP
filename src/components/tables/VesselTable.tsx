@@ -4,7 +4,7 @@
   role in system: main data table for FleetRegistryView.tsx.
 */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useMapStore } from '../../store/useMapStore';
 import { VesselParticulars } from '../../types/vessel';
 import { ReadinessGauge } from '../common/ReadinessGauge';
@@ -58,9 +58,17 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
   const [flagFilter, setFlagFilter] = useState('ALL');
   const [classFilter, setClassFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [assuranceSetFilter, setAssuranceSetFilter] = useState('ALL');
   const [sortField, setSortField] = useState<VesselSortField>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isExportOpen, setIsExportOpen] = useState(false);
+
+  const availableAssuranceSets = useMemo(() => {
+    if (activePersona === 'C Admin') {
+      return assuranceSets.filter((set) => isAssuranceSetAssignedToPersona(set, 'C Admin'));
+    }
+    return assuranceSets;
+  }, [assuranceSets, activePersona]);
 
   const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
   const canRegister =
@@ -87,9 +95,11 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
     activePersona === 'Submitter'
       ? filterVesselsForPersona(vessels, assuranceSets, 'Submitter')
       : activePersona === 'C Admin'
-        ? filterMode === 'chartered'
-          ? vessels.filter(isVesselCharteredByCAdmin)
-          : vessels.filter((v) => !isVesselCharteredByCAdmin(v))
+        ? assuranceSetFilter !== 'ALL'
+          ? vessels
+          : filterMode === 'chartered'
+            ? vessels.filter(isVesselCharteredByCAdmin)
+            : vessels.filter((v) => !isVesselCharteredByCAdmin(v))
         : filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
   const filteredVessels = baseVessels.filter((v) => {
@@ -103,7 +113,17 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
     const matchesFlag = flagFilter === 'ALL' || v.flagState === flagFilter;
     const matchesClass = classFilter === 'ALL' || v.classificationSociety === classFilter;
     const matchesStatus = statusFilter === 'ALL' || v.status === statusFilter;
-    return matchesSearch && matchesFlag && matchesClass && matchesStatus;
+    const matchesAssuranceSet =
+      assuranceSetFilter === 'ALL' ||
+      assuranceSets.some(
+        (set) =>
+          set.id === assuranceSetFilter &&
+          (set.vesselId === v.id ||
+            (set.vesselName && v.name && set.vesselName.toLowerCase() === v.name.toLowerCase()) ||
+            (set.imoNumber && v.imoNumber && set.imoNumber === v.imoNumber))
+      );
+
+    return matchesSearch && matchesFlag && matchesClass && matchesStatus && matchesAssuranceSet;
   });
 
   const handleSort = (field: VesselSortField) => {
@@ -214,20 +234,39 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
             <option value="Bureau Veritas">Bureau Veritas</option>
           </select>
 
-          <select
-            className="form-select form-select-sm bg-white text-dark border-secondary"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ width: '150px' }}
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="In Operations">In Operations</option>
-            <option value="Under Charter">Under Charter</option>
-            <option value="In Transit">In Transit</option>
-            <option value="Dry Docking">Dry Docking</option>
-            <option value="Lay-up">Lay-up</option>
-            <option value="Port Stay">Port Stay</option>
-          </select>
+          {activePersona !== 'C Admin' && (
+            <select
+              className="form-select form-select-sm bg-white text-dark border-secondary"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ width: '150px' }}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="In Operations">In Operations</option>
+              <option value="Under Charter">Under Charter</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Dry Docking">Dry Docking</option>
+              <option value="Lay-up">Lay-up</option>
+              <option value="Port Stay">Port Stay</option>
+            </select>
+          )}
+
+          {activePersona === 'C Admin' && availableAssuranceSets.length > 0 && (
+            <select
+              className="form-select form-select-sm bg-white text-dark border-secondary font-mono-code"
+              value={assuranceSetFilter}
+              onChange={(e) => setAssuranceSetFilter(e.target.value)}
+              style={{ minWidth: '220px', maxWidth: '300px', fontSize: '0.8rem' }}
+              title="Filter by Client Assurance Set"
+            >
+              <option value="ALL">All Assurance Sets</option>
+              {availableAssuranceSets.map((set) => (
+                <option key={set.id} value={set.id}>
+                  {set.id} - {set.title}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Right: Export & Register Buttons on corner right of the row */}

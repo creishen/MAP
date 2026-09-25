@@ -149,6 +149,25 @@ describe('vessel provider fleet ownership isolation and c admin visibility', () 
     });
   });
 
+  it('filters vessels by specific assurance set for client admin', () => {
+    const targetSet = MOCK_ASSURANCE_SETS[0]; // AS-2026-001 (VESSEL-001)
+
+    const filteredVessels = MOCK_VESSELS.filter((v) => {
+      const matchesAssuranceSet = MOCK_ASSURANCE_SETS.some(
+        (set) =>
+          set.id === targetSet.id &&
+          (set.vesselId === v.id ||
+            (set.vesselName && v.name && set.vesselName.toLowerCase() === v.name.toLowerCase()) ||
+            (set.imoNumber && v.imoNumber && set.imoNumber === v.imoNumber))
+      );
+      return matchesAssuranceSet;
+    });
+
+    expect(filteredVessels.length).toBe(1);
+    expect(filteredVessels[0].id).toBe(targetSet.vesselId);
+    expect(filteredVessels[0].name).toBe(targetSet.vesselName);
+  });
+
   it('correctly includes newly registered vessels owned by submitter company', () => {
     const newSubmitterVessel: VesselParticulars = {
       id: 'VESSEL-999',
