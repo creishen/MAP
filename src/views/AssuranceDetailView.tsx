@@ -418,7 +418,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   setIsUploadModalOpen(true);
                 }}
               >
-                Upload Document
+                Upload Other Document
               </button>
             )}
           </div>

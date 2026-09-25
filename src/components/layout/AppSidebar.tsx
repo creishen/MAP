@@ -128,7 +128,7 @@ export const AppSidebar: React.FC = () => {
   const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
   const visibleItems = navItems.filter((item) => {
     /* hide dedicated sidepanel button if the page is rendered directly as that role's dashboard or excluded from sidebar */
-    if (activePersona === 'Verifier' && item.key === 'verifier') return false;
+    if ((activePersona === 'Verifier' || activePersona === 'Submitter') && item.key === 'verifier') return false;
     if (activePersona === 'Inspector' && item.key === 'inspector') return false;
     if (activePersona === 'Approver' && item.key === 'approver') return false;
     if ((activePersona === 'C Admin' || activePersona === 'Submitter') && item.key === 'assurance-sets') return false;

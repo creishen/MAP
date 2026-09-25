@@ -130,9 +130,9 @@ describe('approver action buttons and sidebar navigation suite', () => {
     expect(isButtonVisible('C Admin', 'capa')).toBe(true);
   });
 
-  it('hides assurance sets button from sidebar when active persona is Submitter', () => {
+  it('hides assurance sets and verification queue buttons from sidebar when active persona is Submitter', () => {
     const isButtonVisible = (persona: string, itemKey: string) => {
-      if (persona === 'Verifier' && itemKey === 'verifier') return false;
+      if ((persona === 'Verifier' || persona === 'Submitter') && itemKey === 'verifier') return false;
       if (persona === 'Inspector' && itemKey === 'inspector') return false;
       if (persona === 'Approver' && itemKey === 'approver') return false;
       if ((persona === 'C Admin' || persona === 'Submitter') && itemKey === 'assurance-sets') return false;
@@ -141,6 +141,7 @@ describe('approver action buttons and sidebar navigation suite', () => {
     };
 
     expect(isButtonVisible('Submitter', 'assurance-sets')).toBe(false);
+    expect(isButtonVisible('Submitter', 'verifier')).toBe(false);
     expect(isButtonVisible('Submitter', 'dashboard')).toBe(true);
     expect(isButtonVisible('Submitter', 'documents')).toBe(true);
   });
