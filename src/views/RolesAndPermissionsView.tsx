@@ -9,7 +9,6 @@ import { useMapStore } from '../store/useMapStore';
 import { PermissionMatrix } from '../components/permissions/PermissionMatrix';
 import {
   ALL_ROLE_PERSONAS,
-  BUILTIN_PERMISSION_CATEGORIES,
   CrudAction,
   RolePermissionMatrix,
   UserPermissionOverrides,
@@ -31,7 +30,6 @@ import { filterUsersForPersona } from '../utils/rbacHelpers';
 import { UserProfile } from '../types/user';
 
 type SettingsTab = 'role-defaults' | 'user-permissions';
-const NEW_CATEGORY_OPTION = '__new_category__';
 
 function cloneMatrix(matrix: RolePermissionMatrix): RolePermissionMatrix {
   return JSON.parse(JSON.stringify(matrix)) as RolePermissionMatrix;
@@ -42,7 +40,7 @@ function cloneOverrides(overrides: UserPermissionOverrides): UserPermissionOverr
 }
 
 /**
-  what: Roles & Permissions settings with Save bar, Add Role, Add Scope, and searchable user picker.
+  what: Roles & Permissions settings with Save bar, Add Role, and searchable user picker.
 */
 export const RolesAndPermissionsView: React.FC = () => {
   const {
@@ -52,14 +50,11 @@ export const RolesAndPermissionsView: React.FC = () => {
     userPermissionOverrides,
     customRoles,
     customScopes,
-    customCategories,
     commitRolePermissionDefaults,
     commitUserPermissionOverrides,
     resetRolePermissionsToBrd,
     clearUserPermissionOverrides,
     addCustomRole,
-    addCustomCategory,
-    addCustomScope,
   } = useMapStore();
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('role-defaults');
@@ -81,14 +76,6 @@ export const RolesAndPermissionsView: React.FC = () => {
 
   const [showAddRole, setShowAddRole] = useState(false);
   const [newRoleName, setNewRoleName] = useState('');
-  const [showAddScope, setShowAddScope] = useState(false);
-  const [newScopeLabel, setNewScopeLabel] = useState('');
-  const [newScopeDescription, setNewScopeDescription] = useState('');
-  const [newScopeCategory, setNewScopeCategory] = useState<string>(
-    BUILTIN_PERMISSION_CATEGORIES[0],
-  );
-  const [categorySelectMode, setCategorySelectMode] = useState<'existing' | 'new'>('existing');
-  const [newCategoryName, setNewCategoryName] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   const selectedUser = useMemo(
@@ -112,11 +99,6 @@ export const RolesAndPermissionsView: React.FC = () => {
       return haystack.includes(q);
     });
   }, [visibleUsers, userSearchQuery]);
-
-  const allCategories = useMemo(
-    () => [...BUILTIN_PERMISSION_CATEGORIES, ...customCategories],
-    [customCategories],
-  );
 
   const canEdit = activePersona === 'Administrator';
   const allRoles = useMemo(
@@ -234,38 +216,6 @@ export const RolesAndPermissionsView: React.FC = () => {
     setSaveMessage(`Role "${newRoleName.trim()}" created. Set Create/Read/Update/Delete, then Save.`);
   };
 
-  const handleAddScope = () => {
-    setFormError(null);
-    let category = newScopeCategory;
-    if (categorySelectMode === 'new') {
-      const catResult = addCustomCategory(newCategoryName);
-      if (!catResult.success) {
-        setFormError(catResult.message || 'Could not create category.');
-        return;
-      }
-      category = newCategoryName.trim();
-    }
-    const result = addCustomScope({
-      label: newScopeLabel,
-      description: newScopeDescription,
-      category,
-    });
-    if (!result.success) {
-      setFormError(result.message || 'Could not create scope.');
-      return;
-    }
-    const createdLabel = newScopeLabel.trim();
-    setNewScopeLabel('');
-    setNewScopeDescription('');
-    setNewScopeCategory(category);
-    setCategorySelectMode('existing');
-    setNewCategoryName('');
-    setShowAddScope(false);
-    setSaveMessage(
-      `Permission "${createdLabel}" added under "${category}". Enable rights per role, then Save.`,
-    );
-  };
-
   const selectUser = (user: UserProfile) => {
     setSelectedUserId(user.id);
     setUserSearchQuery('');
@@ -284,28 +234,16 @@ export const RolesAndPermissionsView: React.FC = () => {
           </div>
           <div className="d-flex flex-wrap gap-2">
             {canEdit && (
-              <>
-                <button
-                  type="button"
-                  className="btn btn-outline-primary btn-sm"
-                  onClick={() => {
-                    setFormError(null);
-                    setShowAddRole(true);
-                  }}
-                >
-                  + New role
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline-primary btn-sm"
-                  onClick={() => {
-                    setFormError(null);
-                    setShowAddScope(true);
-                  }}
-                >
-                  + New permission
-                </button>
-              </>
+              <button
+                type="button"
+                className="btn btn-outline-primary btn-sm"
+                onClick={() => {
+                  setFormError(null);
+                  setShowAddRole(true);
+                }}
+              >
+                + New role
+              </button>
             )}
             {canEdit && activeTab === 'role-defaults' && (
               <button
@@ -588,112 +526,6 @@ export const RolesAndPermissionsView: React.FC = () => {
                 </button>
                 <button type="button" className="btn btn-primary" onClick={handleAddRole}>
                   Create role
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showAddScope && (
-        <div className="modal d-block" style={{ background: 'rgba(15,23,42,0.45)' }} role="dialog">
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Create permission</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  aria-label="Close"
-                  onClick={() => {
-                    setShowAddScope(false);
-                    setCategorySelectMode('existing');
-                    setNewCategoryName('');
-                    setFormError(null);
-                  }}
-                />
-              </div>
-              <div className="modal-body d-flex flex-column gap-3">
-                <div>
-                  <label className="form-label" htmlFor="new-scope-label">
-                    Permission name
-                  </label>
-                  <input
-                    id="new-scope-label"
-                    className="form-control"
-                    value={newScopeLabel}
-                    onChange={(e) => setNewScopeLabel(e.target.value)}
-                    placeholder="e.g. Charter briefing pack"
-                  />
-                </div>
-                <div>
-                  <label className="form-label" htmlFor="new-scope-desc">
-                    Description
-                  </label>
-                  <textarea
-                    id="new-scope-desc"
-                    className="form-control"
-                    rows={2}
-                    value={newScopeDescription}
-                    onChange={(e) => setNewScopeDescription(e.target.value)}
-                    placeholder="What this permission controls"
-                  />
-                </div>
-                <div>
-                  <label className="form-label" htmlFor="new-scope-cat">
-                    Category
-                  </label>
-                  <select
-                    id="new-scope-cat"
-                    className="form-select"
-                    value={categorySelectMode === 'new' ? NEW_CATEGORY_OPTION : newScopeCategory}
-                    onChange={(e) => {
-                      if (e.target.value === NEW_CATEGORY_OPTION) {
-                        setCategorySelectMode('new');
-                        return;
-                      }
-                      setCategorySelectMode('existing');
-                      setNewScopeCategory(e.target.value);
-                    }}
-                  >
-                    {allCategories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                        {customCategories.includes(cat) ? '' : ''}
-                      </option>
-                    ))}
-                    <option value={NEW_CATEGORY_OPTION}>+ Create new category</option>
-                  </select>
-                  {categorySelectMode === 'new' && (
-                    <input
-                      className="form-control mt-2"
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      placeholder="New category name (e.g. Charter operations)"
-                      aria-label="New category name"
-                    />
-                  )}
-                  <div className="form-text">
-                    Pick an existing module group or create a new category for future permissions.
-                  </div>
-                </div>
-                {formError && <div className="text-danger small">{formError}</div>}
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => {
-                    setShowAddScope(false);
-                    setCategorySelectMode('existing');
-                    setNewCategoryName('');
-                    setFormError(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-primary" onClick={handleAddScope}>
-                  Create permission
                 </button>
               </div>
             </div>
