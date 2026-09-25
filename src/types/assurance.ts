@@ -33,6 +33,7 @@ export interface AssuranceRequirement {
   verifierStatus: 'Pending' | 'Verified' | 'Correction Requested' | 'Rejected';
   verificationRoute?: 'Inspector' | 'Approver';
   notes?: string;
+  isOtherDocument?: boolean;
 }
 
 export interface AssuranceSet {

@@ -384,27 +384,42 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
           <div className="fw-bold text-dark">
             Statutory Requirements Register
           </div>
-          <div className="dropdown position-relative">
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
-              onClick={() => setIsExportOpen(!isExportOpen)}
-            >
-              Export Data
-            </button>
-            {isExportOpen && (
-              <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border">
-                <li>
-                  <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
-                    Export as CSV (.csv)
-                  </button>
-                </li>
-                <li>
-                  <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
-                    Export as PDF (.pdf)
-                  </button>
-                </li>
-              </ul>
+          <div className="d-flex align-items-center gap-2 ms-auto">
+            <div className="dropdown position-relative">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary text-dark dropdown-toggle"
+                onClick={() => setIsExportOpen(!isExportOpen)}
+              >
+                Export Data
+              </button>
+              {isExportOpen && (
+                <ul className="dropdown-menu dropdown-menu-light show position-absolute end-0 mt-1 shadow border" style={{ zIndex: 1050 }}>
+                  <li>
+                    <button type="button" className="dropdown-item small" onClick={handleExportCsv}>
+                      Export as CSV (.csv)
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" className="dropdown-item small" onClick={handleExportPdf}>
+                      Export as PDF (.pdf)
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
+            {canUpload && (
+              <button
+                type="button"
+                className="btn btn-sm btn-primary text-white font-mono-code"
+                onClick={() => {
+                  setUploadTargetRequirement(null);
+                  setReplaceExistingDoc(null);
+                  setIsUploadModalOpen(true);
+                }}
+              >
+                Upload Document
+              </button>
             )}
           </div>
         </div>
@@ -440,7 +455,8 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
               </tr>
             </thead>
             <tbody>
-              {sortedRequirements.map((req: AssuranceRequirement) => {
+              {/* Main Files (Toggled Statutory Requirements during campaign creation) */}
+              {sortedRequirements.filter((r) => !r.isOtherDocument).map((req: AssuranceRequirement) => {
                 const linkedDoc = documents.find((d) => d.id === req.documentId || (req.linkedDocumentId && d.id === req.linkedDocumentId));
                 const hasAttachedDoc = Boolean(linkedDoc || req.documentId || req.linkedDocumentId);
                 const effectiveOcr = hasAttachedDoc ? (req.ocrConfidence || linkedDoc?.ocrConfidence || 0) : 0;
@@ -503,6 +519,90 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   </tr>
                 );
               })}
+
+              {/* Other Documents Section Title */}
+              <tr className="bg-light border-top border-bottom">
+                <td colSpan={5} className="py-2.5 px-3">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <span className="fw-bold text-secondary text-uppercase font-mono-code" style={{ fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                      Other Documents
+                    </span>
+                  </div>
+                </td>
+              </tr>
+
+              {/* Other Documents Rows */}
+              {sortedRequirements.filter((r) => r.isOtherDocument).length > 0 ? (
+                sortedRequirements.filter((r) => r.isOtherDocument).map((req: AssuranceRequirement) => {
+                  const linkedDoc = documents.find((d) => d.id === req.documentId || (req.linkedDocumentId && d.id === req.linkedDocumentId));
+                  const hasAttachedDoc = Boolean(linkedDoc || req.documentId || req.linkedDocumentId);
+                  const effectiveOcr = hasAttachedDoc ? (req.ocrConfidence || linkedDoc?.ocrConfidence || 0) : 0;
+
+                  return (
+                    <tr key={req.id}>
+                      <td>
+                        <span className="badge bg-light text-dark border" style={{ fontSize: '0.75rem' }}>
+                          {req.category}
+                        </span>
+                      </td>
+                      <td className="fw-semibold text-dark">
+                        {req.title}
+                        {(linkedDoc?.currentVersion || req.documentVersion) && (
+                          <span className="badge bg-light text-secondary border font-mono-code ms-2" style={{ fontSize: '0.7rem' }}>
+                            {linkedDoc?.currentVersion || req.documentVersion}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <ConfidenceBadge score={effectiveOcr} />
+                      </td>
+                      <td>
+                        {renderRequirementStatus(req)}
+                      </td>
+                      <td className="text-end">
+                        <div className="d-flex align-items-center justify-content-end gap-2 flex-wrap">
+                          {linkedDoc ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary font-mono-code"
+                                onClick={() => setSelectedDocForReview({ doc: linkedDoc, notes: req.notes })}
+                              >
+                                Review Document
+                              </button>
+                              {canUpload && linkedDoc.verificationStatus !== 'Verified' && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-secondary font-mono-code"
+                                  onClick={() => openRequirementUpload(req, linkedDoc)}
+                                >
+                                  Replace Revision
+                                </button>
+                              )}
+                            </>
+                          ) : canUpload ? (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-primary text-white font-mono-code"
+                              onClick={() => openRequirementUpload(req)}
+                            >
+                              Upload Document
+                            </button>
+                          ) : (
+                            <span className="text-secondary small font-mono-code">No Document</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={5} className="text-center text-muted py-3 small font-mono-code">
+                    No other documents uploaded. Click 'Upload Document' above to attach additional certificates or reports.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -526,7 +626,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
         isOpen={isUploadModalOpen}
         onClose={closeUploadModal}
         existingDocument={replaceExistingDoc}
-        assuranceSetId={uploadTargetRequirement ? assuranceSet.id : undefined}
+        assuranceSetId={assuranceSet.id}
         requirementId={uploadTargetRequirement?.id}
         requirementTitle={uploadTargetRequirement?.title}
         defaultVesselId={assuranceSet.vesselId}

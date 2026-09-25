@@ -93,7 +93,7 @@ export interface MapStoreState {
   linkDocumentToVessel: (docId: string, vesselId: string, vesselName?: string, imoNumber?: string) => void;
   uploadDocumentForRequirement: (
     setId: string,
-    requirementId: string,
+    requirementId: string | undefined,
     doc: MasterDocument,
   ) => void;
   addDocumentVersion: (
@@ -647,18 +647,38 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       const updatedSets = state.assuranceSets.map((s) => {
         if (s.id !== setId) return s;
 
-        const updatedReqs = s.requirements.map((r) => {
-          if (r.id !== requirementId) return r;
-          return {
-            ...r,
-            documentId: doc.id,
-            documentVersion: doc.currentVersion,
-            verifierStatus: 'Pending' as const,
+        let updatedReqs = [...s.requirements];
+        const targetReqExists = requirementId ? updatedReqs.some((r) => r.id === requirementId) : false;
+
+        if (targetReqExists) {
+          updatedReqs = updatedReqs.map((r) => {
+            if (r.id !== requirementId) return r;
+            return {
+              ...r,
+              documentId: doc.id,
+              documentVersion: doc.currentVersion,
+              verifierStatus: 'Pending' as const,
+              isFulfilled: false,
+              ocrConfidence: doc.ocrConfidence,
+              notes: `Upload linked to requirement (${doc.versions[0]?.fileName || doc.title}).`,
+            };
+          });
+        } else {
+          const newReq: AssuranceRequirement = {
+            id: `req-other-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+            category: doc.entityType === 'Crew Certificate' ? 'Crew Credential' : 'Statutory Certificate',
+            title: doc.title,
+            isMandatory: false,
             isFulfilled: false,
-            ocrConfidence: doc.ocrConfidence,
-            notes: `Mock upload linked to requirement (${doc.versions[0]?.fileName || doc.title}).`,
+            ocrConfidence: doc.ocrConfidence || 99,
+            documentId: doc.id,
+            documentVersion: doc.currentVersion || 'v1.0',
+            verifierStatus: 'Pending',
+            isOtherDocument: true,
+            notes: `Uploaded additional document (${doc.versions?.[0]?.fileName || doc.title}).`,
           };
-        });
+          updatedReqs.push(newReq);
+        }
 
         const hasLinkedDocuments = updatedReqs.some((r) => r.documentId);
         let nextStage = s.stage;
@@ -702,8 +722,8 @@ export const useMapStore = create<MapStoreState>((set, get) => ({
       userRole: get().activePersona,
       organization: 'Vessel Provider Operations',
       action: 'Uploaded Document for Assurance Requirement',
-      targetAsset: `${doc.id} → ${setId} / ${requirementId}`,
-      justificationNotes: `Mock upload: ${doc.title} (${doc.certificateNo}) queued for verifier review.`,
+      targetAsset: `${doc.id} -> ${setId} / ${requirementId || 'Other Documents'}`,
+      justificationNotes: `Upload: ${doc.title} (${doc.certificateNo}) queued for verifier review.`,
     });
   },
   addDocumentVersion: (docId, newVersionLabel, fileName, fileSizeBytes, changeSummary) => {

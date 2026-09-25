@@ -310,5 +310,53 @@ describe('Map Store State Management', () => {
     expect(latestAudit.action).toContain('Uploaded Document Revision');
     expect(latestAudit.targetAsset).toContain(targetDoc.id);
   });
+
+  it('should add an Other Documents requirement to assurance set when uploaded without pre-existing requirementId', () => {
+    const store = useMapStore.getState();
+    const targetSet = store.assuranceSets[0];
+    const initialReqCount = targetSet.requirements.length;
+
+    const adHocDoc = {
+      id: 'DOC-ADHOC-TEST-001',
+      title: 'Supplemental Bunkering Audit Certificate',
+      entityType: 'Vessel Certificate' as const,
+      vesselId: targetSet.vesselId,
+      certificateNo: 'DNV-BUNK-2026-991',
+      issuingAuthority: 'DNV Classification Society',
+      expiryDate: '2029-06-30',
+      ocrConfidence: 98,
+      complianceState: 'Valid' as const,
+      currentVersion: 'v1.0',
+      versions: [
+        {
+          versionLabel: 'v1.0',
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: 'Ops Submitter',
+          fileSizeBytes: 1800000,
+          fileName: 'Supplemental_Bunkering_Audit_Certificate.pdf',
+          changeSummary: 'Ad-hoc supplemental document upload.',
+        },
+      ],
+      validationRules: {
+        charterBufferPassed: true,
+        assetMatch100Percent: true,
+        iacsAuthorityValid: true,
+        overallValid: true,
+      },
+      verificationStatus: 'Pending' as const,
+    };
+
+    store.uploadDocumentForRequirement(targetSet.id, undefined, adHocDoc);
+
+    const updatedSet = useMapStore.getState().assuranceSets.find((s) => s.id === targetSet.id);
+    expect(updatedSet?.requirements.length).toBe(initialReqCount + 1);
+
+    const otherReq = updatedSet?.requirements.find((r) => r.documentId === adHocDoc.id);
+    expect(otherReq).toBeDefined();
+    expect(otherReq?.isOtherDocument).toBe(true);
+    expect(otherReq?.title).toBe('Supplemental Bunkering Audit Certificate');
+    expect(otherReq?.verifierStatus).toBe('Pending');
+  });
 });
+
 
