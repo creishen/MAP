@@ -1,9 +1,3 @@
-/* 
-  file summary: executive overview dashboard view for the marine assurance platform (map) in light theme.
-  responsibilities: presents fleet compliance readiness stats or client created assurance sets, active vetting campaigns summary, and role context banner.
-  role in system: primary home view rendered on default navigation.
-*/
-
 import React, { useState } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
@@ -12,9 +6,12 @@ import { VerifierWorkspaceView } from './VerifierWorkspaceView';
 import { InspectorWorkspaceView } from './InspectorWorkspaceView';
 import { ApproverDashboardView } from './ApproverDashboardView';
 import { Vessel } from '../types/vessel';
-import { AssuranceStage } from '../types/assurance';
+import { AssuranceSet, AssuranceStage, AssuranceRequirement } from '../types/assurance';
+import { MasterDocument } from '../types/document';
 import { isAssuranceSetAssignedToPersona, filterVesselsForPersona } from '../utils/rbacHelpers';
 import { calculateAssuranceSetReadiness, calculateVesselReadiness } from '../utils/readinessHelpers';
+import { DocumentReviewDrawer } from '../components/drawers/DocumentReviewDrawer';
+import { DocumentUploadModal } from '../components/drawers/DocumentUploadModal';
 
 /**
   what: renders the executive dashboard workspace view in light theme.
@@ -26,8 +23,16 @@ export const DashboardView: React.FC = () => {
   const [cAdminSearchTerm, setCAdminSearchTerm] = useState('');
   const [cAdminSortField, setCAdminSortField] = useState<'id' | 'title' | 'vesselName' | 'charterWindowStart' | 'stage' | 'readinessScore'>('id');
   const [cAdminSortDirection, setCAdminSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [submitterSearchTerm, setSubmitterSearchTerm] = useState('');
+  const [submitterSortField, setSubmitterSortField] = useState<'id' | 'title' | 'vesselName' | 'charterWindowStart' | 'stage' | 'readinessScore'>('id');
+  const [submitterSortDirection, setSubmitterSortDirection] = useState<'asc' | 'desc'>('asc');
   const [fleetSortField, setFleetSortField] = useState<'name' | 'imoNumber' | 'flagState' | 'classificationSociety' | 'status' | 'readiness'>('name');
   const [fleetSortDirection, setFleetSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  /* returned documents drawer state for submitter */
+  const [selectedReturnedSet, setSelectedReturnedSet] = useState<AssuranceSet | null>(null);
+  const [uploadDrawerTarget, setUploadDrawerTarget] = useState<{ req: AssuranceRequirement; doc?: MasterDocument } | null>(null);
+  const [reviewDrawerDoc, setReviewDrawerDoc] = useState<{ doc: MasterDocument; notes?: string } | null>(null);
 
   if (activePersona === 'Verifier') {
     return <VerifierWorkspaceView />;
@@ -54,6 +59,10 @@ export const DashboardView: React.FC = () => {
 
   /* c admin specific assurance sets */
   const cAdminAssuranceSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, 'C Admin'));
+
+  /* submitter specific assurance sets */
+  const submitterAssuranceSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, 'Submitter'));
+  const visibleSubmitterSets = submitterAssuranceSets.length > 0 ? submitterAssuranceSets : assuranceSets;
 
   const renderSortIndicator = (currentField: string, field: string, direction: 'asc' | 'desc') => {
     if (currentField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
@@ -88,6 +97,38 @@ export const DashboardView: React.FC = () => {
     } else {
       setCAdminSortField(field);
       setCAdminSortDirection('asc');
+    }
+  };
+
+  const filteredSubmitterSets = visibleSubmitterSets.filter((s) => {
+    const term = submitterSearchTerm.toLowerCase();
+    return (
+      s.id.toLowerCase().includes(term) ||
+      s.title.toLowerCase().includes(term) ||
+      s.vesselName.toLowerCase().includes(term) ||
+      s.imoNumber.includes(term) ||
+      (s.initiatorOrg && s.initiatorOrg.toLowerCase().includes(term)) ||
+      (s.charterer && s.charterer.toLowerCase().includes(term))
+    );
+  });
+
+  const sortedSubmitterSets = [...filteredSubmitterSets].sort((a, b) => {
+    let comp = 0;
+    if (submitterSortField === 'id') comp = a.id.localeCompare(b.id);
+    else if (submitterSortField === 'title') comp = a.title.localeCompare(b.title);
+    else if (submitterSortField === 'vesselName') comp = a.vesselName.localeCompare(b.vesselName);
+    else if (submitterSortField === 'charterWindowStart') comp = (a.charterWindowStart || '').localeCompare(b.charterWindowStart || '');
+    else if (submitterSortField === 'stage') comp = a.stage.localeCompare(b.stage);
+    else if (submitterSortField === 'readinessScore') comp = calculateAssuranceSetReadiness(a) - calculateAssuranceSetReadiness(b);
+    return submitterSortDirection === 'asc' ? comp : -comp;
+  });
+
+  const handleSubmitterSort = (field: 'id' | 'title' | 'vesselName' | 'charterWindowStart' | 'stage' | 'readinessScore') => {
+    if (submitterSortField === field) {
+      setSubmitterSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSubmitterSortField(field);
+      setSubmitterSortDirection('asc');
     }
   };
 
@@ -285,8 +326,8 @@ export const DashboardView: React.FC = () => {
   const submitterRevisions =
     activePersona === 'Submitter'
       ? documents.filter(
-          (d) => d.verificationStatus === 'Correction Requested' || d.verificationStatus === 'Rejected'
-        ).length
+        (d) => d.verificationStatus === 'Correction Requested' || d.verificationStatus === 'Rejected'
+      ).length
       : 0;
 
   return (
@@ -294,28 +335,9 @@ export const DashboardView: React.FC = () => {
       {/* top banner kpi summary cards */}
       {renderDashboardCards()}
 
-      {/* submitter action ping notification alert */}
-      {activePersona === 'Submitter' && submitterRevisions > 0 && (
-        <div className="alert alert-warning border-warning shadow-xs py-3 px-4 d-flex align-items-center justify-between gap-3">
-          <div>
-            <div className="fw-bold text-dark mb-0.5 font-mono-code">
-              [ACTION REQUIRED] Submitter Ping: {submitterRevisions} Document Revision(s) Requested
-            </div>
-            <div className="small text-secondary">
-              The Approver or Verifier has returned or rejected statutory evidence. Please review the defect comments and upload replacement revisions.
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn btn-sm btn-warning text-dark fw-semibold font-mono-code text-nowrap"
-            onClick={() => setCurrentHashView('documents')}
-          >
-            View Returned Documents →
-          </button>
-        </div>
-      )}
 
-      {/* main content area: c admin displays their own created assurance sets with no audit card; other personas display fleet overview and audit feed */}
+
+      {/* main content area: c admin & submitter display assurance sets; other personas display fleet overview */}
       {activePersona === 'C Admin' ? (
         <div className="row g-4">
           <div className="col-12">
@@ -438,6 +460,149 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
         </div>
+      ) : activePersona === 'Submitter' ? (
+        <div className="row g-4">
+          <div className="col-12">
+            <div className="card map-card-custom">
+              <div className="card-header d-flex flex-wrap align-items-center justify-between gap-2 p-3">
+                <div className="fw-bold text-dark">
+                  Assurance Sets
+                </div>
+                <div className="d-flex align-items-center gap-2 ms-auto">
+                  <input
+                    type="text"
+                    className="form-control form-control-sm bg-white text-dark border-secondary"
+                    placeholder="Search campaigns, vessels..."
+                    value={submitterSearchTerm}
+                    onChange={(e) => setSubmitterSearchTerm(e.target.value)}
+                    style={{ width: '240px' }}
+                  />
+                </div>
+              </div>
+              <div className="card-body p-0">
+                <div className="table-responsive">
+                  <table className="table map-table-custom align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleSubmitterSort('id')}
+                        >
+                          Set ID {renderSortIndicator(submitterSortField, 'id', submitterSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleSubmitterSort('title')}
+                        >
+                          Campaign Title {renderSortIndicator(submitterSortField, 'title', submitterSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleSubmitterSort('vesselName')}
+                        >
+                          Target Vessel {renderSortIndicator(submitterSortField, 'vesselName', submitterSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleSubmitterSort('charterWindowStart')}
+                        >
+                          Charter Period {renderSortIndicator(submitterSortField, 'charterWindowStart', submitterSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleSubmitterSort('stage')}
+                        >
+                          Stage {renderSortIndicator(submitterSortField, 'stage', submitterSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleSubmitterSort('readinessScore')}
+                        >
+                          Readiness Index {renderSortIndicator(submitterSortField, 'readinessScore', submitterSortDirection)}
+                        </th>
+                        <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedSubmitterSets.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="text-center py-4 text-muted">
+                            No assurance sets found matching your search.
+                          </td>
+                        </tr>
+                      ) : (
+                        sortedSubmitterSets.map((s) => {
+                          const returnedDocs = s.requirements.filter((r) => {
+                            const linkedDoc = documents.find((d) => d.id === r.documentId || (r.linkedDocumentId && d.id === r.linkedDocumentId));
+                            return (
+                              r.verifierStatus === 'Correction Requested' ||
+                              r.verifierStatus === 'Rejected' ||
+                              linkedDoc?.verificationStatus === 'Correction Requested' ||
+                              linkedDoc?.verificationStatus === 'Rejected'
+                            );
+                          });
+                          const returnedCount = returnedDocs.length;
+
+                          return (
+                            <tr
+                              key={s.id}
+                              onClick={() => setCurrentHashView('assurance-sets', s.id)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <td className="fw-semibold text-primary font-mono-code">{s.id}</td>
+                              <td>
+                                <div className="fw-semibold text-slate-900">{s.title}</div>
+                                <div className="small text-muted">{s.initiatorOrg || s.charterer}</div>
+                              </td>
+                              <td>
+                                <div className="fw-semibold">{s.vesselName}</div>
+                                <div className="font-mono-code small text-muted">IMO {s.imoNumber}</div>
+                              </td>
+                              <td className="small font-mono-code text-muted">
+                                {s.charterWindowStart && s.charterWindowEnd
+                                  ? `${formatMaritimeDate(s.charterWindowStart)} – ${formatMaritimeDate(s.charterWindowEnd)}`
+                                  : 'Not specified'}
+                              </td>
+                              <td>
+                                <span className={`badge ${getStageBadgeClass(s.stage)} font-mono-code`}>
+                                  {s.stage}
+                                </span>
+                              </td>
+                              <td>
+                                <ReadinessGauge score={calculateAssuranceSetReadiness(s)} size="sm" />
+                              </td>
+                              <td className="text-end" onClick={(e) => e.stopPropagation()}>
+                                <div className="d-flex align-items-center justify-content-end gap-2">
+                                  {returnedCount > 0 && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-danger fw-bold font-mono-code"
+                                      onClick={() => setSelectedReturnedSet(s)}
+                                      title={`View ${returnedCount} returned or rejected document(s) requiring revision`}
+                                    >
+                                      Revisions ({returnedCount})
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary"
+                                    onClick={() => setCurrentHashView('assurance-sets', s.id)}
+                                  >
+                                    View Details
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="row g-4">
           <div className="col-12">
@@ -523,6 +688,158 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Returned Documents & Resubmission Drawer for Submitter */}
+      {selectedReturnedSet && (
+        <div
+          className="offcanvas offcanvas-end show bg-white text-dark border-start shadow-lg"
+          style={{ width: '560px', maxWidth: '95vw', visibility: 'visible', zIndex: 1050 }}
+          tabIndex={-1}
+        >
+          <div className="offcanvas-header border-bottom p-3 bg-light d-flex align-items-center justify-content-between">
+            <div>
+              <h5 className="offcanvas-title fw-bold text-slate-900 m-0 d-flex align-items-center gap-2">
+                <span>Returned Documents Queue</span>
+                <span className="badge bg-danger font-mono-code" style={{ fontSize: '0.75rem' }}>
+                  {
+                    selectedReturnedSet.requirements.filter((r) => {
+                      const linkedDoc = documents.find((d) => d.id === r.documentId || (r.linkedDocumentId && d.id === r.linkedDocumentId));
+                      return (
+                        r.verifierStatus === 'Correction Requested' ||
+                        r.verifierStatus === 'Rejected' ||
+                        linkedDoc?.verificationStatus === 'Correction Requested' ||
+                        linkedDoc?.verificationStatus === 'Rejected'
+                      );
+                    }).length
+                  } Requiring Revision
+                </span>
+              </h5>
+              <div className="text-secondary small font-mono-code mt-0.5">
+                {selectedReturnedSet.id} · {selectedReturnedSet.title}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn-close ms-auto"
+              onClick={() => setSelectedReturnedSet(null)}
+              aria-label="Close"
+            />
+          </div>
+
+          <div className="offcanvas-body p-3 d-flex flex-column gap-3">
+            <div className="alert alert-warning border-warning py-2.5 px-3 mb-0 small">
+              <div className="fw-semibold text-dark">Submitter Action Required</div>
+              <div className="text-secondary">
+                The Verifier or Approver flagged the following document(s) for correction or replacement. Review reviewer notes and upload updated revisions.
+              </div>
+            </div>
+
+            {selectedReturnedSet.requirements
+              .filter((r) => {
+                const linkedDoc = documents.find((d) => d.id === r.documentId || (r.linkedDocumentId && d.id === r.linkedDocumentId));
+                return (
+                  r.verifierStatus === 'Correction Requested' ||
+                  r.verifierStatus === 'Rejected' ||
+                  linkedDoc?.verificationStatus === 'Correction Requested' ||
+                  linkedDoc?.verificationStatus === 'Rejected'
+                );
+              })
+              .map((req) => {
+                const linkedDoc = documents.find((d) => d.id === req.documentId || (req.linkedDocumentId && d.id === req.linkedDocumentId));
+                const status = req.verifierStatus === 'Rejected' || linkedDoc?.verificationStatus === 'Rejected' ? 'Rejected' : 'Correction Requested';
+                const defectNote = req.notes || linkedDoc?.verificationNotes || 'Defect identified during compliance check. Replacement revision required.';
+
+                return (
+                  <div key={req.id} className="p-3 bg-light border rounded shadow-2xs">
+                    <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                      <div>
+                        <div className="fw-bold text-dark">{req.title}</div>
+                        <div className="font-mono-code text-secondary small">
+                          {req.category} {linkedDoc?.certificateNo ? `· ${linkedDoc.certificateNo}` : ''}
+                        </div>
+                      </div>
+                      <span className={`badge ${status === 'Rejected' ? 'bg-danger text-white' : 'bg-warning text-dark'} font-mono-code`} style={{ fontSize: '0.75rem' }}>
+                        {status}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 bg-white border rounded small mb-3">
+                      <div className="text-secondary fw-semibold mb-1" style={{ fontSize: '0.75rem' }}>
+                        Reviewer Defect Notes:
+                      </div>
+                      <div className="text-dark font-mono-code" style={{ fontSize: '0.8rem' }}>
+                        {defectNote}
+                      </div>
+                    </div>
+
+                    <div className="d-flex align-items-center justify-content-end gap-2">
+                      {linkedDoc && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary font-mono-code"
+                          onClick={() => setReviewDrawerDoc({ doc: linkedDoc, notes: defectNote })}
+                        >
+                          Review Document
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary text-white font-mono-code"
+                        onClick={() => setUploadDrawerTarget({ req, doc: linkedDoc })}
+                      >
+                        Replace Revision
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
+          <div className="offcanvas-footer border-top p-3 bg-light d-flex align-items-center justify-content-between">
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              onClick={() => setSelectedReturnedSet(null)}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-primary fw-semibold"
+              onClick={() => {
+                const setId = selectedReturnedSet.id;
+                setSelectedReturnedSet(null);
+                setCurrentHashView('assurance-sets', setId);
+              }}
+            >
+              Open Full Campaign Workspace →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Review Drawer opened from Returned Queue */}
+      <DocumentReviewDrawer
+        document={reviewDrawerDoc?.doc || null}
+        requirementNotes={reviewDrawerDoc?.notes}
+        onClose={() => setReviewDrawerDoc(null)}
+      />
+
+      {/* Upload Modal opened from Returned Queue */}
+      {uploadDrawerTarget && (
+        <DocumentUploadModal
+          isOpen={Boolean(uploadDrawerTarget)}
+          onClose={() => setUploadDrawerTarget(null)}
+          existingDocument={uploadDrawerTarget.doc || null}
+          assuranceSetId={selectedReturnedSet?.id}
+          requirementId={uploadDrawerTarget.req.id}
+          requirementTitle={uploadDrawerTarget.req.title}
+          defaultVesselId={selectedReturnedSet?.vesselId}
+          onUploadComplete={() => {
+            setUploadDrawerTarget(null);
+          }}
+        />
       )}
     </div>
   );

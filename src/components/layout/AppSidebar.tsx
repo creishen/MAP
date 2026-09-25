@@ -131,7 +131,7 @@ export const AppSidebar: React.FC = () => {
     if (activePersona === 'Verifier' && item.key === 'verifier') return false;
     if (activePersona === 'Inspector' && item.key === 'inspector') return false;
     if (activePersona === 'Approver' && item.key === 'approver') return false;
-    if (activePersona === 'C Admin' && item.key === 'assurance-sets') return false;
+    if ((activePersona === 'C Admin' || activePersona === 'Submitter') && item.key === 'assurance-sets') return false;
     if ((activePersona === 'Administrator' || activePersona === 'Submitter') && item.key === 'capa') return false;
 
     /* Roles & Permissions is an Administrator settings page (BRD role_rights row stays blank) */

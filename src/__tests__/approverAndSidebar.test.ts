@@ -130,6 +130,21 @@ describe('approver action buttons and sidebar navigation suite', () => {
     expect(isButtonVisible('C Admin', 'capa')).toBe(true);
   });
 
+  it('hides assurance sets button from sidebar when active persona is Submitter', () => {
+    const isButtonVisible = (persona: string, itemKey: string) => {
+      if (persona === 'Verifier' && itemKey === 'verifier') return false;
+      if (persona === 'Inspector' && itemKey === 'inspector') return false;
+      if (persona === 'Approver' && itemKey === 'approver') return false;
+      if ((persona === 'C Admin' || persona === 'Submitter') && itemKey === 'assurance-sets') return false;
+      if ((persona === 'Administrator' || persona === 'Submitter') && itemKey === 'capa') return false;
+      return true;
+    };
+
+    expect(isButtonVisible('Submitter', 'assurance-sets')).toBe(false);
+    expect(isButtonVisible('Submitter', 'dashboard')).toBe(true);
+    expect(isButtonVisible('Submitter', 'documents')).toBe(true);
+  });
+
   /**
     what: verifies that setActivePersona transitions smoothly across all roles without state corruption.
     how: cycles through each persona and verifies activePersona is set and accessible routes are maintained.
@@ -143,3 +158,4 @@ describe('approver action buttons and sidebar navigation suite', () => {
     });
   });
 });
+
