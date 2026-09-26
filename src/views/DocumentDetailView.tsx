@@ -4,13 +4,14 @@
   role in system: deep-dive view rendered when a document row is selected.
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { ConfidenceBadge } from '../components/common/ConfidenceBadge';
 import { formatMaritimeDate } from '../utils/formatters';
 import { getBackButtonInfo } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 import { DocumentUploadModal } from '../components/drawers/DocumentUploadModal';
+import { DocumentVersion } from '../types/document';
 
 interface DocumentDetailViewProps {
   documentId: string;
@@ -37,6 +38,38 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
   const canUpload = activePersona === 'Submitter' || activePersona === 'Administrator';
 
   const doc = documents.find((d) => d.id === documentId) || documents[0];
+
+  type VersionSortField = 'versionLabel' | 'fileName' | 'uploadedAt' | 'uploadedBy' | 'fileSizeBytes' | 'changeSummary';
+  const [versionSortField, setVersionSortField] = useState<VersionSortField>('uploadedAt');
+  const [versionSortDirection, setVersionSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const renderSortIndicator = (currentField: string, field: string, direction: 'asc' | 'desc') => {
+    if (currentField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{direction === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const sortedVersions = useMemo(() => {
+    if (!doc?.versions) return [];
+    return [...doc.versions].sort((a, b) => {
+      let comp = 0;
+      if (versionSortField === 'versionLabel') comp = a.versionLabel.localeCompare(b.versionLabel);
+      else if (versionSortField === 'fileName') comp = a.fileName.localeCompare(b.fileName);
+      else if (versionSortField === 'uploadedAt') comp = new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime();
+      else if (versionSortField === 'uploadedBy') comp = a.uploadedBy.localeCompare(b.uploadedBy);
+      else if (versionSortField === 'fileSizeBytes') comp = a.fileSizeBytes - b.fileSizeBytes;
+      else if (versionSortField === 'changeSummary') comp = a.changeSummary.localeCompare(b.changeSummary);
+      return versionSortDirection === 'asc' ? comp : -comp;
+    });
+  }, [doc, versionSortField, versionSortDirection]);
+
+  const handleVersionSort = (field: VersionSortField) => {
+    if (versionSortField === field) {
+      setVersionSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setVersionSortField(field);
+      setVersionSortDirection('asc');
+    }
+  };
 
   if (!doc) return <div>Document not found.</div>;
 
@@ -276,16 +309,46 @@ export const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document
           <table className="table map-table-custom align-middle mb-0">
             <thead>
               <tr>
-                <th>Version</th>
-                <th>File Name</th>
-                <th>Upload Timestamp (UTC)</th>
-                <th>Uploader</th>
-                <th>File Size</th>
-                <th>Change Summary</th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleVersionSort('versionLabel')}
+                >
+                  Version {renderSortIndicator(versionSortField, 'versionLabel', versionSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleVersionSort('fileName')}
+                >
+                  File Name {renderSortIndicator(versionSortField, 'fileName', versionSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleVersionSort('uploadedAt')}
+                >
+                  Upload Timestamp (UTC) {renderSortIndicator(versionSortField, 'uploadedAt', versionSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleVersionSort('uploadedBy')}
+                >
+                  Uploader {renderSortIndicator(versionSortField, 'uploadedBy', versionSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleVersionSort('fileSizeBytes')}
+                >
+                  File Size {renderSortIndicator(versionSortField, 'fileSizeBytes', versionSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleVersionSort('changeSummary')}
+                >
+                  Change Summary {renderSortIndicator(versionSortField, 'changeSummary', versionSortDirection)}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {doc.versions.map((ver) => (
+              {sortedVersions.map((ver: DocumentVersion) => (
                 <tr key={ver.versionLabel}>
                   <td>
                     <span className="badge bg-info text-dark font-mono-code">{ver.versionLabel}</span>

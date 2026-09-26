@@ -117,16 +117,15 @@ export const VerifierWorkspaceView: React.FC = () => {
 
   const renderSortHeader = (label: string, field: SortField) => (
     <th
-      className="cursor-pointer user-select-none"
+      style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
       onClick={() => handleSort(field)}
-      style={{ cursor: 'pointer' }}
     >
-      <div className="d-flex align-items-center justify-between gap-1">
-        <span>{label}</span>
-        <span className="text-muted small" style={{ fontSize: '0.7rem' }}>
-          {sortField === field ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
-        </span>
-      </div>
+      {label}{' '}
+      {sortField !== field ? (
+        <span className="text-muted ms-1 small opacity-50">↕</span>
+      ) : (
+        <span className="text-primary ms-1 small fw-bold">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+      )}
     </th>
   );
 

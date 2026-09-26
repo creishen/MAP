@@ -4,7 +4,7 @@
   role in system: deep-dive view rendered when an assurance set row is selected.
 */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { PipelineStepper } from '../components/common/PipelineStepper';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
@@ -39,7 +39,48 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isAssigningInspector, setIsAssigningInspector] = useState(false);
 
+  type ReqSortField = 'category' | 'title' | 'ocrConfidence' | 'status';
+  const [reqSortField, setReqSortField] = useState<ReqSortField>('category');
+  const [reqSortDirection, setReqSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const renderSortIndicator = (field: ReqSortField) => {
+    if (reqSortField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{reqSortDirection === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const handleReqSort = (field: ReqSortField) => {
+    if (reqSortField === field) {
+      setReqSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setReqSortField(field);
+      setReqSortDirection('asc');
+    }
+  };
+
   const assuranceSet = assuranceSets.find((s) => s.id === setId) || assuranceSets[0];
+
+  const sortedRequirements = useMemo(() => {
+    if (!assuranceSet?.requirements) return [];
+    return [...assuranceSet.requirements].sort((a, b) => {
+      let comp = 0;
+      if (reqSortField === 'category') {
+        comp = a.category.localeCompare(b.category);
+      } else if (reqSortField === 'title') {
+        comp = a.title.localeCompare(b.title);
+      } else if (reqSortField === 'ocrConfidence') {
+        const docA = documents.find((d) => d.id === a.documentId || (a.linkedDocumentId && d.id === a.linkedDocumentId));
+        const docB = documents.find((d) => d.id === b.documentId || (b.linkedDocumentId && d.id === b.linkedDocumentId));
+        const scoreA = a.ocrConfidence || docA?.ocrConfidence || 0;
+        const scoreB = b.ocrConfidence || docB?.ocrConfidence || 0;
+        comp = scoreA - scoreB;
+      } else if (reqSortField === 'status') {
+        const statusA = a.verifierStatus || (a.isFulfilled ? 'Verified' : 'Awaiting Upload');
+        const statusB = b.verifierStatus || (b.isFulfilled ? 'Verified' : 'Awaiting Upload');
+        comp = statusA.localeCompare(statusB);
+      }
+      return reqSortDirection === 'asc' ? comp : -comp;
+    });
+  }, [assuranceSet, reqSortField, reqSortDirection, documents]);
 
   if (!assuranceSet) return <div>Assurance Set not found.</div>;
 
@@ -371,15 +412,35 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
           <table className="table map-table-custom align-middle mb-0">
             <thead>
               <tr>
-                <th>Category</th>
-                <th>Requirement Title</th>
-                <th>OCR Confidence</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleReqSort('category')}
+                >
+                  Category {renderSortIndicator('category')}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleReqSort('title')}
+                >
+                  Requirement Title {renderSortIndicator('title')}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleReqSort('ocrConfidence')}
+                >
+                  OCR Confidence {renderSortIndicator('ocrConfidence')}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleReqSort('status')}
+                >
+                  Status {renderSortIndicator('status')}
+                </th>
+                <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {assuranceSet.requirements.map((req) => {
+              {sortedRequirements.map((req: AssuranceRequirement) => {
                 const linkedDoc = documents.find((d) => d.id === req.documentId || (req.linkedDocumentId && d.id === req.linkedDocumentId));
                 const hasAttachedDoc = Boolean(linkedDoc || req.documentId || req.linkedDocumentId);
                 const effectiveOcr = hasAttachedDoc ? (req.ocrConfidence || linkedDoc?.ocrConfidence || 0) : 0;

@@ -21,6 +21,24 @@ export const AuditTrailView: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [isExportOpen, setIsExportOpen] = useState(false);
 
+  type AuditSortField = 'timestampUtc' | 'action' | 'targetAsset' | 'userRole' | 'fieldDelta' | 'justificationNotes';
+  const [sortField, setSortField] = useState<AuditSortField>('timestampUtc');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const renderSortIndicator = (field: AuditSortField) => {
+    if (sortField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{sortDirection === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const handleSort = (field: AuditSortField) => {
+    if (sortField === field) {
+      setSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
   const visibleEvents = filterAuditTrailForPersona(auditEvents, activePersona, assuranceSets, vessels);
 
   const filteredEvents = visibleEvents.filter((ev) => {
@@ -33,8 +51,19 @@ export const AuditTrailView: React.FC = () => {
     return matchesSearch && matchesRole;
   });
 
+  const sortedEvents = [...filteredEvents].sort((a, b) => {
+    let comp = 0;
+    if (sortField === 'timestampUtc') comp = new Date(a.timestampUtc).getTime() - new Date(b.timestampUtc).getTime();
+    else if (sortField === 'action') comp = a.action.localeCompare(b.action);
+    else if (sortField === 'targetAsset') comp = a.targetAsset.localeCompare(b.targetAsset);
+    else if (sortField === 'userRole') comp = `${a.userRole} ${a.organization}`.localeCompare(`${b.userRole} ${b.organization}`);
+    else if (sortField === 'fieldDelta') comp = (a.fieldDelta ? a.fieldDelta.fieldName : '').localeCompare(b.fieldDelta ? b.fieldDelta.fieldName : '');
+    else if (sortField === 'justificationNotes') comp = (a.justificationNotes || '').localeCompare(b.justificationNotes || '');
+    return sortDirection === 'asc' ? comp : -comp;
+  });
+
   const handleExportCsv = () => {
-    const exportData = filteredEvents.map((ev) => ({
+    const exportData = sortedEvents.map((ev) => ({
       TimestampUtc: ev.timestampUtc,
       Action: ev.action,
       TargetAsset: ev.targetAsset,
@@ -48,7 +77,7 @@ export const AuditTrailView: React.FC = () => {
 
   const handleExportPdf = () => {
     const headers = ['Timestamp (UTC)', 'Action', 'Target Asset', 'User Role & Org', 'Notes'];
-    const rows = filteredEvents.map((ev) => [
+    const rows = sortedEvents.map((ev) => [
       ev.timestampUtc,
       ev.action,
       ev.targetAsset,
@@ -125,16 +154,46 @@ export const AuditTrailView: React.FC = () => {
           <table className="table map-table-custom align-middle mb-0">
             <thead>
               <tr>
-                <th>Timestamp (UTC)</th>
-                <th>Action Performed</th>
-                <th>Target Asset / Identifier</th>
-                <th>User Role & Organization</th>
-                <th>Field Delta / State Change</th>
-                <th>Justification Notes</th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleSort('timestampUtc')}
+                >
+                  Timestamp (UTC) {renderSortIndicator('timestampUtc')}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleSort('action')}
+                >
+                  Action Performed {renderSortIndicator('action')}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleSort('targetAsset')}
+                >
+                  Target Asset / Identifier {renderSortIndicator('targetAsset')}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleSort('userRole')}
+                >
+                  User Role &amp; Organization {renderSortIndicator('userRole')}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleSort('fieldDelta')}
+                >
+                  Field Delta / State Change {renderSortIndicator('fieldDelta')}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handleSort('justificationNotes')}
+                >
+                  Justification Notes {renderSortIndicator('justificationNotes')}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredEvents.map((ev) => (
+              {sortedEvents.map((ev) => (
                 <tr key={ev.id}>
                   <td className="font-mono-code small text-nowrap">{formatMaritimeDate(ev.timestampUtc)}</td>
                   <td>

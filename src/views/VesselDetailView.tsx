@@ -72,49 +72,58 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
   const [crewSearch, setCrewSearch] = useState('');
   const [crewRankFilter, setCrewRankFilter] = useState('All');
   const [crewComplianceFilter, setCrewComplianceFilter] = useState('All');
-  const [crewSortField, setCrewSortField] = useState<'fullName' | 'rank' | 'overallComplianceScore' | 'complianceStatus'>('fullName');
+  const [crewSortField, setCrewSortField] = useState<'id' | 'fullName' | 'nationality' | 'assignmentStatus' | 'overallComplianceScore' | 'complianceStatus'>('fullName');
   const [crewSortDirection, setCrewSortDirection] = useState<'asc' | 'desc'>('asc');
 
   /* pre-assurance vault search, filter, and sorting states */
   const [vaultSearch, setVaultSearch] = useState('');
   const [vaultStatusFilter, setVaultStatusFilter] = useState('ALL');
-  const [vaultSortField, setVaultSortField] = useState<'name' | 'expiryDate' | 'status'>('name');
+  const [vaultSortField, setVaultSortField] = useState<'name' | 'number' | 'issuingBody' | 'expiryDate' | 'ocr' | 'status'>('name');
   const [vaultSortDirection, setVaultSortDirection] = useState<'asc' | 'desc'>('asc');
 
   /* assurance sets search, filter, and sorting states */
   const [assuranceSearch, setAssuranceSearch] = useState('');
   const [assuranceStageFilter, setAssuranceStageFilter] = useState('ALL');
-  const [assuranceSortField, setAssuranceSortField] = useState<'id' | 'title' | 'stage' | 'readinessScore'>('id');
+  const [assuranceSortField, setAssuranceSortField] = useState<'id' | 'title' | 'initiatorOrg' | 'charterWindow' | 'stage' | 'readinessScore'>('id');
   const [assuranceSortDirection, setAssuranceSortDirection] = useState<'asc' | 'desc'>('asc');
 
   /* client history search, filter, and sorting states */
   const [clientSearch, setClientSearch] = useState('');
   const [clientOutcomeFilter, setClientOutcomeFilter] = useState('ALL');
-  const [clientSortField, setClientSortField] = useState<'clientOrganization' | 'charterStart' | 'outcome'>('charterStart');
+  const [clientSortField, setClientSortField] = useState<'clientOrganization' | 'charterTitle' | 'charterStart' | 'assuranceSetId' | 'outcome' | 'notes'>('charterStart');
   const [clientSortDirection, setClientSortDirection] = useState<'asc' | 'desc'>('desc');
 
   /* audit trail search, filter, and sorting states */
   const [auditSearch, setAuditSearch] = useState('');
   const [auditActionFilter, setAuditActionFilter] = useState('ALL');
-  const [auditSortField, setAuditSortField] = useState<'timestampUtc' | 'action' | 'userId'>('timestampUtc');
+  const [auditSortField, setAuditSortField] = useState<'timestampUtc' | 'action' | 'userId' | 'organization' | 'justificationNotes'>('timestampUtc');
   const [auditSortDirection, setAuditSortDirection] = useState<'asc' | 'desc'>('desc');
 
   /* CAPA search, filter, and sorting states */
   const [capaSearch, setCapaSearch] = useState('');
   const [capaStatusFilter, setCapaStatusFilter] = useState('ALL');
-  const [capaSortField, setCapaSortField] = useState<'id' | 'title' | 'dueDate' | 'status'>('id');
+  const [capaSortField, setCapaSortField] = useState<'id' | 'title' | 'owner' | 'dueDate' | 'status'>('id');
   const [capaSortDirection, setCapaSortDirection] = useState<'asc' | 'desc'>('asc');
 
   /* Physical Inspections search, filter, sorting, and detail modal states */
   const [inspectionSearch, setInspectionSearch] = useState('');
   const [inspectionStatusFilter, setInspectionStatusFilter] = useState('ALL');
-  const [inspectionSortField, setInspectionSortField] = useState<'id' | 'title' | 'date' | 'status'>('id');
+  const [inspectionSortField, setInspectionSortField] = useState<'id' | 'title' | 'assuranceSetId' | 'inspector' | 'date' | 'status'>('id');
   const [inspectionSortDirection, setInspectionSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedInspectionForDetail, setSelectedInspectionForDetail] = useState<any | null>(null);
   const [showInspectionDrawer, setShowInspectionDrawer] = useState(false);
+  const [modalChecklistSortField, setModalChecklistSortField] = useState<'id' | 'category' | 'status' | 'notes'>('id');
+  const [modalChecklistSortDirection, setModalChecklistSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [modalCapaSortField, setModalCapaSortField] = useState<'id' | 'title' | 'owner' | 'dueDate' | 'status'>('id');
+  const [modalCapaSortDirection, setModalCapaSortDirection] = useState<'asc' | 'desc'>('asc');
 
   /* Audit Log detail modal state */
   const [selectedAuditForDetail, setSelectedAuditForDetail] = useState<any | null>(null);
+
+  const renderSortIndicator = (currentField: string, field: string, direction: 'asc' | 'desc') => {
+    if (currentField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{direction === 'asc' ? '▲' : '▼'}</span>;
+  };
 
   useEffect(() => {
     const found = vessels.find((v) => v.id === vesselId);
@@ -245,10 +254,16 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       })
       .sort((a, b) => {
         let comp = 0;
-        if (crewSortField === 'fullName') {
+        if (crewSortField === 'id') {
+          comp = a.id.localeCompare(b.id);
+        } else if (crewSortField === 'fullName') {
           comp = a.fullName.localeCompare(b.fullName);
-        } else if (crewSortField === 'rank') {
-          comp = a.rank.localeCompare(b.rank);
+        } else if (crewSortField === 'nationality') {
+          comp = (a.nationality || '').localeCompare(b.nationality || '');
+        } else if (crewSortField === 'assignmentStatus') {
+          const statusA = a.currentVesselId === vessel?.id ? 'Current' : 'Historical';
+          const statusB = b.currentVesselId === vessel?.id ? 'Current' : 'Historical';
+          comp = statusA.localeCompare(statusB);
         } else if (crewSortField === 'overallComplianceScore') {
           comp = a.overallComplianceScore - b.overallComplianceScore;
         } else if (crewSortField === 'complianceStatus') {
@@ -319,7 +334,10 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       .sort((a, b) => {
         let comp = 0;
         if (vaultSortField === 'name') comp = a.name.localeCompare(b.name);
+        else if (vaultSortField === 'number') comp = (a.number || '').localeCompare(b.number || '');
+        else if (vaultSortField === 'issuingBody') comp = (a.issuingBody || '').localeCompare(b.issuingBody || '');
         else if (vaultSortField === 'expiryDate') comp = new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+        else if (vaultSortField === 'ocr') comp = (a.ocr || '').localeCompare(b.ocr || '');
         else if (vaultSortField === 'status') comp = a.status.localeCompare(b.status);
         return vaultSortDirection === 'asc' ? comp : -comp;
       });
@@ -342,6 +360,8 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         let comp = 0;
         if (assuranceSortField === 'id') comp = a.id.localeCompare(b.id);
         else if (assuranceSortField === 'title') comp = a.title.localeCompare(b.title);
+        else if (assuranceSortField === 'initiatorOrg') comp = (a.initiatorOrg || '').localeCompare(b.initiatorOrg || '');
+        else if (assuranceSortField === 'charterWindow') comp = (a.charterWindowStart || '').localeCompare(b.charterWindowStart || '');
         else if (assuranceSortField === 'stage') comp = a.stage.localeCompare(b.stage);
         else if (assuranceSortField === 'readinessScore') comp = calculateAssuranceSetReadiness(a) - calculateAssuranceSetReadiness(b);
         return assuranceSortDirection === 'asc' ? comp : -comp;
@@ -365,8 +385,11 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
       .sort((a, b) => {
         let comp = 0;
         if (clientSortField === 'clientOrganization') comp = a.clientOrganization.localeCompare(b.clientOrganization);
+        else if (clientSortField === 'charterTitle') comp = (a.charterTitle || '').localeCompare(b.charterTitle || '');
         else if (clientSortField === 'charterStart') comp = new Date(a.charterStart).getTime() - new Date(b.charterStart).getTime();
+        else if (clientSortField === 'assuranceSetId') comp = (a.assuranceSetId || '').localeCompare(b.assuranceSetId || '');
         else if (clientSortField === 'outcome') comp = a.outcome.localeCompare(b.outcome);
+        else if (clientSortField === 'notes') comp = (a.notes || '').localeCompare(b.notes || '');
         return clientSortDirection === 'asc' ? comp : -comp;
       });
   }, [vessel, clientSearch, clientOutcomeFilter, clientSortField, clientSortDirection]);
@@ -394,6 +417,8 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         if (auditSortField === 'timestampUtc') comp = new Date(a.timestampUtc).getTime() - new Date(b.timestampUtc).getTime();
         else if (auditSortField === 'action') comp = a.action.localeCompare(b.action);
         else if (auditSortField === 'userId') comp = a.userId.localeCompare(b.userId);
+        else if (auditSortField === 'organization') comp = (a.organization || '').localeCompare(b.organization || '');
+        else if (auditSortField === 'justificationNotes') comp = (a.justificationNotes || '').localeCompare(b.justificationNotes || '');
         return auditSortDirection === 'asc' ? comp : -comp;
       });
   }, [linkedAudits, auditSearch, auditActionFilter, auditSortField, auditSortDirection]);
@@ -416,6 +441,7 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         let comp = 0;
         if (capaSortField === 'id') comp = a.id.localeCompare(b.id);
         else if (capaSortField === 'title') comp = a.title.localeCompare(b.title);
+        else if (capaSortField === 'owner') comp = (a.owner || '').localeCompare(b.owner || '');
         else if (capaSortField === 'dueDate') comp = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
         else if (capaSortField === 'status') comp = a.status.localeCompare(b.status);
         return capaSortDirection === 'asc' ? comp : -comp;
@@ -557,11 +583,37 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
         let comp = 0;
         if (inspectionSortField === 'id') comp = a.id.localeCompare(b.id);
         else if (inspectionSortField === 'title') comp = a.title.localeCompare(b.title);
+        else if (inspectionSortField === 'assuranceSetId') comp = (a.assuranceSetId || '').localeCompare(b.assuranceSetId || '');
+        else if (inspectionSortField === 'inspector') comp = (a.inspector || '').localeCompare(b.inspector || '');
         else if (inspectionSortField === 'date') comp = new Date(a.date).getTime() - new Date(b.date).getTime();
         else if (inspectionSortField === 'status') comp = a.status.localeCompare(b.status);
         return inspectionSortDirection === 'asc' ? comp : -comp;
       });
   }, [physicalInspections, inspectionSearch, inspectionStatusFilter, inspectionSortField, inspectionSortDirection]);
+
+  const sortedModalChecklists = useMemo(() => {
+    if (!selectedInspectionForDetail?.checklists) return [];
+    return [...selectedInspectionForDetail.checklists].sort((a: any, b: any) => {
+      let comp = 0;
+      if (modalChecklistSortField === 'id') comp = (a.id || '').localeCompare(b.id || '');
+      else if (modalChecklistSortField === 'category') comp = (a.category || '').localeCompare(b.category || '');
+      else if (modalChecklistSortField === 'status') comp = (a.status || '').localeCompare(b.status || '');
+      else if (modalChecklistSortField === 'notes') comp = (a.notes || '').localeCompare(b.notes || '');
+      return modalChecklistSortDirection === 'asc' ? comp : -comp;
+    });
+  }, [selectedInspectionForDetail, modalChecklistSortField, modalChecklistSortDirection]);
+
+  const sortedModalCapas = useMemo(() => {
+    return [...linkedCapas].sort((a, b) => {
+      let comp = 0;
+      if (modalCapaSortField === 'id') comp = a.id.localeCompare(b.id);
+      else if (modalCapaSortField === 'title') comp = a.title.localeCompare(b.title);
+      else if (modalCapaSortField === 'owner') comp = a.owner.localeCompare(b.owner);
+      else if (modalCapaSortField === 'dueDate') comp = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      else if (modalCapaSortField === 'status') comp = a.status.localeCompare(b.status);
+      return modalCapaSortDirection === 'asc' ? comp : -comp;
+    });
+  }, [linkedCapas, modalCapaSortField, modalCapaSortDirection]);
 
   if (!vessel || !isAccessible) {
     return (
@@ -1334,34 +1386,58 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
               <thead>
                 <tr>
                   <th
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                     onClick={() => {
                       if (vaultSortField === 'name') setVaultSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                       else { setVaultSortField('name'); setVaultSortDirection('asc'); }
                     }}
                   >
-                    Certificate Name {vaultSortField === 'name' ? (vaultSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    Certificate Name {renderSortIndicator(vaultSortField, 'name', vaultSortDirection)}
                   </th>
-                  <th>Certificate Number</th>
-                  <th>Issuing Body</th>
                   <th
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    onClick={() => {
+                      if (vaultSortField === 'number') setVaultSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setVaultSortField('number'); setVaultSortDirection('asc'); }
+                    }}
+                  >
+                    Certificate Number {renderSortIndicator(vaultSortField, 'number', vaultSortDirection)}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    onClick={() => {
+                      if (vaultSortField === 'issuingBody') setVaultSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setVaultSortField('issuingBody'); setVaultSortDirection('asc'); }
+                    }}
+                  >
+                    Issuing Body {renderSortIndicator(vaultSortField, 'issuingBody', vaultSortDirection)}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                     onClick={() => {
                       if (vaultSortField === 'expiryDate') setVaultSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                       else { setVaultSortField('expiryDate'); setVaultSortDirection('asc'); }
                     }}
                   >
-                    Validity Dates {vaultSortField === 'expiryDate' ? (vaultSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    Validity Dates {renderSortIndicator(vaultSortField, 'expiryDate', vaultSortDirection)}
                   </th>
-                  <th>OCR Confidence</th>
                   <th
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    onClick={() => {
+                      if (vaultSortField === 'ocr') setVaultSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setVaultSortField('ocr'); setVaultSortDirection('asc'); }
+                    }}
+                  >
+                    OCR Confidence {renderSortIndicator(vaultSortField, 'ocr', vaultSortDirection)}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                     onClick={() => {
                       if (vaultSortField === 'status') setVaultSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                       else { setVaultSortField('status'); setVaultSortDirection('asc'); }
                     }}
                   >
-                    Status {vaultSortField === 'status' ? (vaultSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    Status {renderSortIndicator(vaultSortField, 'status', vaultSortDirection)}
                   </th>
                 </tr>
               </thead>
@@ -1437,10 +1513,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 className="form-select form-select-sm bg-white text-dark border-secondary"
                 value={assuranceSortField}
                 onChange={(e) => setAssuranceSortField(e.target.value as any)}
-                style={{ width: '150px' }}
+                style={{ width: '170px' }}
               >
                 <option value="id">Sort: Set ID</option>
                 <option value="title">Sort: Title</option>
+                <option value="initiatorOrg">Sort: Initiator</option>
+                <option value="charterWindow">Sort: Charter Window</option>
                 <option value="stage">Sort: Stage</option>
                 <option value="readinessScore">Sort: Readiness</option>
               </select>
@@ -1465,33 +1543,49 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   <thead>
                     <tr>
                       <th
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                         onClick={() => {
                           if (assuranceSortField === 'id') setAssuranceSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                           else { setAssuranceSortField('id'); setAssuranceSortDirection('asc'); }
                         }}
                       >
-                        Set ID {assuranceSortField === 'id' ? (assuranceSortDirection === 'asc' ? '↑' : '↓') : ''}
+                        Set ID {renderSortIndicator(assuranceSortField, 'id', assuranceSortDirection)}
                       </th>
-                      <th>Initiating Organization</th>
-                      <th>Charter Window</th>
                       <th
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          if (assuranceSortField === 'initiatorOrg') setAssuranceSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setAssuranceSortField('initiatorOrg'); setAssuranceSortDirection('asc'); }
+                        }}
+                      >
+                        Initiating Organization {renderSortIndicator(assuranceSortField, 'initiatorOrg', assuranceSortDirection)}
+                      </th>
+                      <th
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          if (assuranceSortField === 'charterWindow') setAssuranceSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setAssuranceSortField('charterWindow'); setAssuranceSortDirection('asc'); }
+                        }}
+                      >
+                        Charter Window {renderSortIndicator(assuranceSortField, 'charterWindow', assuranceSortDirection)}
+                      </th>
+                      <th
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                         onClick={() => {
                           if (assuranceSortField === 'stage') setAssuranceSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                           else { setAssuranceSortField('stage'); setAssuranceSortDirection('asc'); }
                         }}
                       >
-                        Stage {assuranceSortField === 'stage' ? (assuranceSortDirection === 'asc' ? '↑' : '↓') : ''}
+                        Stage {renderSortIndicator(assuranceSortField, 'stage', assuranceSortDirection)}
                       </th>
                       <th
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                         onClick={() => {
                           if (assuranceSortField === 'readinessScore') setAssuranceSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                           else { setAssuranceSortField('readinessScore'); setAssuranceSortDirection('asc'); }
                         }}
                       >
-                        Readiness {assuranceSortField === 'readinessScore' ? (assuranceSortDirection === 'asc' ? '↑' : '↓') : ''}
+                        Readiness {renderSortIndicator(assuranceSortField, 'readinessScore', assuranceSortDirection)}
                       </th>
                       <th className="text-end">Action</th>
                     </tr>
@@ -1566,11 +1660,14 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 className="form-select form-select-sm bg-white text-dark border-secondary"
                 value={clientSortField}
                 onChange={(e) => setClientSortField(e.target.value as any)}
-                style={{ width: '150px' }}
+                style={{ width: '170px' }}
               >
-                <option value="charterStart">Sort: Start Date</option>
+                <option value="charterStart">Sort: Charter Period</option>
                 <option value="clientOrganization">Sort: Client Org</option>
-                <option value="outcome">Sort: Outcome</option>
+                <option value="charterTitle">Sort: Campaign</option>
+                <option value="assuranceSetId">Sort: Assurance Set</option>
+                <option value="outcome">Sort: Status</option>
+                <option value="notes">Sort: Notes</option>
               </select>
 
               <button
@@ -1593,35 +1690,59 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   <thead>
                     <tr>
                       <th
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                         onClick={() => {
                           if (clientSortField === 'clientOrganization') setClientSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                           else { setClientSortField('clientOrganization'); setClientSortDirection('asc'); }
                         }}
                       >
-                        Client Organization {clientSortField === 'clientOrganization' ? (clientSortDirection === 'asc' ? '↑' : '↓') : ''}
+                        Client Organization {renderSortIndicator(clientSortField, 'clientOrganization', clientSortDirection)}
                       </th>
-                      <th>Charter / Campaign</th>
                       <th
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          if (clientSortField === 'charterTitle') setClientSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setClientSortField('charterTitle'); setClientSortDirection('asc'); }
+                        }}
+                      >
+                        Charter / Campaign {renderSortIndicator(clientSortField, 'charterTitle', clientSortDirection)}
+                      </th>
+                      <th
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                         onClick={() => {
                           if (clientSortField === 'charterStart') setClientSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                           else { setClientSortField('charterStart'); setClientSortDirection('asc'); }
                         }}
                       >
-                        Charter Period {clientSortField === 'charterStart' ? (clientSortDirection === 'asc' ? '↑' : '↓') : ''}
+                        Charter Period {renderSortIndicator(clientSortField, 'charterStart', clientSortDirection)}
                       </th>
-                      <th>Assurance Set</th>
                       <th
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          if (clientSortField === 'assuranceSetId') setClientSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setClientSortField('assuranceSetId'); setClientSortDirection('asc'); }
+                        }}
+                      >
+                        Assurance Set {renderSortIndicator(clientSortField, 'assuranceSetId', clientSortDirection)}
+                      </th>
+                      <th
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                         onClick={() => {
                           if (clientSortField === 'outcome') setClientSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                           else { setClientSortField('outcome'); setClientSortDirection('asc'); }
                         }}
                       >
-                        Status {clientSortField === 'outcome' ? (clientSortDirection === 'asc' ? '↑' : '↓') : ''}
+                        Status {renderSortIndicator(clientSortField, 'outcome', clientSortDirection)}
                       </th>
-                      <th>Notes</th>
+                      <th
+                        style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          if (clientSortField === 'notes') setClientSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                          else { setClientSortField('notes'); setClientSortDirection('asc'); }
+                        }}
+                      >
+                        Notes {renderSortIndicator(clientSortField, 'notes', clientSortDirection)}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1703,10 +1824,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 className="form-select form-select-sm bg-white text-dark border-secondary"
                 value={crewSortField}
                 onChange={(e) => setCrewSortField(e.target.value as any)}
-                style={{ width: '150px' }}
+                style={{ width: '170px' }}
               >
-                <option value="fullName">Sort: Name</option>
-                <option value="rank">Sort: Rank</option>
+                <option value="fullName">Sort: Full Name</option>
+                <option value="id">Sort: Crew ID</option>
+                <option value="nationality">Sort: Nationality</option>
+                <option value="assignmentStatus">Sort: Assignment</option>
                 <option value="overallComplianceScore">Sort: STCW Score</option>
                 <option value="complianceStatus">Sort: Compliance</option>
               </select>
@@ -1789,9 +1912,17 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
             <table className="table map-table-custom align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Crew ID</th>
                   <th
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    onClick={() => {
+                      if (crewSortField === 'id') setCrewSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setCrewSortField('id'); setCrewSortDirection('asc'); }
+                    }}
+                  >
+                    Crew ID {renderSortIndicator(crewSortField, 'id', crewSortDirection)}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                     onClick={() => {
                       if (crewSortField === 'fullName') {
                         setCrewSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
@@ -1801,12 +1932,28 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                       }
                     }}
                   >
-                    Full Name & Rank {crewSortField === 'fullName' ? (crewSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    Full Name &amp; Rank {renderSortIndicator(crewSortField, 'fullName', crewSortDirection)}
                   </th>
-                  <th>Nationality & Seaman Book</th>
-                  <th>Assignment Status</th>
                   <th
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    onClick={() => {
+                      if (crewSortField === 'nationality') setCrewSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setCrewSortField('nationality'); setCrewSortDirection('asc'); }
+                    }}
+                  >
+                    Nationality &amp; Seaman Book {renderSortIndicator(crewSortField, 'nationality', crewSortDirection)}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    onClick={() => {
+                      if (crewSortField === 'assignmentStatus') setCrewSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setCrewSortField('assignmentStatus'); setCrewSortDirection('asc'); }
+                    }}
+                  >
+                    Assignment Status {renderSortIndicator(crewSortField, 'assignmentStatus', crewSortDirection)}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                     onClick={() => {
                       if (crewSortField === 'overallComplianceScore') {
                         setCrewSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
@@ -1816,10 +1963,10 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                       }
                     }}
                   >
-                    STCW Score {crewSortField === 'overallComplianceScore' ? (crewSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    STCW Score {renderSortIndicator(crewSortField, 'overallComplianceScore', crewSortDirection)}
                   </th>
                   <th
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                     onClick={() => {
                       if (crewSortField === 'complianceStatus') {
                         setCrewSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
@@ -1829,9 +1976,9 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                       }
                     }}
                   >
-                    Compliance Status {crewSortField === 'complianceStatus' ? (crewSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    Compliance Status {renderSortIndicator(crewSortField, 'complianceStatus', crewSortDirection)}
                   </th>
-                  <th className="text-end">Actions</th>
+                  <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1952,11 +2099,13 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 className="form-select form-select-sm bg-white text-dark border-secondary"
                 value={auditSortField}
                 onChange={(e) => setAuditSortField(e.target.value as any)}
-                style={{ width: '150px' }}
+                style={{ width: '170px' }}
               >
                 <option value="timestampUtc">Sort: Timestamp</option>
                 <option value="action">Sort: Action</option>
                 <option value="userId">Sort: User ID</option>
+                <option value="organization">Sort: Organization</option>
+                <option value="justificationNotes">Sort: Justification</option>
               </select>
 
               <button
@@ -1975,35 +2124,51 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
               <thead>
                 <tr>
                   <th
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                     onClick={() => {
                       if (auditSortField === 'timestampUtc') setAuditSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                       else { setAuditSortField('timestampUtc'); setAuditSortDirection('desc'); }
                     }}
                   >
-                    Timestamp (UTC) {auditSortField === 'timestampUtc' ? (auditSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    Timestamp (UTC) {renderSortIndicator(auditSortField, 'timestampUtc', auditSortDirection)}
                   </th>
                   <th
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                     onClick={() => {
                       if (auditSortField === 'action') setAuditSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                       else { setAuditSortField('action'); setAuditSortDirection('asc'); }
                     }}
                   >
-                    Action {auditSortField === 'action' ? (auditSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    Action {renderSortIndicator(auditSortField, 'action', auditSortDirection)}
                   </th>
                   <th
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                     onClick={() => {
                       if (auditSortField === 'userId') setAuditSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                       else { setAuditSortField('userId'); setAuditSortDirection('asc'); }
                     }}
                   >
-                    User & Role {auditSortField === 'userId' ? (auditSortDirection === 'asc' ? '↑' : '↓') : ''}
+                    User &amp; Role {renderSortIndicator(auditSortField, 'userId', auditSortDirection)}
                   </th>
-                  <th>Organization</th>
-                  <th>Justification &amp; Details</th>
-                  <th className="text-end">Actions</th>
+                  <th
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    onClick={() => {
+                      if (auditSortField === 'organization') setAuditSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setAuditSortField('organization'); setAuditSortDirection('asc'); }
+                    }}
+                  >
+                    Organization {renderSortIndicator(auditSortField, 'organization', auditSortDirection)}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    onClick={() => {
+                      if (auditSortField === 'justificationNotes') setAuditSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                      else { setAuditSortField('justificationNotes'); setAuditSortDirection('asc'); }
+                    }}
+                  >
+                    Justification &amp; Details {renderSortIndicator(auditSortField, 'justificationNotes', auditSortDirection)}
+                  </th>
+                  <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -2083,10 +2248,12 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                   className="form-select form-select-sm bg-white text-dark border-secondary"
                   value={inspectionSortField}
                   onChange={(e) => setInspectionSortField(e.target.value as any)}
-                  style={{ width: '150px' }}
+                  style={{ width: '170px' }}
                 >
                   <option value="id">Sort: Campaign ID</option>
                   <option value="title">Sort: Title</option>
+                  <option value="assuranceSetId">Sort: Assurance Set</option>
+                  <option value="inspector">Sort: Inspector</option>
                   <option value="date">Sort: Inspection Date</option>
                   <option value="status">Sort: Status</option>
                 </select>
@@ -2123,35 +2290,51 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                 <thead>
                   <tr>
                     <th
-                      style={{ cursor: 'pointer' }}
+                      style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                       onClick={() => {
                         if (inspectionSortField === 'id') setInspectionSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                         else { setInspectionSortField('id'); setInspectionSortDirection('asc'); }
                       }}
                     >
-                      Inspection Campaign {inspectionSortField === 'id' ? (inspectionSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      Inspection Campaign {renderSortIndicator(inspectionSortField, 'id', inspectionSortDirection)}
                     </th>
-                    <th>Assigned Assurance Set</th>
-                    <th>Assigned Inspector</th>
                     <th
-                      style={{ cursor: 'pointer' }}
+                      style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                      onClick={() => {
+                        if (inspectionSortField === 'assuranceSetId') setInspectionSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                        else { setInspectionSortField('assuranceSetId'); setInspectionSortDirection('asc'); }
+                      }}
+                    >
+                      Assigned Assurance Set {renderSortIndicator(inspectionSortField, 'assuranceSetId', inspectionSortDirection)}
+                    </th>
+                    <th
+                      style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                      onClick={() => {
+                        if (inspectionSortField === 'inspector') setInspectionSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                        else { setInspectionSortField('inspector'); setInspectionSortDirection('asc'); }
+                      }}
+                    >
+                      Assigned Inspector {renderSortIndicator(inspectionSortField, 'inspector', inspectionSortDirection)}
+                    </th>
+                    <th
+                      style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                       onClick={() => {
                         if (inspectionSortField === 'date') setInspectionSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                         else { setInspectionSortField('date'); setInspectionSortDirection('asc'); }
                       }}
                     >
-                      Date &amp; Location {inspectionSortField === 'date' ? (inspectionSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      Date &amp; Location {renderSortIndicator(inspectionSortField, 'date', inspectionSortDirection)}
                     </th>
                     <th
-                      style={{ cursor: 'pointer' }}
+                      style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                       onClick={() => {
                         if (inspectionSortField === 'status') setInspectionSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
                         else { setInspectionSortField('status'); setInspectionSortDirection('asc'); }
                       }}
                     >
-                      Status {inspectionSortField === 'status' ? (inspectionSortDirection === 'asc' ? '↑' : '↓') : ''}
+                      Status {renderSortIndicator(inspectionSortField, 'status', inspectionSortDirection)}
                     </th>
-                    <th className="text-end">Actions</th>
+                    <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2347,15 +2530,47 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     <table className="table map-table-custom align-middle mb-0">
                       <thead>
                         <tr>
-                          <th>Item ID</th>
-                          <th>Category &amp; Standard Ref</th>
-                          <th>Finding Status</th>
-                          <th>Inspector Findings &amp; Observations</th>
-                          <th>Evidence Files</th>
+                          <th
+                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                            onClick={() => {
+                              if (modalChecklistSortField === 'id') setModalChecklistSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                              else { setModalChecklistSortField('id'); setModalChecklistSortDirection('asc'); }
+                            }}
+                          >
+                            Item ID {renderSortIndicator(modalChecklistSortField, 'id', modalChecklistSortDirection)}
+                          </th>
+                          <th
+                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                            onClick={() => {
+                              if (modalChecklistSortField === 'category') setModalChecklistSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                              else { setModalChecklistSortField('category'); setModalChecklistSortDirection('asc'); }
+                            }}
+                          >
+                            Category &amp; Standard Ref {renderSortIndicator(modalChecklistSortField, 'category', modalChecklistSortDirection)}
+                          </th>
+                          <th
+                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                            onClick={() => {
+                              if (modalChecklistSortField === 'status') setModalChecklistSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                              else { setModalChecklistSortField('status'); setModalChecklistSortDirection('asc'); }
+                            }}
+                          >
+                            Finding Status {renderSortIndicator(modalChecklistSortField, 'status', modalChecklistSortDirection)}
+                          </th>
+                          <th
+                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                            onClick={() => {
+                              if (modalChecklistSortField === 'notes') setModalChecklistSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                              else { setModalChecklistSortField('notes'); setModalChecklistSortDirection('asc'); }
+                            }}
+                          >
+                            Inspector Findings &amp; Observations {renderSortIndicator(modalChecklistSortField, 'notes', modalChecklistSortDirection)}
+                          </th>
+                          <th style={{ whiteSpace: 'nowrap' }}>Evidence Files</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedInspectionForDetail.checklists.map((chk: any) => (
+                        {sortedModalChecklists.map((chk: any) => (
                           <tr key={chk.id}>
                             <td className="font-mono-code fw-semibold text-dark">{chk.id}</td>
                             <td>
@@ -2405,23 +2620,63 @@ export const VesselDetailView: React.FC<VesselDetailViewProps> = ({ vesselId }) 
                     <table className="table map-table-custom align-middle mb-0">
                       <thead>
                         <tr>
-                          <th>CAPA ID</th>
-                          <th>Title &amp; Finding</th>
-                          <th>Owner / Dept</th>
-                          <th>Due Date</th>
-                          <th>Status</th>
-                          <th className="text-end">Action</th>
+                          <th
+                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                            onClick={() => {
+                              if (modalCapaSortField === 'id') setModalCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                              else { setModalCapaSortField('id'); setModalCapaSortDirection('asc'); }
+                            }}
+                          >
+                            CAPA ID {renderSortIndicator(modalCapaSortField, 'id', modalCapaSortDirection)}
+                          </th>
+                          <th
+                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                            onClick={() => {
+                              if (modalCapaSortField === 'title') setModalCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                              else { setModalCapaSortField('title'); setModalCapaSortDirection('asc'); }
+                            }}
+                          >
+                            Title &amp; Finding {renderSortIndicator(modalCapaSortField, 'title', modalCapaSortDirection)}
+                          </th>
+                          <th
+                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                            onClick={() => {
+                              if (modalCapaSortField === 'owner') setModalCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                              else { setModalCapaSortField('owner'); setModalCapaSortDirection('asc'); }
+                            }}
+                          >
+                            Owner / Dept {renderSortIndicator(modalCapaSortField, 'owner', modalCapaSortDirection)}
+                          </th>
+                          <th
+                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                            onClick={() => {
+                              if (modalCapaSortField === 'dueDate') setModalCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                              else { setModalCapaSortField('dueDate'); setModalCapaSortDirection('asc'); }
+                            }}
+                          >
+                            Due Date {renderSortIndicator(modalCapaSortField, 'dueDate', modalCapaSortDirection)}
+                          </th>
+                          <th
+                            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                            onClick={() => {
+                              if (modalCapaSortField === 'status') setModalCapaSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                              else { setModalCapaSortField('status'); setModalCapaSortDirection('asc'); }
+                            }}
+                          >
+                            Status {renderSortIndicator(modalCapaSortField, 'status', modalCapaSortDirection)}
+                          </th>
+                          <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {linkedCapas.length === 0 ? (
+                        {sortedModalCapas.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="text-center py-3 text-muted small">
                               No corrective actions raised for this inspection campaign.
                             </td>
                           </tr>
                         ) : (
-                          linkedCapas.map((capa) => (
+                          sortedModalCapas.map((capa) => (
                             <tr key={capa.id}>
                               <td className="font-mono-code fw-semibold text-warning-emphasis">{capa.id}</td>
                               <td>

@@ -4,9 +4,9 @@
   role in system: deep-dive view rendered when a crew directory row is selected or navigated to (/crew/CREW-101).
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useMapStore } from '../store/useMapStore';
-import { STCWDocumentItem } from '../types/crew';
+import { STCWDocumentItem, CrewVesselAssignment } from '../types/crew';
 import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { formatMaritimeDate } from '../utils/formatters';
 import { getBackButtonInfo } from '../utils/rbacHelpers';
@@ -47,6 +47,71 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
   const canManageDocuments = activePersona === 'Administrator' || activePersona === 'Submitter';
 
   const crewMember = crew.find((c) => c.id === crewId) || crew[0];
+
+  /* Assignment table sorting */
+  type AssignmentSortField = 'vesselName' | 'imoNumber' | 'vesselType' | 'rankHeld' | 'embarkDate' | 'disembarkDate' | 'isCurrent';
+  const [assignmentSortField, setAssignmentSortField] = useState<AssignmentSortField>('embarkDate');
+  const [assignmentSortDirection, setAssignmentSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  /* Layer 1 table sorting */
+  type Layer1SortField = 'title' | 'stcwRegulation' | 'certificateNo' | 'issuingAuthority' | 'issueDate' | 'expiryDate' | 'verificationStatus';
+  const [layer1SortField, setLayer1SortField] = useState<Layer1SortField>('title');
+  const [layer1SortDirection, setLayer1SortDirection] = useState<'asc' | 'desc'>('asc');
+
+  /* Layer 2 table sorting */
+  type Layer2SortField = 'title' | 'stcwRegulation' | 'certificateNo' | 'issuingAuthority' | 'flagState' | 'expiryDate' | 'verificationStatus';
+  const [layer2SortField, setLayer2SortField] = useState<Layer2SortField>('title');
+  const [layer2SortDirection, setLayer2SortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const renderSortIndicator = (currentField: string, field: string, direction: 'asc' | 'desc') => {
+    if (currentField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{direction === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const sortedAssignments = useMemo(() => {
+    if (!crewMember?.assignments) return [];
+    return [...crewMember.assignments].sort((a, b) => {
+      let comp = 0;
+      if (assignmentSortField === 'vesselName') comp = a.vesselName.localeCompare(b.vesselName);
+      else if (assignmentSortField === 'imoNumber') comp = a.imoNumber.localeCompare(b.imoNumber);
+      else if (assignmentSortField === 'vesselType') comp = a.vesselType.localeCompare(b.vesselType);
+      else if (assignmentSortField === 'rankHeld') comp = a.rankHeld.localeCompare(b.rankHeld);
+      else if (assignmentSortField === 'embarkDate') comp = new Date(a.embarkDate).getTime() - new Date(b.embarkDate).getTime();
+      else if (assignmentSortField === 'disembarkDate') comp = new Date(a.disembarkDate || '').getTime() - new Date(b.disembarkDate || '').getTime();
+      else if (assignmentSortField === 'isCurrent') comp = (a.isCurrent ? 1 : 0) - (b.isCurrent ? 1 : 0);
+      return assignmentSortDirection === 'asc' ? comp : -comp;
+    });
+  }, [crewMember, assignmentSortField, assignmentSortDirection]);
+
+  const sortedLayer1Docs = useMemo(() => {
+    if (!crewMember?.layer1CoreDocuments) return [];
+    return [...crewMember.layer1CoreDocuments].sort((a, b) => {
+      let comp = 0;
+      if (layer1SortField === 'title') comp = a.title.localeCompare(b.title);
+      else if (layer1SortField === 'stcwRegulation') comp = a.stcwRegulation.localeCompare(b.stcwRegulation);
+      else if (layer1SortField === 'certificateNo') comp = a.certificateNo.localeCompare(b.certificateNo);
+      else if (layer1SortField === 'issuingAuthority') comp = a.issuingAuthority.localeCompare(b.issuingAuthority);
+      else if (layer1SortField === 'issueDate') comp = new Date(a.issueDate || '').getTime() - new Date(b.issueDate || '').getTime();
+      else if (layer1SortField === 'expiryDate') comp = new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+      else if (layer1SortField === 'verificationStatus') comp = a.verificationStatus.localeCompare(b.verificationStatus);
+      return layer1SortDirection === 'asc' ? comp : -comp;
+    });
+  }, [crewMember, layer1SortField, layer1SortDirection]);
+
+  const sortedLayer2Docs = useMemo(() => {
+    if (!crewMember?.layer2Endorsements) return [];
+    return [...crewMember.layer2Endorsements].sort((a, b) => {
+      let comp = 0;
+      if (layer2SortField === 'title') comp = a.title.localeCompare(b.title);
+      else if (layer2SortField === 'stcwRegulation') comp = a.stcwRegulation.localeCompare(b.stcwRegulation);
+      else if (layer2SortField === 'certificateNo') comp = a.certificateNo.localeCompare(b.certificateNo);
+      else if (layer2SortField === 'issuingAuthority') comp = a.issuingAuthority.localeCompare(b.issuingAuthority);
+      else if (layer2SortField === 'flagState') comp = (a.flagState || '').localeCompare(b.flagState || '');
+      else if (layer2SortField === 'expiryDate') comp = new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+      else if (layer2SortField === 'verificationStatus') comp = a.verificationStatus.localeCompare(b.verificationStatus);
+      return layer2SortDirection === 'asc' ? comp : -comp;
+    });
+  }, [crewMember, layer2SortField, layer2SortDirection]);
 
   if (!crewMember) return <div className="p-4">Crew profile not found.</div>;
 
@@ -259,44 +324,108 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
           <table className="table map-table-custom align-middle mb-0">
             <thead>
               <tr>
-                <th>Vessel Name</th>
-                <th>IMO Number</th>
-                <th>Vessel Type</th>
-                <th>Rank Held</th>
-                <th>Embarkation Date</th>
-                <th>Disembarkation Date</th>
-                <th>Assignment Status</th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (assignmentSortField === 'vesselName') setAssignmentSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setAssignmentSortField('vesselName'); setAssignmentSortDirection('asc'); }
+                  }}
+                >
+                  Vessel Name {renderSortIndicator(assignmentSortField, 'vesselName', assignmentSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (assignmentSortField === 'imoNumber') setAssignmentSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setAssignmentSortField('imoNumber'); setAssignmentSortDirection('asc'); }
+                  }}
+                >
+                  IMO Number {renderSortIndicator(assignmentSortField, 'imoNumber', assignmentSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (assignmentSortField === 'vesselType') setAssignmentSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setAssignmentSortField('vesselType'); setAssignmentSortDirection('asc'); }
+                  }}
+                >
+                  Vessel Type {renderSortIndicator(assignmentSortField, 'vesselType', assignmentSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (assignmentSortField === 'rankHeld') setAssignmentSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setAssignmentSortField('rankHeld'); setAssignmentSortDirection('asc'); }
+                  }}
+                >
+                  Rank Held {renderSortIndicator(assignmentSortField, 'rankHeld', assignmentSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (assignmentSortField === 'embarkDate') setAssignmentSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setAssignmentSortField('embarkDate'); setAssignmentSortDirection('desc'); }
+                  }}
+                >
+                  Embarkation Date {renderSortIndicator(assignmentSortField, 'embarkDate', assignmentSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (assignmentSortField === 'disembarkDate') setAssignmentSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setAssignmentSortField('disembarkDate'); setAssignmentSortDirection('desc'); }
+                  }}
+                >
+                  Disembarkation Date {renderSortIndicator(assignmentSortField, 'disembarkDate', assignmentSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (assignmentSortField === 'isCurrent') setAssignmentSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setAssignmentSortField('isCurrent'); setAssignmentSortDirection('desc'); }
+                  }}
+                >
+                  Assignment Status {renderSortIndicator(assignmentSortField, 'isCurrent', assignmentSortDirection)}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {crewMember.assignments.map((asg) => (
-                <tr key={asg.id}>
-                  <td className="fw-semibold text-primary">
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 text-primary text-start fw-semibold text-decoration-underline border-0 bg-transparent align-baseline"
-                      onClick={() => setCurrentHashView('vessels', asg.vesselId)}
-                      title={`Click to view ${asg.vesselName} vessel details`}
-                    >
-                      {asg.vesselName}
-                    </button>
-                  </td>
-                  <td className="font-mono-code">{asg.imoNumber}</td>
-                  <td>
-                    <span className="badge bg-light text-dark border">{asg.vesselType}</span>
-                  </td>
-                  <td>{asg.rankHeld}</td>
-                  <td className="font-mono-code small">{formatMaritimeDate(asg.embarkDate)}</td>
-                  <td className="font-mono-code small">
-                    {asg.disembarkDate ? formatMaritimeDate(asg.disembarkDate) : <span className="text-success fw-bold">Active On Board</span>}
-                  </td>
-                  <td>
-                    <span className={`badge ${asg.isCurrent ? 'bg-success text-white' : 'bg-secondary text-white'}`}>
-                      {asg.isCurrent ? 'Current Assignment' : 'Completed Tour'}
-                    </span>
+              {sortedAssignments.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-4 text-muted">
+                    No historical assignments recorded.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                sortedAssignments.map((asg: CrewVesselAssignment) => (
+                  <tr key={asg.id}>
+                    <td className="fw-semibold text-primary">
+                      <button
+                        type="button"
+                        className="btn btn-link p-0 text-primary text-start fw-semibold text-decoration-underline border-0 bg-transparent align-baseline"
+                        onClick={() => setCurrentHashView('vessels', asg.vesselId)}
+                        title={`Click to view ${asg.vesselName} vessel details`}
+                      >
+                        {asg.vesselName}
+                      </button>
+                    </td>
+                    <td className="font-mono-code">{asg.imoNumber}</td>
+                    <td>
+                      <span className="badge bg-light text-dark border">{asg.vesselType}</span>
+                    </td>
+                    <td>{asg.rankHeld}</td>
+                    <td className="font-mono-code small">{formatMaritimeDate(asg.embarkDate)}</td>
+                    <td className="font-mono-code small">
+                      {asg.disembarkDate ? formatMaritimeDate(asg.disembarkDate) : <span className="text-success fw-bold">Active On Board</span>}
+                    </td>
+                    <td>
+                      <span className={`badge ${asg.isCurrent ? 'bg-success text-white' : 'bg-secondary text-white'}`}>
+                        {asg.isCurrent ? 'Current Assignment' : 'Completed Tour'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -327,18 +456,74 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
           <table className="table map-table-custom align-middle mb-0">
             <thead>
               <tr>
-                <th>Document Title</th>
-                <th>STCW Regulation</th>
-                <th>Certificate No</th>
-                <th>Issuing Authority & Flag</th>
-                <th>Issue Date</th>
-                <th>Expiry Date</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer1SortField === 'title') setLayer1SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer1SortField('title'); setLayer1SortDirection('asc'); }
+                  }}
+                >
+                  Document Title {renderSortIndicator(layer1SortField, 'title', layer1SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer1SortField === 'stcwRegulation') setLayer1SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer1SortField('stcwRegulation'); setLayer1SortDirection('asc'); }
+                  }}
+                >
+                  STCW Regulation {renderSortIndicator(layer1SortField, 'stcwRegulation', layer1SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer1SortField === 'certificateNo') setLayer1SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer1SortField('certificateNo'); setLayer1SortDirection('asc'); }
+                  }}
+                >
+                  Certificate No {renderSortIndicator(layer1SortField, 'certificateNo', layer1SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer1SortField === 'issuingAuthority') setLayer1SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer1SortField('issuingAuthority'); setLayer1SortDirection('asc'); }
+                  }}
+                >
+                  Issuing Authority &amp; Flag {renderSortIndicator(layer1SortField, 'issuingAuthority', layer1SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer1SortField === 'issueDate') setLayer1SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer1SortField('issueDate'); setLayer1SortDirection('desc'); }
+                  }}
+                >
+                  Issue Date {renderSortIndicator(layer1SortField, 'issueDate', layer1SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer1SortField === 'expiryDate') setLayer1SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer1SortField('expiryDate'); setLayer1SortDirection('asc'); }
+                  }}
+                >
+                  Expiry Date {renderSortIndicator(layer1SortField, 'expiryDate', layer1SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer1SortField === 'verificationStatus') setLayer1SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer1SortField('verificationStatus'); setLayer1SortDirection('asc'); }
+                  }}
+                >
+                  Status {renderSortIndicator(layer1SortField, 'verificationStatus', layer1SortDirection)}
+                </th>
+                <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {crewMember.layer1CoreDocuments.map((doc) => (
+              {sortedLayer1Docs.map((doc: STCWDocumentItem) => (
                 <tr key={doc.id}>
                   <td className="fw-semibold text-primary">{doc.title}</td>
                   <td className="font-mono-code small">{doc.stcwRegulation}</td>
@@ -404,25 +589,81 @@ export const CrewDetailView: React.FC<CrewDetailViewProps> = ({ crewId }) => {
           <table className="table map-table-custom align-middle mb-0">
             <thead>
               <tr>
-                <th>Endorsement / Certificate Title</th>
-                <th>STCW Layer 2 Scope</th>
-                <th>Certificate No</th>
-                <th>Issuing Body</th>
-                <th>Flag State</th>
-                <th>Expiry Date</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer2SortField === 'title') setLayer2SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer2SortField('title'); setLayer2SortDirection('asc'); }
+                  }}
+                >
+                  Endorsement / Certificate Title {renderSortIndicator(layer2SortField, 'title', layer2SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer2SortField === 'stcwRegulation') setLayer2SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer2SortField('stcwRegulation'); setLayer2SortDirection('asc'); }
+                  }}
+                >
+                  STCW Layer 2 Scope {renderSortIndicator(layer2SortField, 'stcwRegulation', layer2SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer2SortField === 'certificateNo') setLayer2SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer2SortField('certificateNo'); setLayer2SortDirection('asc'); }
+                  }}
+                >
+                  Certificate No {renderSortIndicator(layer2SortField, 'certificateNo', layer2SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer2SortField === 'issuingAuthority') setLayer2SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer2SortField('issuingAuthority'); setLayer2SortDirection('asc'); }
+                  }}
+                >
+                  Issuing Body {renderSortIndicator(layer2SortField, 'issuingAuthority', layer2SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer2SortField === 'flagState') setLayer2SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer2SortField('flagState'); setLayer2SortDirection('asc'); }
+                  }}
+                >
+                  Flag State {renderSortIndicator(layer2SortField, 'flagState', layer2SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer2SortField === 'expiryDate') setLayer2SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer2SortField('expiryDate'); setLayer2SortDirection('asc'); }
+                  }}
+                >
+                  Expiry Date {renderSortIndicator(layer2SortField, 'expiryDate', layer2SortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (layer2SortField === 'verificationStatus') setLayer2SortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+                    else { setLayer2SortField('verificationStatus'); setLayer2SortDirection('asc'); }
+                  }}
+                >
+                  Status {renderSortIndicator(layer2SortField, 'verificationStatus', layer2SortDirection)}
+                </th>
+                <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {crewMember.layer2Endorsements.length === 0 ? (
+              {sortedLayer2Docs.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-4 text-muted">
                     No Layer 2 vessel-specific endorsements uploaded.
                   </td>
                 </tr>
               ) : (
-                crewMember.layer2Endorsements.map((doc) => (
+                sortedLayer2Docs.map((doc: STCWDocumentItem) => (
                   <tr key={doc.id}>
                     <td className="fw-semibold text-primary">{doc.title}</td>
                     <td className="font-mono-code small">{doc.stcwRegulation}</td>

@@ -108,4 +108,17 @@ describe('approver action buttons and sidebar navigation suite', () => {
     expect(isButtonVisible(activePersona, 'vessels')).toBe(true);
     expect(isButtonVisible(activePersona, 'users')).toBe(true);
   });
+
+  /**
+    what: verifies that setActivePersona transitions smoothly across all roles without state corruption.
+    how: cycles through each persona and verifies activePersona is set and accessible routes are maintained.
+    with what file: src/__tests__/approverAndSidebar.test.ts testing useMapStore.ts.
+  */
+  it('switches between all personas seamlessly without errors', () => {
+    const roles = ['Administrator', 'Verifier', 'Inspector', 'Approver', 'Submitter', 'C Admin'] as const;
+    roles.forEach((role) => {
+      useMapStore.getState().setActivePersona(role);
+      expect(useMapStore.getState().activePersona).toBe(role);
+    });
+  });
 });

@@ -24,6 +24,10 @@ import { calculateAssuranceSetReadiness, calculateVesselReadiness } from '../uti
 export const DashboardView: React.FC = () => {
   const { vessels, assuranceSets, documents, activePersona, setCurrentHashView } = useMapStore();
   const [cAdminSearchTerm, setCAdminSearchTerm] = useState('');
+  const [cAdminSortField, setCAdminSortField] = useState<'id' | 'title' | 'vesselName' | 'charterWindowStart' | 'stage' | 'readinessScore'>('id');
+  const [cAdminSortDirection, setCAdminSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [fleetSortField, setFleetSortField] = useState<'name' | 'imoNumber' | 'flagState' | 'classificationSociety' | 'status' | 'readiness'>('name');
+  const [fleetSortDirection, setFleetSortDirection] = useState<'asc' | 'desc'>('asc');
 
   if (activePersona === 'Verifier') {
     return <VerifierWorkspaceView />;
@@ -51,6 +55,11 @@ export const DashboardView: React.FC = () => {
   /* c admin specific assurance sets */
   const cAdminAssuranceSets = assuranceSets.filter((s) => isAssuranceSetAssignedToPersona(s, 'C Admin'));
 
+  const renderSortIndicator = (currentField: string, field: string, direction: 'asc' | 'desc') => {
+    if (currentField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{direction === 'asc' ? '▲' : '▼'}</span>;
+  };
+
   const filteredCAdminSets = cAdminAssuranceSets.filter((s) => {
     const term = cAdminSearchTerm.toLowerCase();
     return (
@@ -61,6 +70,46 @@ export const DashboardView: React.FC = () => {
       (s.initiatorOrg && s.initiatorOrg.toLowerCase().includes(term))
     );
   });
+
+  const sortedCAdminSets = [...filteredCAdminSets].sort((a, b) => {
+    let comp = 0;
+    if (cAdminSortField === 'id') comp = a.id.localeCompare(b.id);
+    else if (cAdminSortField === 'title') comp = a.title.localeCompare(b.title);
+    else if (cAdminSortField === 'vesselName') comp = a.vesselName.localeCompare(b.vesselName);
+    else if (cAdminSortField === 'charterWindowStart') comp = (a.charterWindowStart || '').localeCompare(b.charterWindowStart || '');
+    else if (cAdminSortField === 'stage') comp = a.stage.localeCompare(b.stage);
+    else if (cAdminSortField === 'readinessScore') comp = calculateAssuranceSetReadiness(a) - calculateAssuranceSetReadiness(b);
+    return cAdminSortDirection === 'asc' ? comp : -comp;
+  });
+
+  const handleCAdminSort = (field: 'id' | 'title' | 'vesselName' | 'charterWindowStart' | 'stage' | 'readinessScore') => {
+    if (cAdminSortField === field) {
+      setCAdminSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setCAdminSortField(field);
+      setCAdminSortDirection('asc');
+    }
+  };
+
+  const sortedFleetVessels = [...visibleVessels].sort((a, b) => {
+    let comp = 0;
+    if (fleetSortField === 'name') comp = a.name.localeCompare(b.name);
+    else if (fleetSortField === 'imoNumber') comp = a.imoNumber.localeCompare(b.imoNumber);
+    else if (fleetSortField === 'flagState') comp = a.flagState.localeCompare(b.flagState);
+    else if (fleetSortField === 'classificationSociety') comp = a.classificationSociety.localeCompare(b.classificationSociety);
+    else if (fleetSortField === 'status') comp = a.status.localeCompare(b.status);
+    else if (fleetSortField === 'readiness') comp = calculateVesselReadiness(a, assuranceSets, documents) - calculateVesselReadiness(b, assuranceSets, documents);
+    return fleetSortDirection === 'asc' ? comp : -comp;
+  });
+
+  const handleFleetSort = (field: 'name' | 'imoNumber' | 'flagState' | 'classificationSociety' | 'status' | 'readiness') => {
+    if (fleetSortField === field) {
+      setFleetSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setFleetSortField(field);
+      setFleetSortDirection('asc');
+    }
+  };
 
   const getStageBadgeClass = (stage: AssuranceStage) => {
     switch (stage) {
@@ -295,24 +344,54 @@ export const DashboardView: React.FC = () => {
                   <table className="table map-table-custom align-middle mb-0">
                     <thead>
                       <tr>
-                        <th>Set ID</th>
-                        <th>Campaign Title</th>
-                        <th>Target Vessel</th>
-                        <th>Charter Period</th>
-                        <th>Stage</th>
-                        <th>Readiness Index</th>
-                        <th className="text-end">Action</th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleCAdminSort('id')}
+                        >
+                          Set ID {renderSortIndicator(cAdminSortField, 'id', cAdminSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleCAdminSort('title')}
+                        >
+                          Campaign Title {renderSortIndicator(cAdminSortField, 'title', cAdminSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleCAdminSort('vesselName')}
+                        >
+                          Target Vessel {renderSortIndicator(cAdminSortField, 'vesselName', cAdminSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleCAdminSort('charterWindowStart')}
+                        >
+                          Charter Period {renderSortIndicator(cAdminSortField, 'charterWindowStart', cAdminSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleCAdminSort('stage')}
+                        >
+                          Stage {renderSortIndicator(cAdminSortField, 'stage', cAdminSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleCAdminSort('readinessScore')}
+                        >
+                          Readiness Index {renderSortIndicator(cAdminSortField, 'readinessScore', cAdminSortDirection)}
+                        </th>
+                        <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredCAdminSets.length === 0 ? (
+                      {sortedCAdminSets.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="text-center py-4 text-muted">
                             No created assurance sets found matching your search.
                           </td>
                         </tr>
                       ) : (
-                        filteredCAdminSets.map((s) => (
+                        sortedCAdminSets.map((s) => (
                           <tr
                             key={s.id}
                             onClick={() => setCurrentHashView('assurance-sets', s.id)}
@@ -378,16 +457,46 @@ export const DashboardView: React.FC = () => {
                   <table className="table map-table-custom align-middle mb-0">
                     <thead>
                       <tr>
-                        <th>Vessel Name</th>
-                        <th>IMO Number</th>
-                        <th>Flag State</th>
-                        <th>Class</th>
-                        <th>Status</th>
-                        <th>Readiness Index</th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleFleetSort('name')}
+                        >
+                          Vessel Name {renderSortIndicator(fleetSortField, 'name', fleetSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleFleetSort('imoNumber')}
+                        >
+                          IMO Number {renderSortIndicator(fleetSortField, 'imoNumber', fleetSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleFleetSort('flagState')}
+                        >
+                          Flag State {renderSortIndicator(fleetSortField, 'flagState', fleetSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleFleetSort('classificationSociety')}
+                        >
+                          Class {renderSortIndicator(fleetSortField, 'classificationSociety', fleetSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleFleetSort('status')}
+                        >
+                          Status {renderSortIndicator(fleetSortField, 'status', fleetSortDirection)}
+                        </th>
+                        <th
+                          style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                          onClick={() => handleFleetSort('readiness')}
+                        >
+                          Readiness Index {renderSortIndicator(fleetSortField, 'readiness', fleetSortDirection)}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {visibleVessels.map((v) => (
+                      {sortedFleetVessels.map((v) => (
                         <tr
                           key={v.id}
                           onClick={() => setCurrentHashView('vessels', v.id)}

@@ -38,6 +38,37 @@ export const ApproverDashboardView: React.FC = () => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [selectedDocForReview, setSelectedDocForReview] = useState<{ doc: MasterDocument; notes?: string } | null>(null);
 
+  type ReqSortField = 'category' | 'title' | 'ocrConfidence' | 'status';
+  const [reqSortField, setReqSortField] = useState<ReqSortField>('category');
+  const [reqSortDirection, setReqSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  type PipelineSortField = 'id' | 'title' | 'vesselName' | 'initiator' | 'status';
+  const [pipelineSortField, setPipelineSortField] = useState<PipelineSortField>('id');
+  const [pipelineSortDirection, setPipelineSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const renderSortIndicator = (currentField: string, field: string, direction: 'asc' | 'desc') => {
+    if (currentField !== field) return <span className="text-muted ms-1 small opacity-50">↕</span>;
+    return <span className="text-primary ms-1 small fw-bold">{direction === 'asc' ? '▲' : '▼'}</span>;
+  };
+
+  const handleReqSort = (field: ReqSortField) => {
+    if (reqSortField === field) {
+      setReqSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setReqSortField(field);
+      setReqSortDirection('asc');
+    }
+  };
+
+  const handlePipelineSort = (field: PipelineSortField) => {
+    if (pipelineSortField === field) {
+      setPipelineSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setPipelineSortField(field);
+      setPipelineSortDirection('asc');
+    }
+  };
+
   /* filter assigned sets that are verified and awaiting approval */
   const assignedSets = assuranceSets.filter((s) => {
     const isAssigned = isAssuranceSetAssignedToPersona(s, activePersona);
@@ -107,6 +138,16 @@ export const ApproverDashboardView: React.FC = () => {
     const matchesStage = stageFilter === 'All' || set.stage === stageFilter;
 
     return matchesSearch && matchesStage;
+  });
+
+  const sortedSets = [...filteredSets].sort((a, b) => {
+    let comp = 0;
+    if (pipelineSortField === 'id') comp = a.id.localeCompare(b.id);
+    else if (pipelineSortField === 'title') comp = a.title.localeCompare(b.title);
+    else if (pipelineSortField === 'vesselName') comp = a.vesselName.localeCompare(b.vesselName);
+    else if (pipelineSortField === 'initiator') comp = (a.assignedSubmitter || a.initiatorOrg || '').localeCompare(b.assignedSubmitter || b.initiatorOrg || '');
+    else if (pipelineSortField === 'status') comp = (a.approverDecision || a.stage).localeCompare(b.approverDecision || b.stage);
+    return pipelineSortDirection === 'asc' ? comp : -comp;
   });
 
   /* calculation of top summary stats */
@@ -229,9 +270,27 @@ export const ApproverDashboardView: React.FC = () => {
 
               {/* statutory requirements register table displaying verified documents only */}
               {(() => {
-                const verifiedRequirements = selectedSet.requirements.filter(
-                  (req) => req.verifierStatus === 'Verified' || req.isFulfilled
-                );
+                const verifiedRequirements = selectedSet.requirements
+                  .filter((req) => req.verifierStatus === 'Verified' || req.isFulfilled)
+                  .sort((a, b) => {
+                    let comp = 0;
+                    if (reqSortField === 'category') {
+                      comp = a.category.localeCompare(b.category);
+                    } else if (reqSortField === 'title') {
+                      comp = a.title.localeCompare(b.title);
+                    } else if (reqSortField === 'ocrConfidence') {
+                      const docA = documents.find((d) => d.id === a.documentId || (a.linkedDocumentId && d.id === a.linkedDocumentId));
+                      const docB = documents.find((d) => d.id === b.documentId || (b.linkedDocumentId && d.id === b.linkedDocumentId));
+                      const scoreA = a.ocrConfidence || docA?.ocrConfidence || 0;
+                      const scoreB = b.ocrConfidence || docB?.ocrConfidence || 0;
+                      comp = scoreA - scoreB;
+                    } else if (reqSortField === 'status') {
+                      const statusA = a.verifierStatus || (a.isFulfilled ? 'Verified' : 'Pending');
+                      const statusB = b.verifierStatus || (b.isFulfilled ? 'Verified' : 'Pending');
+                      comp = statusA.localeCompare(statusB);
+                    }
+                    return reqSortDirection === 'asc' ? comp : -comp;
+                  });
 
                 return (
                   <div className="card map-card-custom">
@@ -239,11 +298,31 @@ export const ApproverDashboardView: React.FC = () => {
                       <table className="table map-table-custom align-middle mb-0">
                         <thead>
                           <tr>
-                            <th>Category</th>
-                            <th>Requirement Title</th>
-                            <th>OCR Conf</th>
-                            <th>Status</th>
-                            <th className="text-end">Actions</th>
+                            <th
+                              style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                              onClick={() => handleReqSort('category')}
+                            >
+                              Category {renderSortIndicator(reqSortField, 'category', reqSortDirection)}
+                            </th>
+                            <th
+                              style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                              onClick={() => handleReqSort('title')}
+                            >
+                              Requirement Title {renderSortIndicator(reqSortField, 'title', reqSortDirection)}
+                            </th>
+                            <th
+                              style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                              onClick={() => handleReqSort('ocrConfidence')}
+                            >
+                              OCR Conf {renderSortIndicator(reqSortField, 'ocrConfidence', reqSortDirection)}
+                            </th>
+                            <th
+                              style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                              onClick={() => handleReqSort('status')}
+                            >
+                              Status {renderSortIndicator(reqSortField, 'status', reqSortDirection)}
+                            </th>
+                            <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -581,23 +660,48 @@ export const ApproverDashboardView: React.FC = () => {
           <table className="table map-table-custom align-middle mb-0">
             <thead>
               <tr>
-                <th>Assurance Set ID</th>
-                <th>Campaign Title</th>
-                <th>Vessel Name & IMO</th>
-                <th>Initiator / Submitter</th>
-                <th>Sign-off Status</th>
-                <th className="text-end">Actions</th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handlePipelineSort('id')}
+                >
+                  Assurance Set ID {renderSortIndicator(pipelineSortField, 'id', pipelineSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handlePipelineSort('title')}
+                >
+                  Campaign Title {renderSortIndicator(pipelineSortField, 'title', pipelineSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handlePipelineSort('vesselName')}
+                >
+                  Vessel Name & IMO {renderSortIndicator(pipelineSortField, 'vesselName', pipelineSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handlePipelineSort('initiator')}
+                >
+                  Initiator / Submitter {renderSortIndicator(pipelineSortField, 'initiator', pipelineSortDirection)}
+                </th>
+                <th
+                  style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                  onClick={() => handlePipelineSort('status')}
+                >
+                  Sign-off Status {renderSortIndicator(pipelineSortField, 'status', pipelineSortDirection)}
+                </th>
+                <th className="text-end" style={{ whiteSpace: 'nowrap' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredSets.length === 0 ? (
+              {sortedSets.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-4 text-secondary font-mono-code">
+                  <td colSpan={6} className="text-center py-4 text-secondary font-mono-code">
                     No matching approval requests found.
                   </td>
                 </tr>
               ) : (
-                filteredSets.map((set) => {
+                sortedSets.map((set) => {
                   return (
                     <tr
                       key={set.id}
