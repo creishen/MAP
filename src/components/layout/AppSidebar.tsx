@@ -101,7 +101,7 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'capa',
       label: 'CAPA Tracker',
-      allowedRoles: ['Administrator', 'C Admin', 'Inspector'],
+      allowedRoles: ['C Admin', 'Inspector'],
     },
     {
       key: 'audit',
@@ -132,6 +132,7 @@ export const AppSidebar: React.FC = () => {
     if (activePersona === 'Inspector' && item.key === 'inspector') return false;
     if (activePersona === 'Approver' && item.key === 'approver') return false;
     if (activePersona === 'C Admin' && item.key === 'assurance-sets') return false;
+    if ((activePersona === 'Administrator' || activePersona === 'Submitter') && item.key === 'capa') return false;
 
     /* Roles & Permissions is an Administrator settings page (BRD role_rights row stays blank) */
     if (item.key === 'roles-permissions') {

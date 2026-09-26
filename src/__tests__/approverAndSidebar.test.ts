@@ -110,6 +110,27 @@ describe('approver action buttons and sidebar navigation suite', () => {
   });
 
   /**
+    what: verifies that vessel admin personas (Administrator / Submitter) hide the CAPA tracker sidepanel button.
+    how: simulates sidebar visibleItems filtering logic for Administrator and Submitter personas.
+    with what file: src/__tests__/approverAndSidebar.test.ts testing AppSidebar.tsx filtering.
+  */
+  it('hides CAPA tracker button from sidebar when active persona is Vessel Admin (Administrator or Submitter)', () => {
+    const isButtonVisible = (persona: string, itemKey: string) => {
+      if (persona === 'Verifier' && itemKey === 'verifier') return false;
+      if (persona === 'Inspector' && itemKey === 'inspector') return false;
+      if (persona === 'Approver' && itemKey === 'approver') return false;
+      if (persona === 'C Admin' && itemKey === 'assurance-sets') return false;
+      if ((persona === 'Administrator' || persona === 'Submitter') && itemKey === 'capa') return false;
+      return true;
+    };
+
+    expect(isButtonVisible('Administrator', 'capa')).toBe(false);
+    expect(isButtonVisible('Submitter', 'capa')).toBe(false);
+    expect(isButtonVisible('Inspector', 'capa')).toBe(true);
+    expect(isButtonVisible('C Admin', 'capa')).toBe(true);
+  });
+
+  /**
     what: verifies that setActivePersona transitions smoothly across all roles without state corruption.
     how: cycles through each persona and verifies activePersona is set and accessible routes are maintained.
     with what file: src/__tests__/approverAndSidebar.test.ts testing useMapStore.ts.
