@@ -520,8 +520,8 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                       />
                     </div>
                   )}
-{/* 
-                  {isClientAdmin && (
+
+                  {/* {isClientAdmin && (
                     <div className="col-12">
                       <label className="form-label text-secondary small fw-semibold">
                         Vessel Selection Mode
@@ -548,7 +548,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                           : 'Internal deployment on vessels owned or managed by your organization.'}
                       </div>
                     </div>
-                  )} */}
+                  )}  */}
 
                   <div className="col-12">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="grid-target-vessel">
