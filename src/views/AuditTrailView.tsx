@@ -1,5 +1,5 @@
 /* 
-  file summary: immutable audit trail page view displaying searchable regulatory event logs in minimalist light theme.
+  file summary: Audit Trail page view displaying searchable regulatory event logs in minimalist light theme.
   responsibilities: presents chronological audit history with user roles, field deltas, event statistics, and search filters with high contrast text.
   role in system: primary audit workspace accessible via sidebar (/audit).
 */
@@ -11,7 +11,7 @@ import { filterAuditTrailForPersona } from '../utils/rbacHelpers';
 import { exportToCsv, exportToPdf } from '../utils/exportHelpers';
 
 /**
-  what: renders the full-page immutable audit trail view in clean light theme with data export capabilities.
+  what: renders the full-page Audit Trail view in clean light theme with data export capabilities.
   how: fetches auditEvents array from zustand store, filters items based on persona RBAC rules and search query, and provides export to CSV/PDF.
   with what file: src/views/AuditTrailView.tsx loaded by App.tsx router.
 */

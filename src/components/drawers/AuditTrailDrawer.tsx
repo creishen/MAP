@@ -1,5 +1,5 @@
 /* 
-  file summary: immutable audit trail offcanvas drawer displaying searchable event logs in minimalist light theme.
+  file summary: Audit Trail offcanvas drawer displaying searchable event logs in minimalist light theme.
   responsibilities: presents chronological audit history with user roles, field deltas, and search filters with high contrast text.
   role in system: global offcanvas drawer triggered from header banner button.
 */

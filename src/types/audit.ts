@@ -1,5 +1,5 @@
 /* 
-  file summary: immutable audit trail log event interfaces for the marine assurance platform (map).
+  file summary: Audit Trail log event interfaces for the marine assurance platform (map).
   responsibilities: defines structured event entries recording timestamps, user ids, persona roles, field deltas, and compliance status changes.
   role in system: consumed by audit trail offcanvas drawer, store audit logging actions, and compliance reporting.
 */

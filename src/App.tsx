@@ -88,13 +88,13 @@ export const App: React.FC = () => {
       currentHashView === 'roles-permissions'
         ? isViewAccessibleToPersona(currentHashView, currentEntityId, activePersona)
         : isViewAccessibleToPersona(
-            currentHashView,
-            currentEntityId,
-            activePersona,
-            ENABLE_ROLES_AND_PERMISSIONS ? rolePermissionDefaults : undefined,
-            ENABLE_ROLES_AND_PERMISSIONS ? userPermissionOverrides : undefined,
-            matchingUser,
-          );
+          currentHashView,
+          currentEntityId,
+          activePersona,
+          ENABLE_ROLES_AND_PERMISSIONS ? rolePermissionDefaults : undefined,
+          ENABLE_ROLES_AND_PERMISSIONS ? userPermissionOverrides : undefined,
+          matchingUser,
+        );
 
     if (!allowed) {
       setCurrentHashView('dashboard');
@@ -166,7 +166,7 @@ export const App: React.FC = () => {
         <main className="map-content-area">{renderCurrentView()}</main>
       </div>
 
-      {/* global immutable audit trail offcanvas drawer */}
+      {/* global Audit Trail offcanvas drawer */}
       <AuditTrailDrawer />
     </div>
   );

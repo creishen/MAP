@@ -226,7 +226,7 @@ export const PERMISSION_SCOPE_CATALOG: PermissionScopeDefinition[] = [
   },
   {
     key: 'audit_trail',
-    label: 'Immutable Audit Trail (Sidepanel Page)',
+    label: 'Audit Trail (Sidepanel Page)',
     description: 'Controls showing/hiding the Audit Trail sidepanel button and logs view page access.',
     category: 'Visibility & compliance',
     lockCreate: true,

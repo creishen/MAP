@@ -312,7 +312,7 @@ export function filterAuditTrailForPersona(
   with what file: src/utils/rbacHelpers.ts consumed by HeaderBanner, VesselDetailView, DocumentDetailView, InspectionChecklistView, and CreateAssuranceSetView.
 */
 export function getBackButtonInfo(
-  parentView: "assurance-sets" | "vessels" | "documents" | "inspector" | "crew" | "capa" | "approver",
+  parentView: "assurance-sets" | "vessels" | "documents" | "inspector" | "crew" | "capa" | "approver" | "roles-permissions" | "users",
   parentLabel: string,
   previousHashView: string | undefined,
   activePersona: UserRolePersona,
@@ -351,6 +351,10 @@ export function getBackButtonInfo(
     ].includes(activePersona);
   } else if (parentView === "approver") {
     isParentAllowedInSidepanel = ["Administrator", "Approver"].includes(activePersona);
+  } else if (parentView === "roles-permissions") {
+    isParentAllowedInSidepanel = ["Administrator"].includes(activePersona);
+  } else if (parentView === "users") {
+    isParentAllowedInSidepanel = ["Administrator", "C Admin"].includes(activePersona);
   }
 
   if (previousHashView === "dashboard" || !isParentAllowedInSidepanel) {

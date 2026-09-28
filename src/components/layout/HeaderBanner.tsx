@@ -46,6 +46,8 @@ export const HeaderBanner: React.FC = () => {
         return getBackButtonInfo('capa', 'Physical Inspections', previousHashView, activePersona, previousEntityId);
       case 'approver':
         return getBackButtonInfo('approver', 'Approval Gate', previousHashView, activePersona, previousEntityId);
+      case 'roles-permissions':
+        return getBackButtonInfo('roles-permissions', 'Roles & Permissions', previousHashView, activePersona, previousEntityId);
       case 'create-assurance-set':
       case 'assurance-sets':
       default:
@@ -110,6 +112,8 @@ export const HeaderBanner: React.FC = () => {
       }
       case 'users':
         return { breadcrumb: 'USER DIRECTORY · ACCESS GOVERNANCE', title: 'User Management' };
+      case 'roles-permissions':
+        return { breadcrumb: 'ACCESS CONTROL · GOVERNANCE MATRIX', title: 'Roles & Permissions' };
       case 'verifier':
         return { breadcrumb: 'SURVEYOR WORKSPACE · COMPLIANCE REVIEW', title: 'Verification Queue' };
       case 'inspection':
@@ -133,7 +137,7 @@ export const HeaderBanner: React.FC = () => {
         }
         return { breadcrumb: 'CORRECTIVE ACTION TRACKER · FLEET OVERVIEW', title: 'CAPA Tracker' };
       case 'audit':
-        return { breadcrumb: 'IMMUTABLE LOGS · CRYPTOGRAPHIC AUDIT', title: 'Immutable Audit Trail' };
+        return { breadcrumb: 'IMMUTABLE LOGS · CRYPTOGRAPHIC AUDIT', title: 'Audit Trail' };
       case 'create-assurance-set':
         return { breadcrumb: 'NEW ASSURANCE CAMPAIGN · INITIATION', title: 'Create Assurance Set' };
       case 'dashboard':

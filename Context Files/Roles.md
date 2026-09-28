@@ -90,7 +90,7 @@ flowchart TD
   - Access all operational workspaces (Document Upload, Verifier, Inspector, Approver, Audit Trail).
 - **Prohibited Actions**:
   - Cannot register duplicate vessels with conflicting IMO or official registration numbers.
-  - Cannot alter, overwrite, or delete immutable audit trail records.
+  - Cannot alter, overwrite, or delete Audit Trail records.
   - Cannot violate segregation of duties where hard BRD policy locks apply.
 
 ### 3.2. C Admin (Client Admin / Charterer)
