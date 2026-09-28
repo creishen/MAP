@@ -224,80 +224,79 @@ export const RolesAndPermissionsView: React.FC = () => {
 
   return (
     <div className="d-flex flex-column gap-4 pb-5">
-      <div className="card map-card-custom p-4 bg-white">
-        <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
-          <div>
-            <h3 className="fw-bold text-primary m-0">Roles &amp; Permissions</h3>
-            <div className="text-secondary small mt-1">
-              Configure role defaults and per-user overrides. Toggling <strong>View</strong> rights directly controls showing or hiding sidepanel buttons and page access for each role. Click <strong>Save changes</strong> to apply updates.
-            </div>
-          </div>
-          <div className="d-flex flex-wrap gap-2">
-            {canEdit && (
-              <button
-                type="button"
-                className="btn btn-outline-primary btn-sm"
-                onClick={() => {
-                  setFormError(null);
-                  setShowAddRole(true);
-                }}
-              >
-                + New role
-              </button>
-            )}
-            {canEdit && activeTab === 'role-defaults' && (
-              <button
-                type="button"
-                className="btn btn-outline-secondary btn-sm"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      'Reset all role defaults to BRD values and clear custom roles, scopes, categories, and user overrides?',
-                    )
-                  ) {
-                    resetRolePermissionsToBrd();
-                    setSaveMessage('Reset to BRD defaults.');
-                  }
-                }}
-              >
-                Reset default
-              </button>
-            )}
-          </div>
+      {!canEdit && (
+        <div className="alert alert-info py-2 small mb-0">
+          Read-only mode. Only Administrators can save role matrix changes.
         </div>
+      )}
+      {saveMessage && (
+        <div className="alert alert-success py-2 small mb-0">{saveMessage}</div>
+      )}
 
-        {!canEdit && (
-          <div className="alert alert-info py-2 small mt-3 mb-0">
-            Read-only mode. Only Administrators can save role matrix changes.
-          </div>
-        )}
-        {saveMessage && (
-          <div className="alert alert-success py-2 small mt-3 mb-0">{saveMessage}</div>
-        )}
-      </div>
-
-      <ul className="nav nav-tabs px-1">
-        <li className="nav-item">
+      {/* Top Header Bar: Tabs on the left, Action buttons on the right */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div className="nav nav-pills bg-light p-1 rounded-3 border">
           <button
             type="button"
-            className={`nav-link ${activeTab === 'role-defaults' ? 'active' : ''}`}
+            className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${
+              activeTab === 'role-defaults'
+                ? 'active bg-primary text-white fw-semibold'
+                : 'text-secondary'
+            }`}
+            style={{ fontSize: '0.8rem' }}
             onClick={() => setActiveTab('role-defaults')}
           >
-            Role defaults
+            Role Defaults ({allRoles.length})
             {roleDirty && <span className="badge text-bg-warning ms-2">Unsaved</span>}
           </button>
-        </li>
-        <li className="nav-item">
           <button
             type="button"
-            className={`nav-link ${activeTab === 'user-permissions' ? 'active' : ''}`}
+            className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${
+              activeTab === 'user-permissions'
+                ? 'active bg-primary text-white fw-semibold'
+                : 'text-secondary'
+            }`}
+            style={{ fontSize: '0.8rem' }}
             onClick={() => setActiveTab('user-permissions')}
           >
-            User permissions
+            User Permissions ({visibleUsers.length})
             {userDirty && <span className="badge text-bg-warning ms-2">Unsaved</span>}
           </button>
-        </li>
-      </ul>
+        </div>
+
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          {canEdit && (
+            <button
+              type="button"
+              className="btn btn-outline-primary btn-sm"
+              onClick={() => {
+                setFormError(null);
+                setShowAddRole(true);
+              }}
+            >
+              + New role
+            </button>
+          )}
+          {canEdit && activeTab === 'role-defaults' && (
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'Reset all role defaults to BRD values and clear custom roles, scopes, categories, and user overrides?',
+                  )
+                ) {
+                  resetRolePermissionsToBrd();
+                  setSaveMessage('Reset to BRD defaults.');
+                }
+              }}
+            >
+              Reset default
+            </button>
+          )}
+        </div>
+      </div>
 
       {activeTab === 'role-defaults' && (
         <div className="d-flex flex-column gap-3">
