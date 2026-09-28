@@ -11,7 +11,16 @@ import { ReadinessGauge } from '../common/ReadinessGauge';
 import { exportToCsv, exportToPdf } from '../../utils/exportHelpers';
 import { getVesselStatusBadgeClass } from '../../utils/formatters';
 
-import { filterVesselsForPersona, isAssuranceSetAssignedToPersona, isVesselOwnedByAdmin } from '../../utils/rbacHelpers';
+import {
+  filterCAdminActiveCharters,
+  filterCAdminAvailableToCharter,
+  filterCAdminOwnFleet,
+  filterVesselsForPersona,
+  getClientAdminOrganization,
+  isAssuranceSetAssignedToPersona,
+  isVesselOwnedByAdmin,
+} from '../../utils/rbacHelpers';
+import type { FleetRegistryTab } from '../../utils/rbacHelpers';
 import { canPerform } from '../../utils/permissionHelpers';
 import { calculateVesselReadiness } from '../../utils/readinessHelpers';
 
@@ -26,7 +35,7 @@ type VesselSortField =
 interface VesselTableProps {
   onSelectVessel: (vessel: VesselParticulars) => void;
   onRegisterVessel?: () => void;
-  filterMode?: 'all' | 'chartered' | 'owned';
+  filterMode?: FleetRegistryTab;
 }
 
 /**
@@ -79,20 +88,15 @@ export const VesselTable: React.FC<VesselTableProps> = ({ onSelectVessel, onRegi
     );
 
   const isVesselOwned = isVesselOwnedByAdmin;
-
-  const isVesselCharteredByCAdmin = (v: VesselParticulars) =>
-    v.status === 'Under Charter' ||
-    assuranceSets.some(
-      (set) =>
-        set.vesselId === v.id &&
-        isAssuranceSetAssignedToPersona(set, 'C Admin')
-    );
+  const clientOrg = getClientAdminOrganization(users);
 
   const baseVessels =
     activePersona === 'C Admin'
       ? filterMode === 'chartered'
-        ? vessels.filter((v) => isVesselCharteredByCAdmin(v) && v.status !== 'Under Charter')
-        : vessels.filter((v) => !isVesselCharteredByCAdmin(v) && v.status !== 'Under Charter')
+        ? filterCAdminActiveCharters(vessels, assuranceSets)
+        : filterMode === 'own-fleet'
+          ? filterCAdminOwnFleet(vessels, clientOrg)
+          : filterCAdminAvailableToCharter(vessels, assuranceSets, clientOrg)
       : activePersona === 'Administrator' || activePersona === 'Submitter'
         ? filterMode === 'all'
           ? vessels.filter((v) => !isVesselOwned(v) && v.status !== 'Under Charter')

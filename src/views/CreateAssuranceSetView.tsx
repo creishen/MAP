@@ -8,7 +8,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { AssuranceSet, AssuranceRequirement } from '../types/assurance';
 import { UserProfile } from '../types/user';
-import { filterVesselsForPersona, getBackButtonInfo } from '../utils/rbacHelpers';
+import {
+  filterCAdminAvailableToCharter,
+  filterCAdminOwnFleet,
+  filterVesselsForPersona,
+  getBackButtonInfo,
+  getClientAdminOrganization,
+  isChartererMatchingVesselOwner,
+  isVesselOwnedByClientOrg,
+} from '../utils/rbacHelpers';
 import { usersWithRole, getEligibleVerifiers, getAssuranceAssignmentWarnings, hasBlockingAssuranceAssignmentConflict } from '../utils/userRoleHelpers';
 import { calculateAssuranceSetReadiness } from '../utils/readinessHelpers';
 import { isDuplicateCampaignTitle, generateUniqueAssuranceSetId, generateUniqueRequirementId } from '../utils/validation';
@@ -45,13 +53,19 @@ interface CreateAssuranceSetViewProps {
 export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ templateSetId }) => {
   const { vessels, assuranceSets, addAssuranceSet, activePersona, setCurrentHashView, previousHashView, previousEntityId, users } = useMapStore();
   const isClientAdmin = activePersona === 'C Admin';
+  const clientOrg = getClientAdminOrganization(users);
 
-  const availableVessels =
-    activePersona === 'Administrator'
+  const [vesselSource, setVesselSource] = useState<'external' | 'own-fleet'>('external');
+
+  const availableVessels = isClientAdmin
+    ? vesselSource === 'own-fleet'
+      ? filterCAdminOwnFleet(vessels, clientOrg)
+      : filterCAdminAvailableToCharter(vessels, assuranceSets, clientOrg)
+    : activePersona === 'Administrator'
       ? vessels
       : filterVesselsForPersona(vessels, assuranceSets, activePersona);
 
-  const defaultCharterer = isClientAdmin ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd';
+  const defaultCharterer = isClientAdmin ? clientOrg : 'Northwind Marine Pty Ltd';
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(templateSetId || '');
   const [vesselId, setVesselId] = useState(availableVessels[0]?.id || vessels[0]?.id || '');
   const [charterer, setCharterer] = useState(defaultCharterer);
@@ -261,6 +275,12 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     }
   }, [vesselId, selectedTemplateId]);
 
+  useEffect(() => {
+    if (!isClientAdmin) return;
+    if (availableVessels.some((v) => v.id === vesselId)) return;
+    setVesselId(availableVessels[0]?.id || '');
+  }, [vesselSource, availableVessels, isClientAdmin, vesselId]);
+
   const handleToggleDoc = (docId: string) => {
     setDocToggles((prev) => ({
       ...prev,
@@ -303,7 +323,26 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
     }
     setAssignmentError('');
 
-    const isClientAdmin = activePersona === 'C Admin';
+    const isOwnFleetSelection = isClientAdmin && isVesselOwnedByClientOrg(selectedVessel, clientOrg);
+    const isExternalSelfCharterRisk =
+      isClientAdmin &&
+      vesselSource === 'external' &&
+      isChartererMatchingVesselOwner(clientOrg, selectedVessel);
+
+    if (isExternalSelfCharterRisk) {
+      const confirmed = window.confirm(
+        `The selected vessel appears to be owned by ${clientOrg}. This looks like an internal deployment, not a third-party charter.\n\nSwitch to "Own Fleet" to continue, or click OK to proceed as internal deployment anyway.`,
+      );
+      if (!confirmed) return;
+    }
+
+    if (isClientAdmin && vesselSource === 'own-fleet' && !isOwnFleetSelection) {
+      setAssignmentError(
+        'Selected vessel is not in your own fleet. Choose a vessel from the Own Fleet list or switch to External Charter.',
+      );
+      return;
+    }
+
     const uniqueSetId = generateUniqueAssuranceSetId(assuranceSets);
 
     /* construct enabled requirements list with guaranteed unique transactional requirement ids and 0% OCR for initial state */
@@ -320,8 +359,9 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
       }));
 
     /* determine assigned stakeholders with organization attribution */
-    const initiatorOrg = isClientAdmin ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd';
+    const initiatorOrg = isClientAdmin ? clientOrg : 'Northwind Marine Pty Ltd';
     const effectiveCharterer = charterer.trim() || initiatorOrg;
+    const internalDeployment = isClientAdmin && (vesselSource === 'own-fleet' || isOwnFleetSelection);
 
     const newSet: AssuranceSet = {
       id: uniqueSetId,
@@ -332,6 +372,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
       initiatorOrg,
       initiatorRole: isClientAdmin ? 'C Admin · Client Created' : 'Vessel Provider Admin',
       charterer: effectiveCharterer,
+      internalDeployment: internalDeployment || undefined,
       charterWindowStart: startDate,
       charterWindowEnd: endDate,
       stage: 'Initiated',
@@ -479,6 +520,35 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                       />
                     </div>
                   )}
+{/* 
+                  {isClientAdmin && (
+                    <div className="col-12">
+                      <label className="form-label text-secondary small fw-semibold">
+                        Vessel Selection Mode
+                      </label>
+                      <div className="nav nav-pills bg-light p-1 rounded-3 border d-inline-flex">
+                        <button
+                          type="button"
+                          className={`nav-link btn-sm px-3 py-1.5 ${vesselSource === 'external' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
+                          onClick={() => setVesselSource('external')}
+                        >
+                          External Charter
+                        </button>
+                        <button
+                          type="button"
+                          className={`nav-link btn-sm px-3 py-1.5 ${vesselSource === 'own-fleet' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
+                          onClick={() => setVesselSource('own-fleet')}
+                        >
+                          Own Fleet
+                        </button>
+                      </div>
+                      <div className="form-text text-muted small mt-1">
+                        {vesselSource === 'external'
+                          ? 'Third-party vessels available for charter vetting (excludes your organization\'s own fleet).'
+                          : 'Internal deployment on vessels owned or managed by your organization.'}
+                      </div>
+                    </div>
+                  )} */}
 
                   <div className="col-12">
                     <label className="form-label text-secondary small fw-semibold" htmlFor="grid-target-vessel">
@@ -489,12 +559,17 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                       className={`form-select bg-white text-dark border-secondary-subtle${animatingFields.has('grid-target-vessel') ? ' map-autofill-animate' : ''}`}
                       value={vesselId}
                       onChange={(e) => setVesselId(e.target.value)}
+                      disabled={availableVessels.length === 0}
                     >
-                      {availableVessels.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name} (IMO: {v.imoNumber} · Flag: {v.flagState})
-                        </option>
-                      ))}
+                      {availableVessels.length === 0 ? (
+                        <option value="">No vessels available for this selection mode</option>
+                      ) : (
+                        availableVessels.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name} (IMO: {v.imoNumber} · Flag: {v.flagState})
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
 
@@ -505,7 +580,7 @@ export const CreateAssuranceSetView: React.FC<CreateAssuranceSetViewProps> = ({ 
                     <input
                       type="text"
                       className="form-control bg-light text-secondary border-secondary-subtle"
-                      value={activePersona === 'C Admin' ? 'Chevron Australia Pty Ltd' : 'Northwind Marine Pty Ltd'}
+                      value={isClientAdmin ? clientOrg : 'Northwind Marine Pty Ltd'}
                       disabled
                     />
                   </div>

@@ -175,6 +175,41 @@ describe('permissionDefaults and helpers', () => {
     expect(granted.read).toBe(true);
   });
 
+  it('Verifier approval scopes stay unlockable so Administrator can grant Approver access', () => {
+    expect(isBrdHardDenied('Verifier', 'approval_gate', 'read')).toBe(false);
+    expect(isBrdHardDenied('Verifier', 'approval_decisions', 'update')).toBe(false);
+    expect(isBrdHardDenied('Verifier', 'assurance_completion', 'update')).toBe(false);
+    expect(getRoleScopeFlags(matrix, 'Verifier', 'approval_gate').read).toBe(false);
+
+    const grantedGate = applyPermissionGuards('approval_gate', 'Verifier', {
+      create: false,
+      read: true,
+      update: true,
+      delete: false,
+    });
+    expect(grantedGate.read).toBe(true);
+    expect(grantedGate.update).toBe(false);
+
+    const grantedDecisions = applyPermissionGuards('approval_decisions', 'Verifier', {
+      create: false,
+      read: true,
+      update: true,
+      delete: false,
+    });
+    expect(grantedDecisions.update).toBe(true);
+  });
+
+  it('grants Verifier access to approver route when approval_gate read is enabled in role defaults', () => {
+    const customMatrix = {
+      ...matrix,
+      Verifier: {
+        ...matrix.Verifier,
+        approval_gate: { create: false, read: true, update: true, delete: false },
+      },
+    };
+    expect(isViewAccessibleToPersona('approver', null, 'Verifier', customMatrix)).toBe(true);
+  });
+
   it('still strips user overrides that are blank for every role the user holds', () => {
     const effective = getEffectiveUserScopeFlags(
       matrix,

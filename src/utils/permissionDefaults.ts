@@ -406,7 +406,7 @@ export const BRD_ROLE_PERMISSION_BASELINE = buildBrdRolePermissionDefaults();
 /**
   what: true when this role × scope × action is blank in the BRD matrix (button must stay disabled).
   how: only applies to built-in BRD personas; custom roles and custom scopes are not locked by BRD.
-       C Admin verification scopes stay unlockable so Administrator can grant Verifier access (BRD dual-role note).
+       C Admin verification scopes and Verifier approval scopes stay unlockable so Administrator can grant dual-role access (BRD dual-role note).
 */
 export function isBrdHardDenied(role: string, scopeKey: string, action: CrudAction): boolean {
   if (!(ALL_ROLE_PERSONAS as string[]).includes(role)) return false;
@@ -415,6 +415,16 @@ export function isBrdHardDenied(role: string, scopeKey: string, action: CrudActi
   if (
     role === 'C Admin' &&
     (scopeKey === 'verification_queue' || scopeKey === 'verification_decisions')
+  ) {
+    return false;
+  }
+
+  /* BRD: Verifier may also hold Approver access when explicitly granted in role defaults */
+  if (
+    role === 'Verifier' &&
+    (scopeKey === 'approval_gate' ||
+      scopeKey === 'approval_decisions' ||
+      scopeKey === 'assurance_completion')
   ) {
     return false;
   }

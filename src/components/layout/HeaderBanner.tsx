@@ -59,11 +59,11 @@ export const HeaderBanner: React.FC = () => {
   const headerBackInfo = getHeaderBackInfo();
 
   const rolesList: { role: UserRolePersona; label: string }[] = [
-    { role: 'Administrator', label: 'Admin' },
-    { role: 'C Admin', label: 'C Admin' },
+    { role: 'Administrator', label: 'Vessel Admin' },
+    { role: 'C Admin', label: 'Client Admin' },
     { role: 'Submitter', label: 'Submitter' },
     { role: 'Verifier', label: 'Verifier' },
-    { role: 'Inspector', label: 'Inspector' },
+    { role: 'Inspector', label: 'Vessel Inspector' },
     { role: 'Approver', label: 'Approver' },
   ];
 

@@ -8,19 +8,29 @@ import React, { useState, useEffect } from 'react';
 import { useMapStore } from '../store/useMapStore';
 import { VesselTable } from '../components/tables/VesselTable';
 import { VesselModal } from '../components/drawers/VesselModal';
-import { filterVesselsForPersona, isAssuranceSetAssignedToPersona, isVesselOwnedByAdmin } from '../utils/rbacHelpers';
+import {
+  filterCAdminActiveCharters,
+  filterCAdminAvailableToCharter,
+  filterCAdminOwnFleet,
+  getClientAdminOrganization,
+  isVesselOwnedByAdmin,
+} from '../utils/rbacHelpers';
 
 /**
   what: renders the fleet master registry page.
-  how: displays VesselTable with All Fleet Vessels vs Chartered Vessels tabs and opens VesselModal.
+  how: displays VesselTable with persona-specific tabs and opens VesselModal.
   with what file: src/views/FleetRegistryView.tsx loaded by App.tsx.
 */
 export const FleetRegistryView: React.FC = () => {
-  const { setCurrentHashView, setActiveVesselId, vessels, assuranceSets, activePersona } = useMapStore();
+  const { setCurrentHashView, setActiveVesselId, vessels, assuranceSets, activePersona, users } =
+    useMapStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'chartered' | 'owned'>(() => {
+  const [activeTab, setActiveTab] = useState<'available' | 'own-fleet' | 'chartered' | 'all' | 'owned'>(() => {
     if (activePersona === 'Administrator' || activePersona === 'Submitter') {
       return 'owned';
+    }
+    if (activePersona === 'C Admin') {
+      return 'available';
     }
     return 'all';
   });
@@ -28,26 +38,24 @@ export const FleetRegistryView: React.FC = () => {
   useEffect(() => {
     if (activePersona === 'Administrator' || activePersona === 'Submitter') {
       setActiveTab('owned');
+    } else if (activePersona === 'C Admin') {
+      setActiveTab('available');
     } else {
       setActiveTab('all');
     }
   }, [activePersona]);
 
-  const isVesselChartered = (v: (typeof vessels)[0]) =>
-    v.status === 'Under Charter' ||
-    assuranceSets.some(
-      (set) =>
-        set.vesselId === v.id &&
-        isAssuranceSetAssignedToPersona(set, 'C Admin')
-    );
+  const clientOrg = getClientAdminOrganization(users);
+
+  const availableToCharterCount = filterCAdminAvailableToCharter(
+    vessels,
+    assuranceSets,
+    clientOrg,
+  ).length;
+  const ownFleetCount = filterCAdminOwnFleet(vessels, clientOrg).length;
+  const activeChartersCount = filterCAdminActiveCharters(vessels, assuranceSets).length;
 
   const isVesselOwned = isVesselOwnedByAdmin;
-
-  const charteredVessels = vessels.filter((v) => isVesselChartered(v) && v.status !== 'Under Charter');
-  const availableVessels = vessels.filter((v) => !isVesselChartered(v) && v.status !== 'Under Charter');
-  const charteredCount = charteredVessels.length;
-  const availableCount = availableVessels.length;
-
   const ownedVessels = vessels.filter(isVesselOwned);
   const externalUncharteredVessels = vessels.filter((v) => !isVesselOwned(v) && v.status !== 'Under Charter');
   const ownedCount = ownedVessels.length;
@@ -60,18 +68,24 @@ export const FleetRegistryView: React.FC = () => {
 
   return (
     <div className="d-flex flex-column gap-3">
-      {/* Top Tab Bar: All Fleet Vessels vs Chartered Vessels / Owned Vessels */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
-
         {activePersona === 'C Admin' && (
           <div className="nav nav-pills bg-light p-1 rounded-3 border">
             <button
               type="button"
-              className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeTab === 'all' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
+              className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeTab === 'available' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
               style={{ fontSize: '0.8rem' }}
-              onClick={() => setActiveTab('all')}
+              onClick={() => setActiveTab('available')}
             >
-              All Fleet Vessels ({availableCount})
+              Available to Charter ({availableToCharterCount})
+            </button>
+            <button
+              type="button"
+              className={`nav-link btn-sm font-mono-code px-3 py-1.5 ${activeTab === 'own-fleet' ? 'active bg-primary text-white fw-semibold' : 'text-secondary'}`}
+              style={{ fontSize: '0.8rem' }}
+              onClick={() => setActiveTab('own-fleet')}
+            >
+              Own Fleet ({ownFleetCount})
             </button>
             <button
               type="button"
@@ -79,7 +93,7 @@ export const FleetRegistryView: React.FC = () => {
               style={{ fontSize: '0.8rem' }}
               onClick={() => setActiveTab('chartered')}
             >
-              Chartered Vessels ({charteredCount})
+              Active Charters ({activeChartersCount})
             </button>
           </div>
         )}
@@ -106,7 +120,6 @@ export const FleetRegistryView: React.FC = () => {
         )}
       </div>
 
-      {/* Vessels Table with inline Search, Export (CSV/PDF), and Register buttons */}
       <VesselTable
         filterMode={activeTab}
         onSelectVessel={(vessel) => {
@@ -115,7 +128,6 @@ export const FleetRegistryView: React.FC = () => {
         onRegisterVessel={() => setIsModalOpen(true)}
       />
 
-      {/* Vessel Registration Modal */}
       <VesselModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

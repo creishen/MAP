@@ -287,7 +287,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   <div className="border-bottom pb-1.5">
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Submitter:</div>
-                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && (
+                      {(isCAdmin || activePersona === 'Administrator') && (
                         <button
                           type="button"
                           className="btn btn-link p-0 text-decoration-none small font-mono-code ms-auto"
@@ -338,7 +338,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   <div className="border-bottom pb-1.5">
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Verifier:</div>
-                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && (
+                      {(isCAdmin || activePersona === 'Administrator') && (
                         <button
                           type="button"
                           className="btn btn-link p-0 text-decoration-none small font-mono-code ms-auto"
@@ -391,7 +391,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   <div className="border-bottom pb-1.5">
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Inspector:</div>
-                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && (
+                      {(isCAdmin  || activePersona === 'Administrator') && (
                         <button
                           type="button"
                           className="btn btn-link p-0 text-decoration-none small font-mono-code ms-auto"
@@ -446,7 +446,7 @@ export const AssuranceDetailView: React.FC<AssuranceDetailViewProps> = ({ setId 
                   <div>
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="text-secondary" style={{ fontSize: '0.725rem' }}>Approver:</div>
-                      {(isCAdmin || activePersona === 'Submitter' || activePersona === 'Administrator') && (
+                      {(isCAdmin  || activePersona === 'Administrator') && (
                         <button
                           type="button"
                           className="btn btn-link p-0 text-decoration-none small font-mono-code ms-auto"

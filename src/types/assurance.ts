@@ -63,4 +63,6 @@ export interface AssuranceSet {
   assignedApprover?: string;
   approverDecision?: 'Approved' | 'Returned for Correction' | 'Rejected' | 'Pending';
   approverNotes?: string;
+  /** true when C Admin runs assurance on their own fleet (internal deployment, not third-party charter) */
+  internalDeployment?: boolean;
 }

@@ -145,6 +145,134 @@ export function isVesselOwnedByAdmin(v?: VesselParticulars): boolean {
   );
 }
 
+export type FleetRegistryTab = 'available' | 'own-fleet' | 'chartered' | 'all' | 'owned';
+
+const ORG_MATCH_STOP_WORDS = new Set(['pty', 'ltd', 'pl', 'inc', 'corp', 'the', 'and']);
+
+/**
+  what: extracts significant tokens from an organization name for fuzzy ownership matching.
+*/
+function getOrgMatchTokens(org: string): string[] {
+  return org
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !ORG_MATCH_STOP_WORDS.has(token));
+}
+
+/**
+  what: true when a vessel ownership/management field matches the client organization name.
+  how: uses substring match first, then requires enough distinctive token overlap.
+*/
+export function orgFieldMatches(org: string, fieldValue: string): boolean {
+  if (!org.trim() || !fieldValue.trim()) return false;
+
+  const orgLower = org.toLowerCase();
+  const fieldLower = fieldValue.toLowerCase();
+  if (fieldLower.includes(orgLower) || orgLower.includes(fieldLower)) return true;
+
+  const tokens = getOrgMatchTokens(org);
+  if (tokens.length === 0) return false;
+
+  const matched = tokens.filter((token) => fieldLower.includes(token));
+  const requiredMatches = tokens.length === 1 ? 1 : Math.min(2, tokens.length);
+  return matched.length >= requiredMatches;
+}
+
+/**
+  what: resolves the logged-in client admin's organization from mock user profiles.
+*/
+export function getClientAdminOrganization(
+  users: Pick<import('../types/user').UserProfile, 'roles' | 'organization'>[],
+): string {
+  const cAdmin = users.find((user) => user.roles.includes('C Admin'));
+  return cAdmin?.organization || 'Southern Basin Energy';
+}
+
+/**
+  what: true when the vessel is owned or managed by the client admin organization.
+*/
+export function isVesselOwnedByClientOrg(
+  vessel: VesselParticulars | undefined,
+  clientOrg: string,
+): boolean {
+  if (!vessel || !clientOrg.trim()) return false;
+
+  return [vessel.registeredOwner, vessel.technicalManager, vessel.ismCompany].some(
+    (field) => field && orgFieldMatches(clientOrg, field),
+  );
+}
+
+/**
+  what: true when a vessel is linked to an active C Admin assurance campaign or under charter.
+*/
+export function isVesselCharteredByCAdmin(
+  vessel: VesselParticulars,
+  assuranceSets: AssuranceSet[],
+): boolean {
+  return (
+    vessel.status === 'Under Charter' ||
+    assuranceSets.some(
+      (set) =>
+        set.vesselId === vessel.id &&
+        isAssuranceSetAssignedToPersona(set, 'C Admin'),
+    )
+  );
+}
+
+/**
+  what: third-party vessels available for external charter vetting (excludes own fleet and active charters).
+*/
+export function filterCAdminAvailableToCharter(
+  vessels: VesselParticulars[],
+  assuranceSets: AssuranceSet[],
+  clientOrg: string,
+): VesselParticulars[] {
+  return vessels.filter(
+    (vessel) =>
+      vessel.status !== 'Under Charter' &&
+      !isVesselCharteredByCAdmin(vessel, assuranceSets) &&
+      !isVesselOwnedByClientOrg(vessel, clientOrg),
+  );
+}
+
+/**
+  what: vessels owned or managed by the client admin organization.
+*/
+export function filterCAdminOwnFleet(
+  vessels: VesselParticulars[],
+  clientOrg: string,
+): VesselParticulars[] {
+  return vessels.filter(
+    (vessel) =>
+      vessel.status !== 'Under Charter' && isVesselOwnedByClientOrg(vessel, clientOrg),
+  );
+}
+
+/**
+  what: vessels already linked to C Admin assurance campaigns.
+*/
+export function filterCAdminActiveCharters(
+  vessels: VesselParticulars[],
+  assuranceSets: AssuranceSet[],
+): VesselParticulars[] {
+  return vessels.filter(
+    (vessel) =>
+      isVesselCharteredByCAdmin(vessel, assuranceSets) && vessel.status !== 'Under Charter',
+  );
+}
+
+/**
+  what: true when the charterer organization matches the vessel owner/manager (self-charter risk).
+*/
+export function isChartererMatchingVesselOwner(
+  charterer: string,
+  vessel: VesselParticulars | undefined,
+): boolean {
+  if (!charterer.trim() || !vessel) return false;
+  return isVesselOwnedByClientOrg(vessel, charterer);
+}
+
 /**
   what: filters a list of vessels based on active stakeholder assignments and ownership.
   how: for administrator, restricts to vessels owned/managed by northwind marine pty ltd; for submitter / vessel admin, matches vessels owned/managed by their company; for c admin, allows full access to all vessels under the platform; for other non-admin personas, matches assigned assurance sets.

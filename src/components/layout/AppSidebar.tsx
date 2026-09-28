@@ -96,7 +96,7 @@ export const AppSidebar: React.FC = () => {
     {
       key: 'approver',
       label: 'Approval Gate',
-      allowedRoles: ['Approver'],
+      allowedRoles: ['Approver', 'Verifier'],
     },
     {
       key: 'capa',
@@ -203,7 +203,7 @@ export const AppSidebar: React.FC = () => {
           Organisation
         </div>
         <div className="fw-bold text-white text-truncate" style={{ fontSize: '0.85rem' }}>
-          Northwind Marine Pty Ltd
+          {activePersona === 'C Admin' ? 'Southern Basin Energy' : 'Northwind Marine Pty Ltd'}
         </div>
         <div className="text-truncate" style={{ fontSize: '0.725rem', color: '#94a3b8' }}>
           {activePersona === 'C Admin' ? 'Client / Charterer' : 'Vessel Provider / Owner'}

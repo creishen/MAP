@@ -104,7 +104,15 @@ describe('C Admin Inspector Checklist Isolation', () => {
     const store = useMapStore.getState();
     const vesselsWithInspections = store.vessels;
 
-    for (const v of vesselsWithInspections) {
+    const vesselsWithLinkedCapas = vesselsWithInspections.filter((v) =>
+      store.capaItems.some(
+        (c) => c.vesselName.toLowerCase() === v.name.toLowerCase() || c.vesselId === v.id,
+      ),
+    );
+
+    expect(vesselsWithLinkedCapas.length).toBeGreaterThan(0);
+
+    for (const v of vesselsWithLinkedCapas) {
       const capasForVessel = store.capaItems.filter(
         (c) => c.vesselName.toLowerCase() === v.name.toLowerCase() || c.vesselId === v.id
       );

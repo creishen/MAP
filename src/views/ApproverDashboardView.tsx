@@ -10,6 +10,7 @@ import { ReadinessGauge } from '../components/common/ReadinessGauge';
 import { ConfidenceBadge } from '../components/common/ConfidenceBadge';
 import { formatMaritimeDate } from '../utils/formatters';
 import { isAssuranceSetAssignedToPersona } from '../utils/rbacHelpers';
+import { canPerform } from '../utils/permissionHelpers';
 import { MasterDocument } from '../types/document';
 import { DocumentReviewDrawer } from '../components/drawers/DocumentReviewDrawer';
 import { calculateAssuranceSetReadiness } from '../utils/readinessHelpers';
@@ -29,7 +30,46 @@ export const ApproverDashboardView: React.FC = () => {
     documents,
     currentEntityId,
     setCurrentHashView,
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    users,
+    customScopes,
   } = useMapStore();
+
+  const matchingUser = users.find((u) => u.roles.includes(activePersona)) ?? null;
+
+  const canDecideRequirements = canPerform(
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    matchingUser,
+    activePersona,
+    'approval_decisions',
+    'update',
+    customScopes,
+  );
+
+  const canCertifyAssuranceSet = canPerform(
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    matchingUser,
+    activePersona,
+    'assurance_completion',
+    'update',
+    customScopes,
+  );
+
+  const canAccessApprovalGate = canPerform(
+    rolePermissionDefaults,
+    userPermissionOverrides,
+    matchingUser,
+    activePersona,
+    'approval_gate',
+    'read',
+    customScopes,
+  );
+
+  const usesApproverAssignment =
+    activePersona === 'Approver' || (activePersona === 'Verifier' && canAccessApprovalGate);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('All');
@@ -71,8 +111,10 @@ export const ApproverDashboardView: React.FC = () => {
 
   /* filter assigned sets that are verified and awaiting approval */
   const assignedSets = assuranceSets.filter((s) => {
-    const isAssigned = isAssuranceSetAssignedToPersona(s, activePersona);
-    if (activePersona === 'Approver') {
+    const isAssigned = usesApproverAssignment
+      ? isAssuranceSetAssignedToPersona(s, 'Approver')
+      : isAssuranceSetAssignedToPersona(s, activePersona);
+    if (usesApproverAssignment) {
       const isVerificationReq = s.verificationRequired !== false;
       const isVerifiedAndReady =
         s.stage === 'Approval' ||
@@ -367,7 +409,7 @@ export const ApproverDashboardView: React.FC = () => {
                                       ) : (
                                         <span className="text-secondary small font-mono-code">No Document</span>
                                       )}
-                                      {!isAlreadyApproved && activePersona === 'Approver' && (
+                                      {!isAlreadyApproved && canDecideRequirements && (
                                         <>
                                           <button
                                             type="button"
@@ -463,7 +505,7 @@ export const ApproverDashboardView: React.FC = () => {
                     className="form-control form-control-sm bg-white text-dark border-secondary"
                     rows={3}
                     placeholder={
-                      activePersona === 'Approver'
+                      canCertifyAssuranceSet
                         ? isAlreadyApproved
                           ? 'Assurance set approved. Decision notes locked.'
                           : 'Enter justification notes or return feedback...'
@@ -471,11 +513,11 @@ export const ApproverDashboardView: React.FC = () => {
                     }
                     value={approverNotes}
                     onChange={(e) => setApproverNotes(e.target.value)}
-                    disabled={activePersona !== 'Approver' || isAlreadyApproved}
+                    disabled={!canCertifyAssuranceSet || isAlreadyApproved}
                   />
                 </div>
 
-                {activePersona === 'Approver' && (
+                {canCertifyAssuranceSet && (
                   isAlreadyApproved ? (
                     <div className="alert alert-success py-2.5 px-3 small font-mono-code fw-semibold mb-0 d-flex align-items-center gap-2">
                       <span className="badge bg-success text-white font-mono-code">Approved</span>
